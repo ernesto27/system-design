@@ -1,0 +1,32 @@
+docker network create cassandra
+
+docker run  -d -p 9042:9042  --name cassandra --hostname cassandra --network cassandra cassandra
+
+docker run --rm -it --network cassandra nuvo/docker-cqlsh cqlsh cassandra 9042 --cqlversion='3.4.6'
+
+
+
+create keyspace chatmessages with replication =  { 'class' : 'SimpleStrategy', 'replication_factor' : 1 };
+
+create table chatmessages.users (id uuid primary key, username text, created_at timestamp);
+INSERT INTO chatmessages.users (id, username, created_at) VALUES (UUID(), 'your_username', toTimestamp(now()));
+
+create table chatmessages.messages(id bigint PRIMARY KEY, message_from uuid, message_to uuid, content text, created_at timestamp);
+insert into chatmessages.messages 
+(id, message_from, message_to, content, created_at)
+values
+(1, b9295f17-6f38-4a83-98d3-fbb10082c66c, b9295f17-6f38-4a83-98d3-fbb10082c66c, 'some content', toTimeStamp(now()));
+
+
+create table chatmessages.channels (id uuid primary key, name text);
+insert into chatmessages.channels
+(id, name)
+values 
+(UUID(), 'channelname');
+
+
+create table chatmessages.group_messages (channel_id uuid primary key, message_id bigint, user_id uuid, content text, created_at timestamp);
+insert into chatmessages.group_messages
+(channel_id, message_id, user_id, content, created_at)
+values
+(UUID(), 1, UUID(), 'some content', toTimestamp(now()));
