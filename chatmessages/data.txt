@@ -8,14 +8,47 @@ docker run --rm -it --network cassandra nuvo/docker-cqlsh cqlsh cassandra 9042 -
 
 create keyspace chatmessages with replication =  { 'class' : 'SimpleStrategy', 'replication_factor' : 1 };
 
-create table chatmessages.users (id uuid primary key, username text, created_at timestamp);
+create table chatmessages.users (
+    id uuid primary key, 
+    username text, 
+    password varchar, 
+    api_token varchar, 
+    created_at timestamp);
+CREATE INDEX ON chatmessages.users (username);
+
+
 INSERT INTO chatmessages.users (id, username, created_at) VALUES (UUID(), 'your_username', toTimestamp(now()));
 
-create table chatmessages.messages(id bigint PRIMARY KEY, message_from uuid, message_to uuid, content text, created_at timestamp);
+CREATE TABLE chatmessages.messages (
+    id uuid,
+    message_from uuid,
+    message_to uuid,
+    content text,
+    record_id timeuuid,
+    created_at timestamp,
+    PRIMARY KEY ((message_from, message_to), record_id, id)
+) WITH CLUSTERING ORDER BY (record_id DESC);
+
 insert into chatmessages.messages 
-(id, message_from, message_to, content, created_at)
-values
-(1, b9295f17-6f38-4a83-98d3-fbb10082c66c, b9295f17-6f38-4a83-98d3-fbb10082c66c, 'some content', toTimeStamp(now()));
+(id, message_from, message_to, content, record_id, created_at)
+values (
+    uuid(), 
+    uuid(), 
+    uuid(), 
+    '1', 
+    now(),
+    toTimeStamp(now())
+);
+
+CREATE INDEX ON chatmessages.messages (message_from);
+CREATE INDEX ON chatmessages.messages (message_to);
+
+
+select * from chatmessages.messages 
+where message_from = e63093e5-497c-407b-a391-676ba6d5db2f
+and message_to = e63093e5-497c-407b-a391-676ba6d5db2f
+order by record_id desc limit 10;
+
 
 
 create table chatmessages.channels (id uuid primary key, name text);
