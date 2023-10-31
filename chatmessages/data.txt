@@ -63,3 +63,22 @@ insert into chatmessages.group_messages
 (channel_id, message_id, user_id, content, created_at)
 values
 (UUID(), 1, UUID(), 'some content', toTimestamp(now()));
+
+
+Kafka
+
+Start server 
+bin/zookeeper-server-start.sh config/zookeeper.properties
+
+bin/kafka-server-start.sh config/server.properties
+
+
+Producer 
+bin/kafka-console-producer.sh --topic quickstart-events --bootstrap-server localhost:9092
+
+Consumer
+bin/kafka-console-consumer.sh --topic newtopic  --from-beginning  --bootstrap-server localhost:9092
+
+
+View topic list
+bin/kafka-topics.sh --list --bootstrap-server localhost:9092

@@ -2,9 +2,49 @@ package main
 
 import (
 	"chatmessages/db"
+	"chatmessages/messagebroker"
+	"fmt"
+	"log"
+	"os"
 )
 
 func main() {
+	topic := "newtopic"
+	partition := 0
+	p, err := messagebroker.NewProducer("localhost:9092", topic, partition)
+	if err != nil {
+		panic(err)
+	}
+
+	err = p.Write([]byte("6666"))
+
+	if err != nil {
+		log.Fatal("failed to write messages:", err)
+	}
+
+	if err := p.Conn.Close(); err != nil {
+		log.Fatal("failed to close writer:", err)
+	}
+
+	consumer := messagebroker.NewConsumer("localhost:9092", topic, partition)
+	messages := make(chan []byte)
+	errors := make(chan error)
+	go consumer.ReadMessages(messages, errors)
+	for {
+		select {
+		case msg := <-messages:
+			fmt.Println("from loop" + string(msg))
+		case err := <-errors:
+			// Handle error
+			fmt.Println(err)
+			if err := consumer.Reader.Close(); err != nil {
+				log.Fatal("failed to close reader:", err)
+			}
+		}
+	}
+
+	os.Exit(0)
+
 	// cluster := gocql.NewCluster("127.0.0.1")
 	// cluster.Keyspace = "chatmessages"
 
