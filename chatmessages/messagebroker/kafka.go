@@ -2,7 +2,6 @@ package messagebroker
 
 import (
 	"context"
-	"time"
 
 	"github.com/segmentio/kafka-go"
 )
@@ -18,7 +17,7 @@ func NewProducer(host string, topic string, partition int) (*Kafka, error) {
 		return nil, err
 	}
 
-	conn.SetWriteDeadline(time.Now().Add(10 * time.Second))
+	//conn.SetWriteDeadline(time.Now().Add(10 * time.Second))
 
 	return &Kafka{Conn: conn}, nil
 }
@@ -34,14 +33,14 @@ func (k *Kafka) Write(msg []byte) error {
 	return nil
 }
 
-func NewConsumer(host string, topic string, partition int) *Kafka {
+func NewConsumer(host string, topic string, partition int, offset int64) *Kafka {
 	r := kafka.NewReader(kafka.ReaderConfig{
 		Brokers:   []string{host},
 		Topic:     topic,
 		Partition: partition,
 		MaxBytes:  10e6, // 10MB
 	})
-	//r.SetOffset(42)
+	r.SetOffset(offset)
 
 	return &Kafka{Reader: r}
 }

@@ -113,6 +113,21 @@ func (c *Cassandra) LoginUser(u User) error {
 	return nil
 }
 
+func (c *Cassandra) UpdateConfig(id int, offset int) error {
+	err := c.Session.Query("UPDATE chatmessages.config SET consumer_offset = ? WHERE id = ?", offset, id).Exec()
+	return err
+}
+
+func (c *Cassandra) GetConfig(id int) (int, error) {
+	var offset int
+	err := c.Session.Query("SELECT consumer_offset FROM chatmessages.config WHERE id = ? LIMIT 1", id).Scan(&offset)
+	if err != nil {
+		return 0, err
+	}
+
+	return offset, nil
+}
+
 func createRandomString() string {
 	length := 32
 	chars := "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
