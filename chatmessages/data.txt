@@ -8,12 +8,15 @@ docker run --rm -it --network cassandra nuvo/docker-cqlsh cqlsh cassandra 9042 -
 create keyspace chatmessages with replication =  { 'class' : 'SimpleStrategy', 'replication_factor' : 1 };
 
 create table chatmessages.users (
-    id uuid primary key, 
+    id uuid PRIMARY KEY, 
     username text, 
     password varchar, 
     api_token varchar, 
-    created_at timestamp);
+    created_at timestamp,
+    contacts set<UUID>,
+);
 CREATE INDEX ON chatmessages.users (username);
+CREATE INDEX ON chatmessages.users (api_token);
 
 
 INSERT INTO chatmessages.users (id, username, created_at) VALUES (UUID(), 'your_username', toTimestamp(now()));

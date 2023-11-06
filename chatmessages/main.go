@@ -33,7 +33,6 @@ type Client struct {
 var clients = make(map[*websocket.Conn]Client)
 
 func WebSocketHandler(w http.ResponseWriter, r *http.Request) {
-	// TODO AUTH VALIDATION
 
 	fmt.Println("WebSocketHandler")
 
@@ -47,14 +46,37 @@ func WebSocketHandler(w http.ResponseWriter, r *http.Request) {
 
 	clients[conn] = Client{Conn: conn}
 
+	// TODO AUTH VALIDATION
+	user, err := cassandra.GetUserByApiKey(r.Header.Get("Api-Token"))
+	if err != nil {
+		fmt.Println(err)
+		clients[conn].Conn.WriteJSON(Response{Message: "Invalid Api-Token"})
+		clients[conn].Conn.Close()
+		return
+	}
+
+	fmt.Println("USER UUID ", user.ID)
+
+	contactsTopics := []string{}
+	for _, c := range user.Contacts {
+		t := user.ID.String() + "_" + c.String()
+		if c.String() < user.ID.String() {
+			t = c.String() + "_" + user.ID.String()
+		}
+		contactsTopics = append(contactsTopics, t)
+
+	}
+	fmt.Println("USER CONTACTS TOPICS ", contactsTopics)
+
 	// setup producers
-	b, err := messagebroker.NewProducer("localhost:9092", "chat2", 0)
+	// this should be create on demand
+	b, err := messagebroker.NewProducer("localhost:9092", contactsTopics[0], 0)
 	if err != nil {
 		panic(err)
 	}
 
 	// setup consumers
-	c := messagebroker.NewConsumer("localhost:9092", "chat2", 0, 0)
+	c := messagebroker.NewConsumer("localhost:9092", contactsTopics[0], 0, 0)
 	// listen to messages
 	go func() {
 		messages := make(chan []byte)
@@ -64,7 +86,7 @@ func WebSocketHandler(w http.ResponseWriter, r *http.Request) {
 			select {
 			case msg := <-messages:
 				fmt.Println("CONSUMER READ" + string(msg))
-				// send to websocker client
+
 			case err := <-errors:
 				// Handle error
 				fmt.Println(err)
@@ -111,12 +133,48 @@ func WebSocketHandler(w http.ResponseWriter, r *http.Request) {
 		// Add messages to queue topic
 
 	}
-
 }
 
-func main() {
-	// create websocket server
+var cassandra *db.Cassandra
 
+func main() {
+
+	// cassandra, err := db.NewCassandra("127.0.0.1", "chatmessages")
+	// if err != nil {
+	// 	panic(err)
+	// }
+	// defer cassandra.Session.Close()
+
+	// uuid1, _ := gocql.RandomUUID()
+	// uuid2, _ := gocql.RandomUUID()
+
+	// err = cassandra.CreateUser(db.User{
+	// 	Username: "ernesto",
+	// 	Password: "1111",
+	// 	Contacts: []gocql.UUID{uuid1, uuid2},
+	// })
+	// if err != nil {
+	// 	panic(err)
+	// }
+	// os.Exit(1)
+
+	// logUUID := "6e133e52-7664-43f1-a016-757747c5e24a"
+	// contactUUID := "868c69c5-0166-4cb3-a31e-1577463d64aa"
+
+	// if contactUUID > logUUID {
+	// 	fmt.Println("CONTACT UUID IS GREATER")
+	// }
+
+	// os.Exit(1)
+
+	var err error
+	cassandra, err = db.NewCassandra("127.0.0.1", "chatmessages")
+	if err != nil {
+		panic(err)
+	}
+	defer cassandra.Session.Close()
+
+	// create websocket server
 	r := mux.NewRouter()
 	r.HandleFunc("/ws", WebSocketHandler)
 

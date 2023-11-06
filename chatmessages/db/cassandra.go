@@ -28,6 +28,7 @@ type User struct {
 	Username  string
 	Password  string
 	ApiToken  string
+	Contacts  []gocql.UUID
 	CreatedAt time.Time
 }
 
@@ -93,8 +94,8 @@ func (c *Cassandra) CreateUser(u User) error {
 		return err
 	}
 
-	err = c.Session.Query("INSERT INTO chatmessages.users (id, username, password, api_token, created_at) VALUES (uuid(), ?, ?, ?, toTimeStamp(now()))",
-		u.Username, hashedPassword, createRandomString()).Exec()
+	err = c.Session.Query("INSERT INTO chatmessages.users (id, username, password, api_token, contacts, created_at) VALUES (uuid(), ?, ?, ?, ?, toTimeStamp(now()))",
+		u.Username, hashedPassword, createRandomString(), u.Contacts).Exec()
 	return err
 }
 
@@ -111,6 +112,16 @@ func (c *Cassandra) LoginUser(u User) error {
 	}
 
 	return nil
+}
+
+func (c *Cassandra) GetUserByApiKey(apiKey string) (User, error) {
+	var user User
+	err := c.Session.Query("SELECT id, username, api_token, contacts FROM chatmessages.users WHERE api_token = ? LIMIT 1", apiKey).Scan(&user.ID, &user.Username, &user.ApiToken, &user.Contacts)
+	if err != nil {
+		return User{}, err
+	}
+
+	return user, nil
 }
 
 func (c *Cassandra) UpdateConfig(id int, offset int) error {

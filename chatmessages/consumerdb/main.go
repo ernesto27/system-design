@@ -14,7 +14,6 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-
 	defer cassandra.Session.Close()
 
 	// get latest offset kafka
@@ -26,7 +25,7 @@ func main() {
 
 	//cassandra.UpdateConfig(0)
 
-	c := messagebroker.NewConsumer("localhost:9092", "chat2", 0, int64(offset))
+	c := messagebroker.NewConsumer("localhost:9092", "[]string{}", 0, int64(offset))
 
 	messages := make(chan []byte)
 	errors := make(chan error)
