@@ -32,6 +32,25 @@ type User struct {
 	CreatedAt time.Time
 }
 
+func (u *User) GetTopicName(contactUUID gocql.UUID) string {
+	t := u.ID.String() + "_" + contactUUID.String()
+	if contactUUID.String() < u.ID.String() {
+		t = contactUUID.String() + "_" + u.ID.String()
+	}
+
+	return t
+}
+
+func (u *User) ValidateContact(contact string) bool {
+	for _, c := range u.Contacts {
+		if c.String() == contact {
+			return true
+		}
+	}
+
+	return false
+}
+
 func NewCassandra(host string, keyspace string) (*Cassandra, error) {
 	c := &Cassandra{host: host, keyspace: keyspace}
 	cluster := gocql.NewCluster(c.host)
@@ -43,6 +62,7 @@ func NewCassandra(host string, keyspace string) (*Cassandra, error) {
 	}
 
 	c.Session = session
+
 	return c, nil
 }
 
@@ -96,6 +116,7 @@ func (c *Cassandra) CreateUser(u User) error {
 
 	err = c.Session.Query("INSERT INTO chatmessages.users (id, username, password, api_token, contacts, created_at) VALUES (uuid(), ?, ?, ?, ?, toTimeStamp(now()))",
 		u.Username, hashedPassword, createRandomString(), u.Contacts).Exec()
+
 	return err
 }
 

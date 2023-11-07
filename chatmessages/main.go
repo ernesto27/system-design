@@ -19,7 +19,8 @@ var upgrader = websocket.Upgrader{
 }
 
 type Request struct {
-	Message string `json:"message"`
+	Message   string `json:"message"`
+	MessageTo string `json:"messageTo"`
 }
 
 type Response struct {
@@ -68,13 +69,6 @@ func WebSocketHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	fmt.Println("USER CONTACTS TOPICS ", contactsTopics)
 
-	// setup producers
-	// this should be create on demand
-	b, err := messagebroker.NewProducer("localhost:9092", contactsTopics[0], 0)
-	if err != nil {
-		panic(err)
-	}
-
 	// setup consumers
 	c := messagebroker.NewConsumer("localhost:9092", contactsTopics[0], 0, 0)
 	// listen to messages
@@ -101,21 +95,30 @@ func WebSocketHandler(w http.ResponseWriter, r *http.Request) {
 		_, p, err := conn.ReadMessage()
 		if err != nil {
 			fmt.Println(err)
+			continue
 		}
 
 		request := Request{}
 		err = json.Unmarshal(p, &request)
 		if err != nil {
 			fmt.Println(err)
-		}
-
-		uuid, err := gocql.RandomUUID()
-		if err != nil {
 			continue
 		}
+
+		if !user.ValidateContact(request.MessageTo) {
+			fmt.Println("INVALID CONTACT")
+			continue
+		}
+
+		mTo, err := gocql.ParseUUID(request.MessageTo)
+		if err != nil {
+			fmt.Println(err)
+			continue
+		}
+
 		m := db.Message{
-			MessageFrom: uuid,
-			MessageTo:   uuid,
+			MessageFrom: user.ID,
+			MessageTo:   mTo,
 			Content:     string(request.Message),
 		}
 
@@ -125,12 +128,22 @@ func WebSocketHandler(w http.ResponseWriter, r *http.Request) {
 			continue
 		}
 
+		topic := user.GetTopicName(mTo)
+		fmt.Println("SAVE MESSAGE ON TOPIC ", topic)
+
+		b, err := messagebroker.NewProducer("localhost:9092", topic, 0)
+		if err != nil {
+			fmt.Println(err)
+			continue
+		}
+
 		err = b.Write([]byte(jsonMessage))
 		if err != nil {
 			fmt.Println(err)
 		}
+		b.Conn.Close()
+
 		fmt.Println(string(request.Message))
-		// Add messages to queue topic
 
 	}
 }

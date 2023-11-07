@@ -18,8 +18,8 @@ create table chatmessages.users (
 CREATE INDEX ON chatmessages.users (username);
 CREATE INDEX ON chatmessages.users (api_token);
 
+INSERT INTO chatmessages.users (id, username, password, api_token, created_at, contacts)  VALUES (     UUID(),      'john_doe',      'my_secure_password',      'my_api_token',      toTimestamp(now()),      {UUID(), UUID(), UUID()} );
 
-INSERT INTO chatmessages.users (id, username, created_at) VALUES (UUID(), 'your_username', toTimestamp(now()));
 
 CREATE TABLE chatmessages.messages (
     id uuid,
