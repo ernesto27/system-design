@@ -57,39 +57,34 @@ func WebSocketHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	fmt.Println("USER UUID ", user.ID)
+	fmt.Println("USER CONTACTS TOPICS ", user.Contacts)
 
-	contactsTopics := []string{}
 	for _, c := range user.Contacts {
-		t := user.ID.String() + "_" + c.String()
-		if c.String() < user.ID.String() {
-			t = c.String() + "_" + user.ID.String()
-		}
-		contactsTopics = append(contactsTopics, t)
+		t := user.GetTopicName(c)
+		fmt.Println("USER CONTACTS TOPIC CONSUMER", t)
 
-	}
-	fmt.Println("USER CONTACTS TOPICS ", contactsTopics)
+		// setup consumers
+		c := messagebroker.NewConsumer("localhost:9092", t, 0, 0)
+		// listen to messages
+		go func(c *messagebroker.Kafka) {
+			messages := make(chan []byte)
+			errors := make(chan error)
+			go c.ReadMessages(messages, errors)
+			for {
+				select {
+				case msg := <-messages:
+					fmt.Println("Consumer read from " + t + " " + string(msg))
 
-	// setup consumers
-	c := messagebroker.NewConsumer("localhost:9092", contactsTopics[0], 0, 0)
-	// listen to messages
-	go func() {
-		messages := make(chan []byte)
-		errors := make(chan error)
-		go c.ReadMessages(messages, errors)
-		for {
-			select {
-			case msg := <-messages:
-				fmt.Println("CONSUMER READ" + string(msg))
-
-			case err := <-errors:
-				// Handle error
-				fmt.Println(err)
-				if err := c.Reader.Close(); err != nil {
-					log.Fatal("failed to close reader:", err)
+				case err := <-errors:
+					// Handle error
+					fmt.Println(err)
+					if err := c.Reader.Close(); err != nil {
+						fmt.Println("failed to close reader:", err)
+					}
 				}
 			}
-		}
-	}()
+		}(c)
+	}
 
 	for {
 		_, p, err := conn.ReadMessage()
