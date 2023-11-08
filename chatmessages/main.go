@@ -201,13 +201,30 @@ func main() {
 		panic(err)
 	}
 
-	fmt.Println(uuid)
+	// Input date and time string
+	dateTimeStr := "2023-11-08 03:17:26.69 +0000 UTC"
+	// Define the layout that matches the input format
+	layout := "2006-01-02 15:04:05.999 -0700 MST"
+	// Parse the string into a time.Time object
+	parsedTime, err := time.Parse(layout, dateTimeStr)
+	if err != nil {
+		fmt.Println("Error:", err)
+		return
+	}
 
-	m, err := cassandra.GetMessagesOneToOne(uuid, time.Now())
+	fmt.Println("Parsed time:", parsedTime)
+
+	m, err := cassandra.GetMessagesOneToOne(uuid, parsedTime)
+	//m, err := cassandra.GetMessagesOneToOne(uuid, time.Now())
 	if err != nil {
 		panic(err)
 	}
-	fmt.Println(m)
+
+	for _, v := range m {
+		fmt.Println(v.Content)
+		fmt.Println(v.CreatedAt)
+	}
+
 	os.Exit(1)
 
 	// create websocket server

@@ -161,7 +161,7 @@ func (c *Cassandra) GetConfig(id int) (int, error) {
 func (c *Cassandra) GetMessagesOneToOne(channelID gocql.UUID, createdAt time.Time) ([]Message, error) {
 	m := []Message{}
 
-	scanner := c.Session.Query("SELECT id, message_from, message_to, content, created_at FROM chatmessages.messages where channel_id = ? ORDER BY created_at DESC LIMIT 2", channelID.String()).Iter().Scanner()
+	scanner := c.Session.Query("SELECT id, message_from, message_to, content, created_at FROM chatmessages.messages where channel_id = ?  AND created_at < ? ORDER BY created_at DESC LIMIT 2", channelID.String(), createdAt).Iter().Scanner()
 
 	var id gocql.UUID
 	var messageFrom gocql.UUID
