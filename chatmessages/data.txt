@@ -26,24 +26,29 @@ CREATE TABLE chatmessages.messages (
     message_from uuid,
     message_to uuid,
     content text,
-    record_id timeuuid,
     created_at timestamp,
-    PRIMARY KEY ((message_from, message_to), record_id, id)
-) WITH CLUSTERING ORDER BY (record_id DESC);
+    channel_id uuid,
+    PRIMARY KEY ((channel_id), create_at, id)
+) WITH CLUSTERING ORDER BY (created_at DESC);
 
 insert into chatmessages.messages 
-(id, message_from, message_to, content, record_id, created_at)
+(id, message_from, message_to, content, created_at, channel_id)
 values (
     uuid(), 
     uuid(), 
     uuid(), 
-    '1', 
-    now(),
-    toTimeStamp(now())
+    '2', 
+    toTimeStamp(now()),
+    c13b2d17-e60e-4f60-9a39-d922eef257cd
 );
+
+select * from chatmessages.messages where channel_id = c13b2d17-e60e-4f60-9a39-d922eef257cd order by created_at desc;
+
+select * from chatmessages.messages where channel_id = c13b2d17-e60e-4f60-9a39-d922eef257cd and created_at < '2023-11-08 03:17:05.963000+0000'  order by created_at desc limit 1;
 
 CREATE INDEX ON chatmessages.messages (message_from);
 CREATE INDEX ON chatmessages.messages (message_to);
+CREATE INDEX ON chatmessages.messages (channel_id);
 
 
 select * from chatmessages.messages 

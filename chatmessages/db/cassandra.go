@@ -20,7 +20,6 @@ type Message struct {
 	MessageTo   gocql.UUID
 	Content     string
 	CreatedAt   time.Time
-	RecordID    gocql.UUID
 }
 
 type User struct {
@@ -95,7 +94,6 @@ func (c *Cassandra) GetMessages() ([]Message, error) {
 			MessageFrom: messageFrom,
 			MessageTo:   messageTo,
 			Content:     content,
-			RecordID:    recordID,
 			CreatedAt:   createdAt,
 		})
 	}
@@ -158,6 +156,35 @@ func (c *Cassandra) GetConfig(id int) (int, error) {
 	}
 
 	return offset, nil
+}
+
+func (c *Cassandra) GetMessagesOneToOne(channelID gocql.UUID, createdAt time.Time) ([]Message, error) {
+	m := []Message{}
+
+	scanner := c.Session.Query("SELECT id, message_from, message_to, content, created_at FROM chatmessages.messages where channel_id = ? ORDER BY created_at DESC LIMIT 2", channelID.String()).Iter().Scanner()
+
+	var id gocql.UUID
+	var messageFrom gocql.UUID
+	var messageTo gocql.UUID
+	var content string
+	var ct time.Time
+
+	for scanner.Next() {
+		err := scanner.Scan(&id, &messageFrom, &messageTo, &content, &ct)
+		if err != nil {
+			return nil, err
+		}
+
+		m = append(m, Message{
+			ID:          id,
+			MessageFrom: messageFrom,
+			MessageTo:   messageTo,
+			Content:     content,
+			CreatedAt:   ct,
+		})
+	}
+
+	return m, nil
 }
 
 func createRandomString() string {

@@ -7,6 +7,8 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"os"
+	"time"
 
 	"github.com/gocql/gocql"
 	"github.com/gorilla/mux"
@@ -21,6 +23,8 @@ var upgrader = websocket.Upgrader{
 type Request struct {
 	Message   string `json:"message"`
 	MessageTo string `json:"messageTo"`
+	ChannelID string `json:"channelId"`
+	CreatedAt string `json:"createdAt"`
 }
 
 type Response struct {
@@ -143,6 +147,16 @@ func WebSocketHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+func HandleMessagesOneToOne(w http.ResponseWriter, r *http.Request) {
+	// validate token
+
+	// Validate channelID associated with user
+
+	// Validate JSON data
+
+	// Get messages from DB
+}
+
 var cassandra *db.Cassandra
 
 func main() {
@@ -182,9 +196,25 @@ func main() {
 	}
 	defer cassandra.Session.Close()
 
+	uuid, err := gocql.ParseUUID("c13b2d17-e60e-4f60-9a39-d922eef257cd")
+	if err != nil {
+		panic(err)
+	}
+
+	fmt.Println(uuid)
+
+	m, err := cassandra.GetMessagesOneToOne(uuid, time.Now())
+	if err != nil {
+		panic(err)
+	}
+	fmt.Println(m)
+	os.Exit(1)
+
 	// create websocket server
 	r := mux.NewRouter()
 	r.HandleFunc("/ws", WebSocketHandler)
+
+	r.HandleFunc("/messages-one-to-one", HandleMessagesOneToOne)
 
 	if err := http.ListenAndServe(":8080", r); err != nil {
 		panic(err)
