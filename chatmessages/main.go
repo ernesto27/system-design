@@ -2,13 +2,13 @@ package main
 
 import (
 	"chatmessages/db"
+	"chatmessages/handlers"
 	"chatmessages/messagebroker"
+	"chatmessages/types"
 	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
-	"os"
-	"time"
 
 	"github.com/gocql/gocql"
 	"github.com/gorilla/mux"
@@ -20,22 +20,7 @@ var upgrader = websocket.Upgrader{
 	WriteBufferSize: 1024,
 }
 
-type Request struct {
-	Message   string `json:"message"`
-	MessageTo string `json:"messageTo"`
-	ChannelID string `json:"channelId"`
-	CreatedAt string `json:"createdAt"`
-}
-
-type Response struct {
-	Message string `json:"message"`
-}
-
-type Client struct {
-	Conn *websocket.Conn
-}
-
-var clients = make(map[*websocket.Conn]Client)
+var clients = make(map[*websocket.Conn]types.Client)
 
 func WebSocketHandler(w http.ResponseWriter, r *http.Request) {
 
@@ -49,13 +34,13 @@ func WebSocketHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	defer conn.Close()
 
-	clients[conn] = Client{Conn: conn}
+	clients[conn] = types.Client{Conn: conn}
 
-	// TODO AUTH VALIDATION
 	user, err := cassandra.GetUserByApiKey(r.Header.Get("Api-Token"))
 	if err != nil {
 		fmt.Println(err)
-		clients[conn].Conn.WriteJSON(Response{Message: "Invalid Api-Token"})
+		clients[conn].Conn.WriteJSON(types.
+			Response{Message: "Invalid Api-Token"})
 		clients[conn].Conn.Close()
 		return
 	}
@@ -97,7 +82,7 @@ func WebSocketHandler(w http.ResponseWriter, r *http.Request) {
 			continue
 		}
 
-		request := Request{}
+		request := types.Request{}
 		err = json.Unmarshal(p, &request)
 		if err != nil {
 			fmt.Println(err)
@@ -147,16 +132,6 @@ func WebSocketHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func HandleMessagesOneToOne(w http.ResponseWriter, r *http.Request) {
-	// validate token
-
-	// Validate channelID associated with user
-
-	// Validate JSON data
-
-	// Get messages from DB
-}
-
 var cassandra *db.Cassandra
 
 func main() {
@@ -196,42 +171,39 @@ func main() {
 	}
 	defer cassandra.Session.Close()
 
-	uuid, err := gocql.ParseUUID("c13b2d17-e60e-4f60-9a39-d922eef257cd")
-	if err != nil {
-		panic(err)
-	}
+	// uuid, err := gocql.ParseUUID("c13b2d17-e60e-4f60-9a39-d922eef257cd")
+	// if err != nil {
+	// 	panic(err)
+	// }
 
 	// Input date and time string
-	dateTimeStr := "2023-11-08 03:17:26.69 +0000 UTC"
-	// Define the layout that matches the input format
-	layout := "2006-01-02 15:04:05.999 -0700 MST"
-	// Parse the string into a time.Time object
-	parsedTime, err := time.Parse(layout, dateTimeStr)
-	if err != nil {
-		fmt.Println("Error:", err)
-		return
-	}
+	// dateTimeStr := "2023-11-08 03:17:26.69 +0000 UTC"
+	// // Define the layout that matches the input format
+	// layout := "2006-01-02 15:04:05.999 -0700 MST"
+	// // Parse the string into a time.Time object
+	// parsedTime, err := time.Parse(layout, dateTimeStr)
+	// if err != nil {
+	// 	fmt.Println("Error:", err)
+	// 	return
+	// }
 
-	fmt.Println("Parsed time:", parsedTime)
+	// fmt.Println("Parsed time:", parsedTime)
 
-	m, err := cassandra.GetMessagesOneToOne(uuid, parsedTime)
-	//m, err := cassandra.GetMessagesOneToOne(uuid, time.Now())
-	if err != nil {
-		panic(err)
-	}
+	// m, err := cassandra.GetMessagesOneToOne(uuid, parsedTime)
+	// //m, err := cassandra.GetMessagesOneToOne(uuid, time.Now())
+	// if err != nil {
+	// 	panic(err)
+	// }
 
-	for _, v := range m {
-		fmt.Println(v.Content)
-		fmt.Println(v.CreatedAt)
-	}
-
-	os.Exit(1)
+	//os.Exit(1)
 
 	// create websocket server
 	r := mux.NewRouter()
 	r.HandleFunc("/ws", WebSocketHandler)
 
-	r.HandleFunc("/messages-one-to-one", HandleMessagesOneToOne)
+	r.HandleFunc("/messages-one-to-one", func(w http.ResponseWriter, r *http.Request) {
+		handlers.HandleMessagesOneToOne(w, r, cassandra)
+	})
 
 	if err := http.ListenAndServe(":8080", r); err != nil {
 		panic(err)
