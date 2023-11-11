@@ -86,15 +86,15 @@ func WebSocketHandler(w http.ResponseWriter, r *http.Request) {
 			continue
 		}
 
-		if !user.ValidateContact(request.MessageTo) {
-			fmt.Println("invalid contact")
-			continue
-		}
+		// if !user.ValidateContact(request.MessageTo) {
+		// 	fmt.Println("invalid contact")
+		// 	continue
+		// }
 
-		if !user.ValidateChannel(request.ChannelID) {
-			fmt.Println("invalid channel")
-			continue
-		}
+		// if !user.ValidateChannel(request.ChannelID) {
+		// 	fmt.Println("invalid channel")
+		// 	continue
+		// }
 
 		mTo, err := gocql.ParseUUID(request.MessageTo)
 		if err != nil {
