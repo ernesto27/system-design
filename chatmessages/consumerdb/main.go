@@ -47,7 +47,8 @@ func main() {
 						continue
 					}
 
-					if err := cassandra.CreateMessage(m); err != nil {
+					uuid, now, err := cassandra.CreateMessage(m)
+					if err != nil {
 						fmt.Println(err)
 						continue
 					}
@@ -57,6 +58,27 @@ func main() {
 						fmt.Println(err)
 						continue
 					}
+
+					// Send message queue consumer
+					b, err := messagebroker.NewProducer("localhost:9092", channel.ID.String()+"_C", 0)
+					if err != nil {
+						fmt.Println(err)
+						continue
+					}
+					m.ID = uuid
+					m.CreatedAt = now
+
+					jsonMessage, err := json.Marshal(m)
+					if err != nil {
+						fmt.Println(err)
+						continue
+					}
+
+					err = b.Write([]byte(jsonMessage))
+					if err != nil {
+						fmt.Println(err)
+					}
+					b.Conn.Close()
 
 				case err := <-errors:
 					// Handle error

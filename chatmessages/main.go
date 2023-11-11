@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"time"
 
 	"github.com/gocql/gocql"
 	"github.com/gorilla/mux"
@@ -50,6 +51,7 @@ func WebSocketHandler(w http.ResponseWriter, r *http.Request) {
 
 	for _, channel := range user.Channels {
 		// setup consumers
+		fmt.Println("consumer listening to " + channel.String())
 		c := messagebroker.NewConsumer("localhost:9092", channel.String()+"_C", 0, 0)
 		// listen to messages
 		go func(c *messagebroker.Kafka, channel gocql.UUID) {
@@ -59,7 +61,26 @@ func WebSocketHandler(w http.ResponseWriter, r *http.Request) {
 			for {
 				select {
 				case msg := <-messages:
-					fmt.Println("Consumer read from " + channel.String() + " " + string(msg))
+					// Check message date after last message read by user
+					layout := "2006-01-02T15:04:05.99Z"
+					lastCreated, err := time.Parse(layout, r.Header.Get("Last-Created-At"))
+					if err != nil {
+						fmt.Println(err)
+						continue
+					}
+
+					m := types.Message{}
+					err = json.Unmarshal(msg, &m)
+					if err != nil {
+						fmt.Println(err)
+						continue
+					}
+
+					if m.CreatedAt.UTC().Before(lastCreated) {
+						continue
+					}
+
+					fmt.Println("send message to user ", string(msg))
 					clients[conn].Conn.WriteJSON(string(msg))
 				case err := <-errors:
 					// Handle error
@@ -140,33 +161,8 @@ var cassandra *db.Cassandra
 
 func main() {
 
-	// cassandra, err := db.NewCassandra("127.0.0.1", "chatmessages")
-	// if err != nil {
-	// 	panic(err)
-	// }
-	// defer cassandra.Session.Close()
-
-	// uuid1, _ := gocql.RandomUUID()
-	// uuid2, _ := gocql.RandomUUID()
-
-	// err = cassandra.CreateUser(db.User{
-	// 	Username: "ernesto",
-	// 	Password: "1111",
-	// 	Contacts: []gocql.UUID{uuid1, uuid2},
-	// })
-	// if err != nil {
-	// 	panic(err)
-	// }
-	// os.Exit(1)
-
-	// logUUID := "6e133e52-7664-43f1-a016-757747c5e24a"
-	// contactUUID := "868c69c5-0166-4cb3-a31e-1577463d64aa"
-
-	// if contactUUID > logUUID {
-	// 	fmt.Println("CONTACT UUID IS GREATER")
-	// }
-
-	// os.Exit(1)
+	// fmt.Println(time.Now())
+	// os.Exit(0)
 
 	var err error
 	cassandra, err = db.NewCassandra("127.0.0.1", "chatmessages")
@@ -181,17 +177,21 @@ func main() {
 	// }
 
 	// Input date and time string
-	// dateTimeStr := "2023-11-08 03:17:26.69 +0000 UTC"
-	// // Define the layout that matches the input format
-	// layout := "2006-01-02 15:04:05.999 -0700 MST"
-	// // Parse the string into a time.Time object
+	// dateTimeStr := "2023-11-11T20:17:10.307Z"
+	// layout := "2006-01-02T15:04:05.99Z"
 	// parsedTime, err := time.Parse(layout, dateTimeStr)
 	// if err != nil {
-	// 	fmt.Println("Error:", err)
-	// 	return
+	// 	panic(err)
 	// }
 
 	// fmt.Println("Parsed time:", parsedTime)
+	// fmt.Println(time.Now().Add(1000 * time.Hour))
+	// if parsedTime.Before(time.Now().Add(-1000 * time.Hour)) {
+	// 	fmt.Println("Parsed time is before current time")
+	// } else {
+	// 	fmt.Println("Parsed time is after current time")
+	// }
+	// os.Exit(1)
 
 	// m, err := cassandra.GetMessagesOneToOne(uuid, parsedTime)
 	// //m, err := cassandra.GetMessagesOneToOne(uuid, time.Now())
