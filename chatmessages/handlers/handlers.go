@@ -24,7 +24,7 @@ func HandleMessagesOneToOne(w http.ResponseWriter, r *http.Request, db *db.Cassa
 
 	// Validate query params
 	queryParams := r.URL.Query()
-	channelID := queryParams.Get("channelD")
+	channelID := queryParams.Get("channelID")
 	createdAt := queryParams.Get("createdAt")
 
 	// Get messages from DB

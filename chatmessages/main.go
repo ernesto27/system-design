@@ -46,24 +46,21 @@ func WebSocketHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	fmt.Println("USER UUID ", user.ID)
-	fmt.Println("USER CONTACTS TOPICS ", user.Contacts)
+	fmt.Println("USER CHANNELS", user.Channels)
 
-	for _, c := range user.Contacts {
-		t := user.GetTopicName(c)
-		fmt.Println("USER CONTACTS TOPIC CONSUMER", t)
-
+	for _, channel := range user.Channels {
 		// setup consumers
-		c := messagebroker.NewConsumer("localhost:9092", t, 0, 0)
+		c := messagebroker.NewConsumer("localhost:9092", channel.String()+"_C", 0, 0)
 		// listen to messages
-		go func(c *messagebroker.Kafka) {
+		go func(c *messagebroker.Kafka, channel gocql.UUID) {
 			messages := make(chan []byte)
 			errors := make(chan error)
 			go c.ReadMessages(messages, errors)
 			for {
 				select {
 				case msg := <-messages:
-					fmt.Println("Consumer read from " + t + " " + string(msg))
-
+					fmt.Println("Consumer read from " + channel.String() + " " + string(msg))
+					clients[conn].Conn.WriteJSON(string(msg))
 				case err := <-errors:
 					// Handle error
 					fmt.Println(err)
@@ -72,7 +69,7 @@ func WebSocketHandler(w http.ResponseWriter, r *http.Request) {
 					}
 				}
 			}
-		}(c)
+		}(c, channel)
 	}
 
 	for {
@@ -90,7 +87,12 @@ func WebSocketHandler(w http.ResponseWriter, r *http.Request) {
 		}
 
 		if !user.ValidateContact(request.MessageTo) {
-			fmt.Println("INVALID CONTACT")
+			fmt.Println("invalid contact")
+			continue
+		}
+
+		if !user.ValidateChannel(request.ChannelID) {
+			fmt.Println("invalid channel")
 			continue
 		}
 
@@ -100,10 +102,17 @@ func WebSocketHandler(w http.ResponseWriter, r *http.Request) {
 			continue
 		}
 
-		m := db.Message{
+		channelID, err := gocql.ParseUUID(request.ChannelID)
+		if err != nil {
+			fmt.Println(err)
+			continue
+		}
+
+		m := types.Message{
 			MessageFrom: user.ID,
 			MessageTo:   mTo,
-			Content:     string(request.Message),
+			Content:     string(request.Content),
+			ChannelID:   channelID,
 		}
 
 		jsonMessage, err := json.Marshal(m)
@@ -112,10 +121,7 @@ func WebSocketHandler(w http.ResponseWriter, r *http.Request) {
 			continue
 		}
 
-		topic := user.GetTopicName(mTo)
-		fmt.Println("SAVE MESSAGE ON TOPIC ", topic)
-
-		b, err := messagebroker.NewProducer("localhost:9092", topic, 0)
+		b, err := messagebroker.NewProducer("localhost:9092", request.ChannelID+"_P", 0)
 		if err != nil {
 			fmt.Println(err)
 			continue
@@ -126,8 +132,6 @@ func WebSocketHandler(w http.ResponseWriter, r *http.Request) {
 			fmt.Println(err)
 		}
 		b.Conn.Close()
-
-		fmt.Println(string(request.Message))
 
 	}
 }

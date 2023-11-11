@@ -1,6 +1,7 @@
 package db
 
 import (
+	"chatmessages/types"
 	"math/rand"
 	"time"
 
@@ -12,42 +13,6 @@ type Cassandra struct {
 	host     string
 	keyspace string
 	Session  *gocql.Session
-}
-
-type Message struct {
-	ID          gocql.UUID
-	MessageFrom gocql.UUID
-	MessageTo   gocql.UUID
-	Content     string
-	CreatedAt   time.Time
-}
-
-type User struct {
-	ID        gocql.UUID
-	Username  string
-	Password  string
-	ApiToken  string
-	Contacts  []gocql.UUID
-	CreatedAt time.Time
-}
-
-func (u *User) GetTopicName(contactUUID gocql.UUID) string {
-	t := u.ID.String() + "_" + contactUUID.String()
-	if contactUUID.String() < u.ID.String() {
-		t = contactUUID.String() + "_" + u.ID.String()
-	}
-
-	return t
-}
-
-func (u *User) ValidateContact(contact string) bool {
-	for _, c := range u.Contacts {
-		if c.String() == contact {
-			return true
-		}
-	}
-
-	return false
 }
 
 func NewCassandra(host string, keyspace string) (*Cassandra, error) {
@@ -65,14 +30,14 @@ func NewCassandra(host string, keyspace string) (*Cassandra, error) {
 	return c, nil
 }
 
-func (c *Cassandra) CreateMessage(m Message) error {
-	err := c.Session.Query("INSERT INTO chatmessages.messages (id, message_from, message_to, content, record_id, created_at) VALUES (uuid(), ?, ?, ?, now(), toTimeStamp(now()))",
-		m.MessageFrom, m.MessageTo, m.Content).Exec()
+func (c *Cassandra) CreateMessage(m types.Message) error {
+	err := c.Session.Query("INSERT INTO chatmessages.messages (id, message_from, message_to, channel_id, content, created_at) VALUES (uuid(), ?, ?, ?, ?, toTimeStamp(now()))",
+		m.MessageFrom, m.MessageTo, m.ChannelID, m.Content).Exec()
 	return err
 }
 
-func (c *Cassandra) GetMessages() ([]Message, error) {
-	messages := []Message{}
+func (c *Cassandra) GetMessages() ([]types.Message, error) {
+	messages := []types.Message{}
 
 	scanner := c.Session.Query("SELECT id, message_from, message_to, content, record_id, created_at FROM chatmessages.messages").Iter().Scanner()
 
@@ -80,16 +45,16 @@ func (c *Cassandra) GetMessages() ([]Message, error) {
 	var messageFrom gocql.UUID
 	var messageTo gocql.UUID
 	var content string
-	var recordID gocql.UUID
+	var channelID gocql.UUID
 	var createdAt time.Time
 
 	for scanner.Next() {
-		err := scanner.Scan(&id, &messageFrom, &messageTo, &content, &recordID, &createdAt)
+		err := scanner.Scan(&id, &messageFrom, &messageTo, &content, &channelID, &createdAt)
 		if err != nil {
 			return nil, err
 		}
 
-		messages = append(messages, Message{
+		messages = append(messages, types.Message{
 			ID:          id,
 			MessageFrom: messageFrom,
 			MessageTo:   messageTo,
@@ -106,7 +71,7 @@ func (c *Cassandra) GetMessages() ([]Message, error) {
 	return messages, nil
 }
 
-func (c *Cassandra) CreateUser(u User) error {
+func (c *Cassandra) CreateUser(u types.User) error {
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(u.Password), bcrypt.DefaultCost)
 	if err != nil {
 		return err
@@ -118,7 +83,7 @@ func (c *Cassandra) CreateUser(u User) error {
 	return err
 }
 
-func (c *Cassandra) LoginUser(u User) error {
+func (c *Cassandra) LoginUser(u types.User) error {
 	var password string
 	err := c.Session.Query("SELECT password FROM chatmessages.users WHERE username = ? LIMIT 1", u.Username).Scan(&password)
 	if err != nil {
@@ -133,11 +98,11 @@ func (c *Cassandra) LoginUser(u User) error {
 	return nil
 }
 
-func (c *Cassandra) GetUserByApiKey(apiKey string) (User, error) {
-	var user User
-	err := c.Session.Query("SELECT id, username, api_token, contacts FROM chatmessages.users WHERE api_token = ? LIMIT 1", apiKey).Scan(&user.ID, &user.Username, &user.ApiToken, &user.Contacts)
+func (c *Cassandra) GetUserByApiKey(apiKey string) (types.User, error) {
+	var user types.User
+	err := c.Session.Query("SELECT id, username, api_token, contacts, channels FROM chatmessages.users WHERE api_token = ? LIMIT 1", apiKey).Scan(&user.ID, &user.Username, &user.ApiToken, &user.Contacts, &user.Channels)
 	if err != nil {
-		return User{}, err
+		return types.User{}, err
 	}
 
 	return user, nil
@@ -158,8 +123,8 @@ func (c *Cassandra) GetConfig(id int) (int, error) {
 	return offset, nil
 }
 
-func (c *Cassandra) GetMessagesOneToOne(channelID string, createdAt string) ([]Message, error) {
-	m := []Message{}
+func (c *Cassandra) GetMessagesOneToOne(channelID string, createdAt string) ([]types.Message, error) {
+	m := []types.Message{}
 
 	var parsedTime time.Time
 	if createdAt == "" {
@@ -187,7 +152,7 @@ func (c *Cassandra) GetMessagesOneToOne(channelID string, createdAt string) ([]M
 			return nil, err
 		}
 
-		m = append(m, Message{
+		m = append(m, types.Message{
 			ID:          id,
 			MessageFrom: messageFrom,
 			MessageTo:   messageTo,
@@ -197,6 +162,42 @@ func (c *Cassandra) GetMessagesOneToOne(channelID string, createdAt string) ([]M
 	}
 
 	return m, nil
+}
+
+func (c *Cassandra) GetChannels() ([]types.Channel, error) {
+	channels := []types.Channel{}
+
+	scanner := c.Session.Query("SELECT id, name, offset FROM chatmessages.channels").Iter().Scanner()
+
+	var id gocql.UUID
+	var name string
+	var offset int64
+
+	for scanner.Next() {
+		err := scanner.Scan(&id, &name, &offset)
+		if err != nil {
+			return nil, err
+		}
+
+		channels = append(channels, types.Channel{
+			ID:     id,
+			Name:   name,
+			Offset: offset,
+		})
+	}
+
+	return channels, nil
+}
+
+func (c *Cassandra) UpdateChannelOffset(id gocql.UUID) error {
+	var offset int
+	err := c.Session.Query("SELECT offset FROM chatmessages.channels WHERE id = ? LIMIT 1", id).Scan(&offset)
+	if err != nil {
+		return err
+	}
+
+	err = c.Session.Query("UPDATE chatmessages.channels SET offset = ? WHERE id = ?", offset+1, id).Exec()
+	return err
 }
 
 func createRandomString() string {
