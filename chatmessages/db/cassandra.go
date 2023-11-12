@@ -214,6 +214,11 @@ func (c *Cassandra) UpdateChannelOffset(id gocql.UUID) error {
 	return err
 }
 
+func (c *Cassandra) UpdateUserStatus(id gocql.UUID, status types.Status) error {
+	err := c.Session.Query("UPDATE chatmessages.users SET status = ? WHERE id = ?", status, id).Exec()
+	return err
+}
+
 func createRandomString() string {
 	length := 32
 	chars := "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"

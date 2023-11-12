@@ -42,5 +42,4 @@ func HandleMessagesOneToOne(w http.ResponseWriter, r *http.Request, db *db.Cassa
 	jsonData, _ := json.Marshal(messages)
 	w.Header().Set("Content-Type", "application/json")
 	w.Write(jsonData)
-
 }

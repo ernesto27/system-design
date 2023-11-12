@@ -57,6 +57,12 @@ values (
 );
 ALTER TABLE chatmessages.users ADD channels set<UUID>;
 
+STATUS 0 => OFFLINE 
+STATUS 1 => ONLINE
+
+ALTER TABLE chatmessages.users ADD status int;
+
+
 
 select * from chatmessages.messages where channel_id = c13b2d17-e60e-4f60-9a39-d922eef257cd order by created_at desc;
 

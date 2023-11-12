@@ -7,11 +7,22 @@ import (
 	"github.com/gorilla/websocket"
 )
 
+type Status int
+
+const (
+	StatusOffline Status = iota
+	StatusOnline
+)
+
+const TypeMessage = "message"
+const TypeUpdateStatus = "updateStatus"
+
 type Request struct {
 	Content   string `json:"content"`
 	MessageTo string `json:"messageTo"`
 	ChannelID string `json:"channelID"`
 	CreatedAt string `json:"createdAt"`
+	Type      string `json:"type"`
 }
 
 type Response struct {
@@ -20,7 +31,18 @@ type Response struct {
 }
 
 type Client struct {
-	Conn *websocket.Conn
+	Conn    *websocket.Conn
+	User    User
+	Seconds int
+}
+
+func (c *Client) UpdateSeconds(value int) {
+	c.Seconds = value
+}
+
+type UserStatus struct {
+	UserID gocql.UUID `json:"userID"`
+	Status Status     `json:"status"`
 }
 
 type Message struct {

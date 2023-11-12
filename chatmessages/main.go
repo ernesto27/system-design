@@ -23,8 +23,31 @@ var upgrader = websocket.Upgrader{
 
 var clients = make(map[*websocket.Conn]types.Client)
 
-func WebSocketHandler(w http.ResponseWriter, r *http.Request) {
+func hearbeatStatusTimeout(clients map[*websocket.Conn]types.Client, conn *websocket.Conn) {
+	for range time.Tick(time.Second) {
+		c := clients[conn]
+		c.UpdateSeconds(c.Seconds + 1)
 
+		if c.Seconds > 30 {
+			c.UpdateSeconds(0)
+			fmt.Println("user is offline")
+			// TODO prevent update if status does not change
+			err := cassandra.UpdateUserStatus(c.User.ID, types.StatusOffline)
+			if err != nil {
+				fmt.Println(err)
+				continue
+			}
+
+			// Send message to queue
+			sendUpdateStatusToTopics(c.User, types.StatusOffline)
+
+		}
+
+		clients[conn] = c
+	}
+}
+
+func WebSocketHandler(w http.ResponseWriter, r *http.Request) {
 	fmt.Println("WebSocketHandler")
 
 	// websocker upgrade
@@ -35,7 +58,7 @@ func WebSocketHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	defer conn.Close()
 
-	clients[conn] = types.Client{Conn: conn}
+	clients[conn] = types.Client{Conn: conn, Seconds: 0}
 
 	user, err := cassandra.GetUserByApiKey(r.Header.Get("Api-Token"))
 	if err != nil {
@@ -45,6 +68,12 @@ func WebSocketHandler(w http.ResponseWriter, r *http.Request) {
 		clients[conn].Conn.Close()
 		return
 	}
+
+	t := clients[conn]
+	t.User = user
+	clients[conn] = t
+
+	go hearbeatStatusTimeout(clients, conn)
 
 	fmt.Println("USER UUID ", user.ID)
 	fmt.Println("USER CHANNELS", user.Channels)
@@ -61,14 +90,6 @@ func WebSocketHandler(w http.ResponseWriter, r *http.Request) {
 			for {
 				select {
 				case msg := <-messages:
-					// Check message date after last message read by user
-					layout := "2006-01-02T15:04:05.99Z"
-					lastCreated, err := time.Parse(layout, r.Header.Get("Last-Created-At"))
-					if err != nil {
-						fmt.Println(err)
-						continue
-					}
-
 					m := types.Message{}
 					err = json.Unmarshal(msg, &m)
 					if err != nil {
@@ -76,12 +97,41 @@ func WebSocketHandler(w http.ResponseWriter, r *http.Request) {
 						continue
 					}
 
-					if m.CreatedAt.UTC().Before(lastCreated) {
-						continue
+					if m.Content != "" {
+						// Check message date after last message read by user
+						layout := "2006-01-02T15:04:05.99Z"
+						lastCreated, err := time.Parse(layout, r.Header.Get("Last-Created-At"))
+						if err != nil {
+							fmt.Println(err)
+							continue
+						}
+
+						m := types.Message{}
+						err = json.Unmarshal(msg, &m)
+						if err != nil {
+							fmt.Println(err)
+							continue
+						}
+
+						if m.CreatedAt.UTC().Before(lastCreated) {
+							continue
+						}
+
+						fmt.Println("send message to client", string(msg))
+						clients[conn].Conn.WriteJSON(string(msg))
+					} else {
+						// check status message
+						s := types.UserStatus{}
+						err := json.Unmarshal(msg, &s)
+						if err != nil {
+							fmt.Println(err)
+							continue
+						}
+
+						fmt.Println("send status to client", string(msg))
+						clients[conn].Conn.WriteJSON(string(msg))
 					}
 
-					fmt.Println("send message to user ", string(msg))
-					clients[conn].Conn.WriteJSON(string(msg))
 				case err := <-errors:
 					// Handle error
 					fmt.Println(err)
@@ -107,42 +157,88 @@ func WebSocketHandler(w http.ResponseWriter, r *http.Request) {
 			continue
 		}
 
-		// if !user.ValidateContact(request.MessageTo) {
-		// 	fmt.Println("invalid contact")
-		// 	continue
-		// }
+		if request.Type == types.TypeMessage {
+			// if !user.ValidateContact(request.MessageTo) {
+			// 	fmt.Println("invalid contact")
+			// 	continue
+			// }
 
-		// if !user.ValidateChannel(request.ChannelID) {
-		// 	fmt.Println("invalid channel")
-		// 	continue
-		// }
+			// if !user.ValidateChannel(request.ChannelID) {
+			// 	fmt.Println("invalid channel")
+			// 	continue
+			// }
 
-		mTo, err := gocql.ParseUUID(request.MessageTo)
+			mTo, err := gocql.ParseUUID(request.MessageTo)
+			if err != nil {
+				fmt.Println(err)
+				continue
+			}
+
+			channelID, err := gocql.ParseUUID(request.ChannelID)
+			if err != nil {
+				fmt.Println(err)
+				continue
+			}
+
+			m := types.Message{
+				MessageFrom: user.ID,
+				MessageTo:   mTo,
+				Content:     string(request.Content),
+				ChannelID:   channelID,
+			}
+
+			jsonMessage, err := json.Marshal(m)
+			if err != nil {
+				fmt.Println(err)
+				continue
+			}
+
+			b, err := messagebroker.NewProducer("localhost:9092", request.ChannelID+"_P", 0)
+			if err != nil {
+				fmt.Println(err)
+				continue
+			}
+
+			err = b.Write([]byte(jsonMessage))
+			if err != nil {
+				fmt.Println(err)
+			}
+			b.Conn.Close()
+		} else if request.Type == types.TypeUpdateStatus {
+			fmt.Println(clients[conn].Seconds)
+			err := cassandra.UpdateUserStatus(user.ID, types.StatusOnline)
+
+			c := clients[conn]
+			t.UpdateSeconds(0)
+			clients[conn] = c
+
+			if err != nil {
+				fmt.Println(err)
+				continue
+			}
+
+			sendUpdateStatusToTopics(user, types.StatusOnline)
+		}
+
+	}
+}
+
+func sendUpdateStatusToTopics(user types.User, status types.Status) {
+	// Send message to topics user channels
+	for _, channel := range user.Channels {
+		fmt.Println("send status message to topic " + channel.String())
+		b, err := messagebroker.NewProducer("localhost:9092", channel.String()+"_C", 0)
 		if err != nil {
 			fmt.Println(err)
 			continue
 		}
 
-		channelID, err := gocql.ParseUUID(request.ChannelID)
-		if err != nil {
-			fmt.Println(err)
-			continue
+		s := types.UserStatus{
+			UserID: user.ID,
+			Status: status,
 		}
 
-		m := types.Message{
-			MessageFrom: user.ID,
-			MessageTo:   mTo,
-			Content:     string(request.Content),
-			ChannelID:   channelID,
-		}
-
-		jsonMessage, err := json.Marshal(m)
-		if err != nil {
-			fmt.Println(err)
-			continue
-		}
-
-		b, err := messagebroker.NewProducer("localhost:9092", request.ChannelID+"_P", 0)
+		jsonMessage, err := json.Marshal(s)
 		if err != nil {
 			fmt.Println(err)
 			continue
@@ -153,16 +249,12 @@ func WebSocketHandler(w http.ResponseWriter, r *http.Request) {
 			fmt.Println(err)
 		}
 		b.Conn.Close()
-
 	}
 }
 
 var cassandra *db.Cassandra
 
 func main() {
-
-	// fmt.Println(time.Now())
-	// os.Exit(0)
 
 	var err error
 	cassandra, err = db.NewCassandra("127.0.0.1", "chatmessages")
@@ -208,6 +300,10 @@ func main() {
 	r.HandleFunc("/messages-one-to-one", func(w http.ResponseWriter, r *http.Request) {
 		handlers.HandleMessagesOneToOne(w, r, cassandra)
 	})
+
+	// r.HandleFunc("users/update-status", func(w http.ResponseWriter, r *http.Request) {
+	// 	handlers.HandleUpdateStatus(w, r, cassandra)
+	// })
 
 	if err := http.ListenAndServe(":8080", r); err != nil {
 		panic(err)
