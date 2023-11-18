@@ -140,19 +140,12 @@ func (c *Cassandra) GetConfig(id int) (int, error) {
 func (c *Cassandra) GetMessagesOneToOne(channelID string, createdAt string) ([]types.Message, error) {
 	m := []types.Message{}
 
-	var parsedTime time.Time
-	if createdAt == "" {
-		parsedTime = time.Now()
-	} else {
-		layout := "2006-01-02T15:04:05.99Z"
-		var err error
-		parsedTime, err = time.Parse(layout, createdAt)
-		if err != nil {
-			return nil, err
-		}
+	pt, err := parseTime(createdAt)
+	if err != nil {
+		return nil, err
 	}
 
-	scanner := c.Session.Query("SELECT id, message_from, message_to, content, created_at FROM chatmessages.messages where channel_id = ?  AND created_at < ? ORDER BY created_at DESC LIMIT 2", channelID, parsedTime).Iter().Scanner()
+	scanner := c.Session.Query("SELECT id, message_from, message_to, content, created_at FROM chatmessages.messages where channel_id = ?  AND created_at < ? ORDER BY created_at DESC LIMIT 200", channelID, pt).Iter().Scanner()
 
 	var id gocql.UUID
 	var messageFrom gocql.UUID
@@ -228,4 +221,20 @@ func createRandomString() string {
 	}
 
 	return string(result)
+}
+
+func parseTime(createdAt string) (time.Time, error) {
+	var parsedTime time.Time
+	if createdAt == "" {
+		parsedTime = time.Now()
+	} else {
+		layout := "2006-01-02T15:04:05.99Z"
+		var err error
+		parsedTime, err = time.Parse(layout, createdAt)
+		if err != nil {
+			return parsedTime, err
+		}
+	}
+
+	return parsedTime, nil
 }
