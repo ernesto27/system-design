@@ -85,6 +85,12 @@ func (c *Cassandra) GetMessages() ([]types.Message, error) {
 	return messages, nil
 }
 
+func (c *Cassandra) DeleteMessage(m types.Message) error {
+	err := c.Session.Query("DELETE FROM chatmessages.messages WHERE id = ? AND channel_id = ? AND created_at = ? AND message_from = ?", m.ID, m.ChannelID, m.CreatedAt, m.MessageFrom).Exec()
+	return err
+
+}
+
 func (c *Cassandra) CreateUser(u types.User) error {
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(u.Password), bcrypt.DefaultCost)
 	if err != nil {
@@ -140,21 +146,22 @@ func (c *Cassandra) GetConfig(id int) (int, error) {
 func (c *Cassandra) GetMessagesOneToOne(channelID string, createdAt string) ([]types.Message, error) {
 	m := []types.Message{}
 
-	pt, err := parseTime(createdAt)
+	pt, err := types.ParseTime(createdAt)
 	if err != nil {
 		return nil, err
 	}
 
-	scanner := c.Session.Query("SELECT id, message_from, message_to, content, created_at FROM chatmessages.messages where channel_id = ?  AND created_at < ? ORDER BY created_at DESC LIMIT 200", channelID, pt).Iter().Scanner()
+	scanner := c.Session.Query("SELECT id, message_from, message_to, content, created_at, channel_id FROM chatmessages.messages where channel_id = ?  AND created_at < ? ORDER BY created_at DESC LIMIT 200", channelID, pt).Iter().Scanner()
 
 	var id gocql.UUID
 	var messageFrom gocql.UUID
 	var messageTo gocql.UUID
 	var content string
 	var ct time.Time
+	var channel gocql.UUID
 
 	for scanner.Next() {
-		err := scanner.Scan(&id, &messageFrom, &messageTo, &content, &ct)
+		err := scanner.Scan(&id, &messageFrom, &messageTo, &content, &ct, &channel)
 		if err != nil {
 			return nil, err
 		}
@@ -165,6 +172,7 @@ func (c *Cassandra) GetMessagesOneToOne(channelID string, createdAt string) ([]t
 			MessageTo:   messageTo,
 			Content:     content,
 			CreatedAt:   ct,
+			ChannelID:   channel,
 		})
 	}
 
@@ -221,20 +229,4 @@ func createRandomString() string {
 	}
 
 	return string(result)
-}
-
-func parseTime(createdAt string) (time.Time, error) {
-	var parsedTime time.Time
-	if createdAt == "" {
-		parsedTime = time.Now()
-	} else {
-		layout := "2006-01-02T15:04:05.99Z"
-		var err error
-		parsedTime, err = time.Parse(layout, createdAt)
-		if err != nil {
-			return parsedTime, err
-		}
-	}
-
-	return parsedTime, nil
 }

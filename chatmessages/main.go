@@ -75,8 +75,8 @@ func WebSocketHandler(w http.ResponseWriter, r *http.Request) {
 
 	go hearbeatStatusTimeout(clients, conn)
 
-	fmt.Println("USER UUID ", user.ID)
-	fmt.Println("USER CHANNELS", user.Channels)
+	fmt.Println("user uuid: ", user.ID)
+	fmt.Println("user channels: ", user.Channels)
 
 	for _, channel := range user.Channels {
 		// setup consumers
@@ -97,7 +97,8 @@ func WebSocketHandler(w http.ResponseWriter, r *http.Request) {
 						continue
 					}
 
-					if m.Content != "" {
+					switch m.Type {
+					case types.TypeNewMessage:
 						// Check message date after last message read by user
 						layout := "2006-01-02T15:04:05.99Z"
 						lastCreated, err := time.Parse(layout, r.Header.Get("Last-Created-At"))
@@ -106,8 +107,6 @@ func WebSocketHandler(w http.ResponseWriter, r *http.Request) {
 							continue
 						}
 
-						m := types.Message{}
-						err = json.Unmarshal(msg, &m)
 						if err != nil {
 							fmt.Println(err)
 							continue
@@ -119,8 +118,11 @@ func WebSocketHandler(w http.ResponseWriter, r *http.Request) {
 
 						fmt.Println("send message to client", string(msg))
 						clients[conn].Conn.WriteJSON(string(msg))
-					} else {
-						// check status message
+					case types.TypeDeleteMessage:
+						fmt.Println("send message to delete to clients", string(msg))
+						clients[conn].Conn.WriteJSON(string(msg))
+
+					case "":
 						s := types.UserStatus{}
 						err := json.Unmarshal(msg, &s)
 						if err != nil {
@@ -157,7 +159,8 @@ func WebSocketHandler(w http.ResponseWriter, r *http.Request) {
 			continue
 		}
 
-		if request.Type == types.TypeMessage {
+		switch request.Type {
+		case types.TypeNewMessage:
 			// if !user.ValidateContact(request.MessageTo) {
 			// 	fmt.Println("invalid contact")
 			// 	continue
@@ -185,6 +188,7 @@ func WebSocketHandler(w http.ResponseWriter, r *http.Request) {
 				MessageTo:   mTo,
 				Content:     string(request.Content),
 				ChannelID:   channelID,
+				Type:        types.TypeNewMessage,
 			}
 
 			jsonMessage, err := json.Marshal(m)
@@ -204,7 +208,8 @@ func WebSocketHandler(w http.ResponseWriter, r *http.Request) {
 				fmt.Println(err)
 			}
 			b.Conn.Close()
-		} else if request.Type == types.TypeUpdateStatus {
+
+		case types.TypeUpdateStatus:
 			fmt.Println(clients[conn].Seconds)
 			err := cassandra.UpdateUserStatus(user.ID, types.StatusOnline)
 
@@ -218,6 +223,44 @@ func WebSocketHandler(w http.ResponseWriter, r *http.Request) {
 			}
 
 			sendUpdateStatusToTopics(user, types.StatusOnline)
+
+		case types.TypeDeleteMessage:
+			fmt.Println("delete message")
+
+			request.MessageFrom = user.ID.String()
+			m, err := types.NewMessage(request)
+
+			if err != nil {
+				fmt.Println(err)
+				continue
+			}
+
+			m.Type = types.TypeDeleteMessage
+			err = cassandra.DeleteMessage(m)
+			if err != nil {
+				fmt.Println(err)
+				continue
+			}
+
+			fmt.Println("delete message, send to topic")
+			b, err := messagebroker.NewProducer("localhost:9092", request.ChannelID+"_C", 0)
+			// TODO: on kafka error, check how you can retry
+			if err != nil {
+				fmt.Println(err)
+				continue
+			}
+
+			jsonMessage, err := json.Marshal(m)
+			if err != nil {
+				fmt.Println(err)
+				continue
+			}
+
+			err = b.Write([]byte(jsonMessage))
+			if err != nil {
+				fmt.Println(err)
+			}
+			b.Conn.Close()
 		}
 
 	}
@@ -262,6 +305,45 @@ func main() {
 		panic(err)
 	}
 	defer cassandra.Session.Close()
+
+	// DELETE
+
+	// id, err := gocql.ParseUUID("4cc3fd00-8195-11ee-9685-a8b13baddc45")
+	// if err != nil {
+	// 	panic(err)
+	// }
+
+	// channelID, err := gocql.ParseUUID("c13b2d17-e60e-4f60-9a39-d922eef257cd")
+	// if err != nil {
+	// 	panic(err)
+	// }
+
+	// createdAt, err := db.ParseTime("2023-11-12T19:54:33.308Z")
+	// if err != nil {
+	// 	panic(err)
+	// }
+
+	// m := types.Message{
+	// 	ID:        id,
+	// 	ChannelID: channelID,
+	// 	CreatedAt: createdAt,
+	// }
+
+	// m, err := types.NewMessage(types.Request{
+	// 	ID:        "0db9839e-8195-11ee-9684-a8b13baddc45",
+	// 	ChannelID: "c13b2d17-e60e-4f60-9a39-d922eef257cd",
+	// 	CreatedAt: "2023-11-12T19:52:47.543Z",
+	// })
+
+	// if err != nil {
+	// 	panic(err)
+	// }
+
+	// err = cassandra.DeleteMessage(m)
+	// if err != nil {
+	// 	panic(err)
+	// }
+	// fmt.Println("deleted")
 
 	// uuid, err := gocql.ParseUUID("c13b2d17-e60e-4f60-9a39-d922eef257cd")
 	// if err != nil {

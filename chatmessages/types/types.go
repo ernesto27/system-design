@@ -14,15 +14,18 @@ const (
 	StatusOnline
 )
 
-const TypeMessage = "message"
+const TypeNewMessage = "newMessage"
+const TypeDeleteMessage = "deleteMessage"
 const TypeUpdateStatus = "updateStatus"
 
 type Request struct {
-	Content   string `json:"content"`
-	MessageTo string `json:"messageTo"`
-	ChannelID string `json:"channelID"`
-	CreatedAt string `json:"createdAt"`
-	Type      string `json:"type"`
+	ID          string `json:"id"`
+	Content     string `json:"content"`
+	MessageFrom string `json:"messageFrom"`
+	MessageTo   string `json:"messageTo"`
+	ChannelID   string `json:"channelID"`
+	CreatedAt   string `json:"createdAt"`
+	Type        string `json:"type"`
 }
 
 type Response struct {
@@ -52,6 +55,38 @@ type Message struct {
 	Content     string     `json:"content"`
 	CreatedAt   time.Time  `json:"createdAt"`
 	ChannelID   gocql.UUID `json:"channelID"`
+	Type        string     `json:"type"`
+}
+
+func NewMessage(r Request) (Message, error) {
+	id, err := gocql.ParseUUID(r.ID)
+	if err != nil {
+		return Message{}, err
+	}
+
+	channelID, err := gocql.ParseUUID(r.ChannelID)
+	if err != nil {
+		return Message{}, err
+	}
+
+	createdAt, err := ParseTime(r.CreatedAt)
+	if err != nil {
+		return Message{}, err
+	}
+
+	mf, err := gocql.ParseUUID(r.MessageFrom)
+	if err != nil {
+		return Message{}, err
+	}
+
+	m := Message{
+		ID:          id,
+		MessageFrom: mf,
+		ChannelID:   channelID,
+		CreatedAt:   createdAt,
+	}
+
+	return m, nil
 }
 
 type User struct {
@@ -97,4 +132,20 @@ type Channel struct {
 	ID     gocql.UUID `json:"id"`
 	Name   string     `json:"name"`
 	Offset int64      `json:"offset"`
+}
+
+func ParseTime(createdAt string) (time.Time, error) {
+	var parsedTime time.Time
+	if createdAt == "" {
+		parsedTime = time.Now()
+	} else {
+		layout := "2006-01-02T15:04:05.99Z"
+		var err error
+		parsedTime, err = time.Parse(layout, createdAt)
+		if err != nil {
+			return parsedTime, err
+		}
+	}
+
+	return parsedTime, nil
 }

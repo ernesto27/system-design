@@ -34,6 +34,13 @@ VALUES (
     {UUID(), UUID(), UUID()} 
 );
 
+ALTER TABLE chatmessages.users ADD channels set<UUID>;
+
+STATUS 0 => OFFLINE 
+STATUS 1 => ONLINE
+
+ALTER TABLE chatmessages.users ADD status int;
+
 
 CREATE TABLE chatmessages.messages (
     id uuid,
@@ -42,25 +49,19 @@ CREATE TABLE chatmessages.messages (
     content text,
     created_at timestamp,
     channel_id uuid,
-    PRIMARY KEY ((channel_id), created_at, id)
+    PRIMARY KEY ((channel_id), created_at, id, message_from)
 ) WITH CLUSTERING ORDER BY (created_at DESC);
 
 insert into chatmessages.messages 
 (id, message_from, message_to, content, created_at, channel_id)
 values (
     uuid(), 
+    6e133e52-7664-43f1-a016-757747c5e24a, 
     uuid(), 
-    uuid(), 
-    '2', 
+    'test', 
     toTimeStamp(now()),
     c13b2d17-e60e-4f60-9a39-d922eef257cd
 );
-ALTER TABLE chatmessages.users ADD channels set<UUID>;
-
-STATUS 0 => OFFLINE 
-STATUS 1 => ONLINE
-
-ALTER TABLE chatmessages.users ADD status int;
 
 
 
