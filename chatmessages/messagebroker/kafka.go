@@ -1,7 +1,9 @@
 package messagebroker
 
 import (
+	"chatmessages/types"
 	"context"
+	"encoding/json"
 
 	"github.com/segmentio/kafka-go"
 )
@@ -54,4 +56,26 @@ func (k *Kafka) ReadMessages(messages chan<- []byte, errors chan<- error) {
 		}
 		messages <- m.Value
 	}
+}
+
+func SaveMessage(host string, topic string, partition int, channelID string, m types.Message) error {
+	b, err := NewProducer("localhost:9092", channelID+"_C", 0)
+	// TODO: on kafka error, check how you can retry
+	if err != nil {
+		return err
+	}
+
+	defer b.Conn.Close()
+
+	jsonMessage, err := json.Marshal(m)
+	if err != nil {
+		return err
+	}
+
+	err = b.Write([]byte(jsonMessage))
+	if err != nil {
+		return err
+	}
+
+	return nil
 }

@@ -64,6 +64,14 @@ values (
 );
 
 
+update chatmessages.messages set content = 'new content'
+where id = 9b1aabf7-4581-4e24-8f1d-d21069dd58e7
+and channel_id = c13b2d17-e60e-4f60-9a39-d922eef257cd
+and created_at = '2023-11-18 20:31:39.535000+0000'
+and message_from = 6e133e52-7664-43f1-a016-757747c5e24a
+;
+
+
 
 select * from chatmessages.messages where channel_id = c13b2d17-e60e-4f60-9a39-d922eef257cd order by created_at desc;
 

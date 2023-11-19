@@ -14,9 +14,10 @@ const (
 	StatusOnline
 )
 
-const TypeNewMessage = "newMessage"
-const TypeDeleteMessage = "deleteMessage"
-const TypeUpdateStatus = "updateStatus"
+const CreateMessage = "createMessage"
+const DeleteMessage = "deleteMessage"
+const UpdateMessage = "updateMessage"
+const UpdateStatus = "updateStatus"
 
 type Request struct {
 	ID          string `json:"id"`
@@ -81,6 +82,7 @@ func NewMessage(r Request) (Message, error) {
 
 	m := Message{
 		ID:          id,
+		Content:     r.Content,
 		MessageFrom: mf,
 		ChannelID:   channelID,
 		CreatedAt:   createdAt,

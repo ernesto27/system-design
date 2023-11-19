@@ -2,7 +2,6 @@ package db
 
 import (
 	"chatmessages/types"
-	"fmt"
 	"math/rand"
 	"time"
 
@@ -34,7 +33,6 @@ func NewCassandra(host string, keyspace string) (*Cassandra, error) {
 func (c *Cassandra) CreateMessage(m types.Message) (gocql.UUID, time.Time, error) {
 	uuid := gocql.TimeUUID()
 	now := time.Now().UTC()
-	fmt.Println("save time create message ", now)
 	err := c.Session.Query("INSERT INTO chatmessages.messages (id, message_from, message_to, channel_id, content, created_at) VALUES (?, ?, ?, ?, ?, ?)",
 		uuid,
 		m.MessageFrom,
@@ -89,6 +87,17 @@ func (c *Cassandra) DeleteMessage(m types.Message) error {
 	err := c.Session.Query("DELETE FROM chatmessages.messages WHERE id = ? AND channel_id = ? AND created_at = ? AND message_from = ?", m.ID, m.ChannelID, m.CreatedAt, m.MessageFrom).Exec()
 	return err
 
+}
+
+func (c *Cassandra) UpdateMessage(m types.Message) error {
+	err := c.Session.Query(`UPDATE chatmessages.messages 
+							  SET content = ? 
+							  WHERE id = ? 
+							  AND channel_id = ? 
+							  AND created_at = ? 
+							  AND message_from = ?`,
+		m.Content, m.ID, m.ChannelID, m.CreatedAt, m.MessageFrom).Exec()
+	return err
 }
 
 func (c *Cassandra) CreateUser(u types.User) error {
