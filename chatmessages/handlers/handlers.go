@@ -20,28 +20,40 @@ var upgrader = websocket.Upgrader{
 }
 
 var clients = make(map[*websocket.Conn]types.Client)
+var resetTimerChan = make(chan *websocket.Conn)
 
 func hearbeatStatusTimeout(clients map[*websocket.Conn]types.Client, conn *websocket.Conn, db *db.Cassandra) {
-	for range time.Tick(time.Second) {
-		c := clients[conn]
-		c.UpdateSeconds(c.Seconds + 1)
+	ticker := time.NewTicker(time.Second)
+	defer ticker.Stop()
 
-		if c.Seconds > 30 {
-			c.UpdateSeconds(0)
-			fmt.Println("user is offline")
-			// TODO prevent update if status does not change
-			err := db.UpdateUserStatus(c.User.ID, types.StatusOffline)
-			if err != nil {
-				fmt.Println(err)
-				continue
+	for {
+		select {
+		case <-ticker.C:
+			c := clients[conn]
+			c.UpdateSeconds(c.Seconds + 1)
+
+			if c.Seconds > 30 {
+				c.UpdateSeconds(0)
+				fmt.Println("user is offline")
+				// TODO prevent update if status does not change
+				err := db.UpdateUserStatus(c.User.ID, types.StatusOffline)
+				if err != nil {
+					fmt.Println(err)
+					continue
+				}
+
+				// Send message to queue
+				sendUpdateStatusToTopics(c.User, types.StatusOffline)
 			}
 
-			// Send message to queue
-			sendUpdateStatusToTopics(c.User, types.StatusOffline)
+			clients[conn] = c
 
+		case <-resetTimerChan:
+			// Reset the timer
+			c := clients[conn]
+			c.UpdateSeconds(0)
+			clients[conn] = c
 		}
-
-		clients[conn] = c
 	}
 }
 
@@ -212,9 +224,7 @@ func WebSocketHandler(w http.ResponseWriter, r *http.Request, db *db.Cassandra) 
 			fmt.Println(clients[conn].Seconds)
 			err := db.UpdateUserStatus(user.ID, types.StatusOnline)
 
-			c := clients[conn]
-			t.UpdateSeconds(0)
-			clients[conn] = c
+			resetTimerChan <- conn
 
 			if err != nil {
 				fmt.Println(err)
