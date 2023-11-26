@@ -1,7 +1,6 @@
 package htmldownloader
 
 import (
-	"fmt"
 	"io"
 	"net/http"
 )
@@ -18,7 +17,6 @@ func (h *HTMLDownloader) Download() (string, error) {
 	// Make a GET request to the URL
 	response, err := http.Get(h.url)
 	if err != nil {
-		fmt.Println("Error making GET request:", err)
 		return "", err
 	}
 	defer response.Body.Close()
@@ -26,7 +24,6 @@ func (h *HTMLDownloader) Download() (string, error) {
 	// Read the HTML content from the response body
 	htmlBytes, err := io.ReadAll(io.Reader(response.Body))
 	if err != nil {
-		fmt.Println("Error reading response body:", err)
 		return "", err
 	}
 
