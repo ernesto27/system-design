@@ -9,7 +9,7 @@ import (
 )
 
 type Rabbit struct {
-	conn *amqp.Connection
+	Conn *amqp.Connection
 }
 
 func New(host string) (*Rabbit, error) {
@@ -20,15 +20,14 @@ func New(host string) (*Rabbit, error) {
 	}
 
 	return &Rabbit{
-		conn: conn,
+		Conn: conn,
 	}, nil
 }
 
 func (r *Rabbit) Producer(message string) error {
-
 	// defer conn.Close()
 
-	ch, err := r.conn.Channel()
+	ch, err := r.Conn.Channel()
 	if err != nil {
 		return err
 	}
@@ -65,27 +64,47 @@ func (r *Rabbit) Producer(message string) error {
 
 	log.Printf(" [x] Sent %s\n", body)
 	return nil
-	// msgs, err := ch.Consume(
-	// 	q.Name, // queue
-	// 	"",     // consumer
-	// 	true,   // auto-ack
-	// 	false,  // exclusive
-	// 	false,  // no-local
-	// 	false,  // no-wait
-	// 	nil,    // args
-	// )
-	// if err != nil {
-	// 	panic(err)
-	// }
 
-	// var forever chan struct{}
+}
 
-	// go func() {
-	// 	for d := range msgs {
-	// 		log.Printf("Received a message: %s", d.Body)
-	// 	}
-	// }()
+func (r *Rabbit) Consumer(messages chan<- []byte, errors chan<- error) {
+	ch, err := r.Conn.Channel()
+	if err != nil {
+		errors <- err
+	}
+	defer ch.Close()
 
-	// log.Printf(" [*] Waiting for messages. To exit press CTRL+C")
-	// <-forever
+	q, err := ch.QueueDeclare(
+		"links", // name
+		false,   // durable
+		false,   // delete when unused
+		false,   // exclusive
+		false,   // no-wait
+		nil,     // arguments
+	)
+	if err != nil {
+		errors <- err
+	}
+
+	msgs, err := ch.Consume(
+		q.Name, // queue
+		"",     // consumer
+		true,   // auto-ack
+		false,  // exclusive
+		false,  // no-local
+		false,  // no-wait
+		nil,    // args
+	)
+	if err != nil {
+		errors <- err
+	}
+
+	var forever chan struct{}
+	go func() {
+		for d := range msgs {
+			messages <- d.Body
+		}
+	}()
+
+	<-forever
 }
