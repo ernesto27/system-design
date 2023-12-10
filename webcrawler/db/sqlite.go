@@ -23,6 +23,8 @@ func (s *SQLite) Init() error {
 		CREATE TABLE IF NOT EXISTS links (
 			id INTEGER PRIMARY KEY AUTOINCREMENT,
 			link TEXT NOT NULL UNIQUE,
+			hash TEXT NOT NULL UNIQUE,
+			html TEXT NOT NULL,
 			created_at DATE
 		)
 	`)
@@ -33,10 +35,10 @@ func (s *SQLite) Init() error {
 	return nil
 }
 
-func (s *SQLite) CreateLink(link string) error {
+func (s *SQLite) CreateLink(link string, hash string, html string) error {
 	_, err := s.db.Exec(`
-		INSERT INTO links (link, created_at) VALUES (?, datetime('now'))
-	`, link)
+		INSERT INTO links (link, hash, html, created_at) VALUES (?, ?, ?, datetime('now'))
+	`, link, hash, html)
 	if err != nil {
 		return err
 	}

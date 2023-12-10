@@ -3,6 +3,7 @@ package htmldownloader
 import (
 	"io"
 	"net/http"
+	"time"
 )
 
 type HTMLDownloader struct {
@@ -14,8 +15,11 @@ func New(url string) *HTMLDownloader {
 }
 
 func (h *HTMLDownloader) Download() (string, error) {
-	// Make a GET request to the URL
-	response, err := http.Get(h.url)
+	client := &http.Client{
+		Timeout: 5 * time.Second,
+	}
+
+	response, err := client.Get(h.url)
 	if err != nil {
 		return "", err
 	}

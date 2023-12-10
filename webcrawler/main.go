@@ -34,35 +34,9 @@ func main() {
 	seed := seedurl.New()
 
 	for _, u := range seed.Urls {
-
-		h := htmldownloader.New(u)
-		html, err := h.Download()
+		err := job(u, db, mq)
 		if err != nil {
-			panic(err)
-		}
-
-		hash := contentseen.New(html).CreateHash()
-		fmt.Println(hash)
-
-		c := contentparser.New(html)
-		valid := c.IsValidHTML()
-		fmt.Println(valid)
-
-		links := linkextractor.New(u, html).GetLinks()
-
-		fmt.Println("Links from:", u)
-		for _, l := range links {
-			fmt.Println(l)
-			err := db.CreateLink(l)
-			if err != nil {
-				fmt.Println(err)
-			} else {
-				// Send message to queue
-				err := mq.Producer(l)
-				if err != nil {
-					fmt.Println(err)
-				}
-			}
+			fmt.Println(err)
 		}
 	}
 
@@ -74,38 +48,44 @@ func main() {
 		select {
 		case msg := <-messages:
 			log.Printf("Received a message: %s", msg)
-			h := htmldownloader.New(string(msg))
-			html, err := h.Download()
+			err := job(string(msg), db, mq)
 			if err != nil {
-				panic(err)
-			}
-
-			hash := contentseen.New(html).CreateHash()
-			fmt.Println(hash)
-
-			c := contentparser.New(html)
-			valid := c.IsValidHTML()
-			fmt.Println(valid)
-
-			links := linkextractor.New(string(msg), html).GetLinks()
-
-			fmt.Println("Links from:", string(msg))
-			for _, l := range links {
-				fmt.Println(l)
-				err := db.CreateLink(l)
-				if err != nil {
-					fmt.Println(err)
-				} else {
-					// Send message to queue
-					err := mq.Producer(l)
-					if err != nil {
-						fmt.Println(err)
-					}
-				}
+				fmt.Println(err)
 			}
 		case err := <-errors:
 			log.Println(err)
 		}
 	}
+}
 
+func job(url string, db *db.SQLite, mq *messagequeue.Rabbit) error {
+	h := htmldownloader.New(url)
+	html, err := h.Download()
+	if err != nil {
+		return err
+	}
+
+	hash := contentseen.New(html).CreateHash()
+	fmt.Println(hash)
+	c := contentparser.New(html)
+	if c.IsValidHTML() {
+		err := db.CreateLink(url, hash, "")
+		if err != nil {
+			fmt.Println(err)
+		}
+
+		links := linkextractor.New(url, html).GetLinks()
+		fmt.Println("Links from:", url)
+		for _, l := range links {
+			fmt.Println(l)
+			// Send message to queue
+			err := mq.Producer(l)
+			if err != nil {
+				fmt.Println(err)
+			}
+
+		}
+	}
+
+	return nil
 }
