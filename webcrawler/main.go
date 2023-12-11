@@ -1,10 +1,12 @@
 package main
 
 import (
-	"bytes"
-	"compress/gzip"
 	"fmt"
 	"log"
+	"math/rand"
+	"os"
+	"path/filepath"
+	"time"
 	"webcrawler/contentparser"
 	"webcrawler/contentseen"
 	"webcrawler/db"
@@ -16,7 +18,7 @@ import (
 
 func main() {
 
-	db, err := db.New()
+	db, err := db.NewPostgresql()
 	if err != nil {
 		panic(err)
 	}
@@ -57,7 +59,7 @@ func main() {
 	}
 }
 
-func job(url string, db *db.SQLite, mq *messagequeue.Rabbit) error {
+func job(url string, db *db.Postgres, mq *messagequeue.Rabbit) error {
 	h := htmldownloader.New(url)
 	html, err := h.Download()
 	if err != nil {
@@ -68,9 +70,17 @@ func job(url string, db *db.SQLite, mq *messagequeue.Rabbit) error {
 	fmt.Println(hash)
 	c := contentparser.New(html)
 	if c.IsValidHTML() {
-		err := db.CreateLink(url, hash, html)
+
+		err := db.CreateLink(url, hash, "")
 		if err != nil {
 			fmt.Println(err)
+		} else {
+			go func(h string) {
+				err := saveFile(h)
+				if err != nil {
+					fmt.Println(err)
+				}
+			}(html)
 		}
 
 		links := linkextractor.New(url, html).GetLinks()
@@ -89,24 +99,25 @@ func job(url string, db *db.SQLite, mq *messagequeue.Rabbit) error {
 	return nil
 }
 
-func compressHTML(inputHTML string) (string, error) {
-	var compressedBuffer bytes.Buffer
+func saveFile(html string) error {
+	saveDirectory := "./pages/"
 
-	// Create a gzip writer
-	writer := gzip.NewWriter(&compressedBuffer)
+	randomFilename := generateRandomFilename()
+	filePath := filepath.Join(saveDirectory, randomFilename)
 
-	// Write the HTML content to the gzip writer
-	_, err := writer.Write([]byte(inputHTML))
+	content := []byte(html)
+
+	err := os.WriteFile(filePath, content, 0644)
 	if err != nil {
-		return "", err
+		return err
 	}
 
-	// Close the gzip writer to flush any remaining data
-	err = writer.Close()
-	if err != nil {
-		return "", err
-	}
+	return nil
+}
 
-	// Return the compressed HTML as a base64-encoded string
-	return compressedBuffer.String(), nil
+func generateRandomFilename() string {
+	rand.Seed(time.Now().UnixNano())
+	randomNumber := rand.Intn(10000)
+	timestamp := time.Now().UnixNano() / int64(time.Millisecond)
+	return fmt.Sprintf("%d_%d.html", timestamp, randomNumber)
 }
