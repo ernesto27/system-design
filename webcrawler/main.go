@@ -18,6 +18,18 @@ import (
 
 func main() {
 
+	// h := htmldownloader.New("https://www.infobae.com/")
+	// html, err := h.Download()
+	// if err != nil {
+	// 	panic(err)
+	// }
+
+	// // fmt.Println(html)
+	// i := linkextractor.NewImageExtractor("https://www.google.com", html)
+	// i.GetURLs()
+
+	// return
+
 	db, err := db.NewPostgresql()
 	if err != nil {
 		panic(err)
@@ -70,7 +82,6 @@ func job(url string, db *db.Postgres, mq *messagequeue.Rabbit) error {
 	fmt.Println(hash)
 	c := contentparser.New(html)
 	if c.IsValidHTML() {
-
 		err := db.CreateLink(url, hash, "")
 		if err != nil {
 			fmt.Println(err)
@@ -83,10 +94,18 @@ func job(url string, db *db.Postgres, mq *messagequeue.Rabbit) error {
 			}(html)
 		}
 
+		// image extractor
+		imageURLs := linkextractor.NewImageExtractor(url, html).GetURLs()
+		for _, iu := range imageURLs {
+			err := db.CreateImage(url, iu, "")
+			if err != nil {
+				fmt.Println(err)
+			}
+		}
+
 		links := linkextractor.New(url, html).GetLinks()
 		fmt.Println("Links from:", url)
 		for _, l := range links {
-			fmt.Println(l)
 			// Send message to queue
 			err := mq.Producer(l)
 			if err != nil {

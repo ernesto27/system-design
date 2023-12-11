@@ -23,7 +23,7 @@ func (p *Postgres) Init() error {
 	_, err := p.db.Exec(`
 		CREATE TABLE IF NOT EXISTS links (
 			id SERIAL PRIMARY KEY,
-			link TEXT NOT NULL UNIQUE,
+			url TEXT NOT NULL UNIQUE,
 			hash TEXT NOT NULL UNIQUE,
 			html TEXT NOT NULL,
 			created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
@@ -36,10 +36,21 @@ func (p *Postgres) Init() error {
 	return nil
 }
 
-func (p *Postgres) CreateLink(link string, hash string, html string) error {
+func (p *Postgres) CreateLink(url string, hash string, html string) error {
 	_, err := p.db.Exec(`
-		INSERT INTO links (link, hash, html, created_at) VALUES ($1, $2, $3, CURRENT_TIMESTAMP)
-	`, link, hash, html)
+		INSERT INTO links (url, hash, html, created_at) VALUES ($1, $2, $3, CURRENT_TIMESTAMP)
+	`, url, hash, html)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (p *Postgres) CreateImage(url string, urlImage string, path string) error {
+	_, err := p.db.Exec(`
+			INSERT INTO images (url, url_image, path, created_at) VALUES ($1, $2, $3, CURRENT_TIMESTAMP)
+	`, url, urlImage, path)
 	if err != nil {
 		return err
 	}
