@@ -24,7 +24,7 @@ func (s *SQLite) Init() error {
 			id INTEGER PRIMARY KEY AUTOINCREMENT,
 			link TEXT NOT NULL UNIQUE,
 			hash TEXT NOT NULL UNIQUE,
-			html TEXT NOT NULL,
+			html CLOB NOT NULL,
 			created_at DATE
 		)
 	`)

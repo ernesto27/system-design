@@ -1,6 +1,8 @@
 package main
 
 import (
+	"bytes"
+	"compress/gzip"
 	"fmt"
 	"log"
 	"webcrawler/contentparser"
@@ -26,18 +28,15 @@ func main() {
 	}
 	defer mq.Conn.Close()
 
-	//return
-
-	// mq.Producer("Hello World!")
-	// return
-
 	seed := seedurl.New()
 
 	for _, u := range seed.Urls {
-		err := job(u, db, mq)
-		if err != nil {
-			fmt.Println(err)
-		}
+		go func(u string) {
+			err := job(u, db, mq)
+			if err != nil {
+				fmt.Println(err)
+			}
+		}(u)
 	}
 
 	messages := make(chan []byte)
@@ -69,7 +68,7 @@ func job(url string, db *db.SQLite, mq *messagequeue.Rabbit) error {
 	fmt.Println(hash)
 	c := contentparser.New(html)
 	if c.IsValidHTML() {
-		err := db.CreateLink(url, hash, "")
+		err := db.CreateLink(url, hash, html)
 		if err != nil {
 			fmt.Println(err)
 		}
@@ -88,4 +87,26 @@ func job(url string, db *db.SQLite, mq *messagequeue.Rabbit) error {
 	}
 
 	return nil
+}
+
+func compressHTML(inputHTML string) (string, error) {
+	var compressedBuffer bytes.Buffer
+
+	// Create a gzip writer
+	writer := gzip.NewWriter(&compressedBuffer)
+
+	// Write the HTML content to the gzip writer
+	_, err := writer.Write([]byte(inputHTML))
+	if err != nil {
+		return "", err
+	}
+
+	// Close the gzip writer to flush any remaining data
+	err = writer.Close()
+	if err != nil {
+		return "", err
+	}
+
+	// Return the compressed HTML as a base64-encoded string
+	return compressedBuffer.String(), nil
 }

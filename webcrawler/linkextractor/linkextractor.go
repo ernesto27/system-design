@@ -32,7 +32,11 @@ func (l *LinkExtractor) GetLinks() []string {
 		if strings.HasPrefix(link, "http") {
 			links = append(links, link)
 		} else {
-			links = append(links, l.website+link)
+			if len(link) > 2 {
+				links = append(links, l.website+link[1:])
+			} else {
+				links = append(links, l.website)
+			}
 		}
 	})
 	return links
