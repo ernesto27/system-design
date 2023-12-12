@@ -2,6 +2,7 @@ package db
 
 import (
 	"database/sql"
+	"webcrawler/types"
 
 	_ "github.com/lib/pq"
 )
@@ -36,10 +37,10 @@ func (p *Postgres) Init() error {
 	return nil
 }
 
-func (p *Postgres) CreateLink(url string, hash string, html string) error {
+func (p *Postgres) CreateLink(link types.Link) error {
 	_, err := p.db.Exec(`
-		INSERT INTO links (url, hash, html, created_at) VALUES ($1, $2, $3, CURRENT_TIMESTAMP)
-	`, url, hash, html)
+		INSERT INTO links (url, hash, keywords, description, html, created_at) VALUES ($1, $2, $3, $4, $5, CURRENT_TIMESTAMP)
+	`, link.Url, link.Hash, link.Keywords, link.Description, "")
 	if err != nil {
 		return err
 	}

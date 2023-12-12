@@ -14,6 +14,7 @@ import (
 	"webcrawler/linkextractor"
 	"webcrawler/messagequeue"
 	"webcrawler/seedurl"
+	"webcrawler/types"
 )
 
 func main() {
@@ -88,7 +89,20 @@ func job(url string, db *db.Postgres, mq *messagequeue.Rabbit) error {
 	fmt.Println(hash)
 	c := contentparser.New(html)
 	if c.IsValidHTML() {
-		err := db.CreateLink(url, hash, "")
+		le := linkextractor.New(url, html)
+
+		metaDescription, metaKeywords, err := le.GetMetaData()
+		if err != nil {
+			fmt.Println(err)
+		}
+
+		link := types.Link{
+			Url:         url,
+			Hash:        hash,
+			Keywords:    metaKeywords,
+			Description: metaDescription,
+		}
+		err = db.CreateLink(link)
 		if err != nil {
 			fmt.Println(err)
 		} else {
@@ -118,10 +132,10 @@ func job(url string, db *db.Postgres, mq *messagequeue.Rabbit) error {
 			}
 		}()
 
-		links := linkextractor.New(url, html).GetLinks()
+		// get links form url and send to message queue
+		links := le.GetLinks()
 		fmt.Println("Links from:", url)
 		for _, l := range links {
-			// Send message to queue
 			err := mq.Producer(l)
 			if err != nil {
 				fmt.Println(err)

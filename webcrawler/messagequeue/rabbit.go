@@ -24,8 +24,6 @@ func New(host string) (*Rabbit, error) {
 }
 
 func (r *Rabbit) Producer(message string) error {
-	// defer conn.Close()
-
 	ch, err := r.Conn.Channel()
 	if err != nil {
 		return err

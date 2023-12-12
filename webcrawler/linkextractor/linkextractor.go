@@ -41,3 +41,23 @@ func (l *LinkExtractor) GetLinks() []string {
 	})
 	return links
 }
+
+func (l *LinkExtractor) GetMetaData() (string, string, error) {
+	metaDescription := ""
+	metaKeywords := ""
+
+	doc, err := goquery.NewDocumentFromReader(strings.NewReader(l.html))
+	if err != nil {
+		return metaDescription, metaKeywords, err
+	}
+
+	doc.Find("meta").Each(func(i int, s *goquery.Selection) {
+		if name, _ := s.Attr("name"); strings.ToLower(name) == "description" {
+			metaDescription, _ = s.Attr("content")
+		} else if name, _ := s.Attr("name"); strings.ToLower(name) == "keywords" {
+			metaKeywords, _ = s.Attr("content")
+		}
+	})
+
+	return metaDescription, metaKeywords, nil
+}
