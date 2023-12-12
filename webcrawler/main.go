@@ -18,11 +18,17 @@ import (
 
 func main() {
 
-	// h := htmldownloader.New("https://www.infobae.com/")
+	//h := htmldownloader.New("https://i2.wp.com/www.scienceofnoise.net/wp-content/uploads/2021/04/wages-of-sin-5d35f17abe55e.jpg")
+	// h := htmldownloader.New("https://musicemall.files.wordpress.com/2010/12/arch-enemy-1_1024_768_i2x.jpg")
 	// html, err := h.Download()
 	// if err != nil {
 	// 	panic(err)
 	// }
+
+	// //fmt.Println(html)
+	// hash := contentseen.New(html).CreateHash()
+	// fmt.Println(hash)
+	// return
 
 	// // fmt.Println(html)
 	// i := linkextractor.NewImageExtractor("https://www.google.com", html)
@@ -95,13 +101,22 @@ func job(url string, db *db.Postgres, mq *messagequeue.Rabbit) error {
 		}
 
 		// image extractor
-		imageURLs := linkextractor.NewImageExtractor(url, html).GetURLs()
-		for _, iu := range imageURLs {
-			err := db.CreateImage(url, iu, "")
-			if err != nil {
-				fmt.Println(err)
+		go func() {
+			imageURLs := linkextractor.NewImageExtractor(url, html).GetURLs()
+			for _, iu := range imageURLs {
+				hi := htmldownloader.New(url)
+				imgContent, err := hi.Download()
+				if err != nil {
+					fmt.Println(err)
+					continue
+				}
+				hashImg := contentseen.New(imgContent).CreateHash()
+				err = db.CreateImage(url, iu, "", hashImg)
+				if err != nil {
+					fmt.Println(err)
+				}
 			}
-		}
+		}()
 
 		links := linkextractor.New(url, html).GetLinks()
 		fmt.Println("Links from:", url)

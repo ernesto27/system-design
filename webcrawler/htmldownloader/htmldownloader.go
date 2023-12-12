@@ -1,6 +1,7 @@
 package htmldownloader
 
 import (
+	"fmt"
 	"io"
 	"net/http"
 	"time"
@@ -24,6 +25,10 @@ func (h *HTMLDownloader) Download() (string, error) {
 		return "", err
 	}
 	defer response.Body.Close()
+
+	if response.StatusCode != 200 {
+		return "", fmt.Errorf("status code error: %d %s", response.StatusCode, response.Status)
+	}
 
 	// Read the HTML content from the response body
 	htmlBytes, err := io.ReadAll(io.Reader(response.Body))

@@ -47,10 +47,10 @@ func (p *Postgres) CreateLink(url string, hash string, html string) error {
 	return nil
 }
 
-func (p *Postgres) CreateImage(url string, urlImage string, path string) error {
+func (p *Postgres) CreateImage(url string, urlImage string, path string, hash string) error {
 	_, err := p.db.Exec(`
-			INSERT INTO images (url, url_image, path, created_at) VALUES ($1, $2, $3, CURRENT_TIMESTAMP)
-	`, url, urlImage, path)
+			INSERT INTO images (url, url_image, path, hash, created_at) VALUES ($1, $2, $3, $4, CURRENT_TIMESTAMP)
+	`, url, urlImage, path, hash)
 	if err != nil {
 		return err
 	}
