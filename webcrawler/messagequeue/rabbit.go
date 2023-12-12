@@ -13,7 +13,6 @@ type Rabbit struct {
 }
 
 func New(host string) (*Rabbit, error) {
-	// conn, err := amqp.Dial("amqp://guest:guest@localhost:5672/")
 	conn, err := amqp.Dial(host)
 	if err != nil {
 		return nil, err
