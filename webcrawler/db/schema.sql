@@ -3,6 +3,8 @@ CREATE TABLE links (
     url TEXT NOT NULL UNIQUE,
     hash TEXT NOT NULL UNIQUE,
     html TEXT NOT NULL,
+    keywords TEXT, 
+    description TEXT,
     created_at DATE
 );
 
