@@ -8,9 +8,9 @@ type Redis struct {
 	redis *redis.Client
 }
 
-func NewRedis(host string) *Redis {
+func NewRedis(host string, port string) *Redis {
 	rc := redis.NewClient(&redis.Options{
-		Addr:     host + ":6379",
+		Addr:     host + ":" + port,
 		Password: "",
 		DB:       0,
 	})
@@ -26,4 +26,23 @@ func (r *Redis) Set(key string, value interface{}) error {
 
 func (r *Redis) Get(key string) (string, error) {
 	return r.redis.Get(key).Result()
+}
+
+func (r *Redis) ListSet(key, value string) error {
+	err := r.redis.LPush(key, value).Err()
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (r *Redis) ListGet(key string) ([]string, error) {
+	posts, err := r.redis.LRange(key, 0, -1).Result()
+	if err != nil {
+		return nil, err
+	}
+
+	return posts, nil
+
 }

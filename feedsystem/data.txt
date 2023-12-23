@@ -1,0 +1,34 @@
+-- Table to store information about users
+CREATE TABLE users (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    username VARCHAR(50) NOT NULL UNIQUE,
+    full_name VARCHAR(100) NOT NULL,
+    email VARCHAR(100) NOT NULL UNIQUE,
+    password_hash VARCHAR(255) NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Table to store tweets
+CREATE TABLE tweets (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    user_id INT,
+    text TEXT NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id)
+);
+
+-- Table to store follower relationships
+CREATE TABLE followers (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    follower_user_id INT,
+    following_user_id INT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (follower_user_id) REFERENCES users(id),
+    FOREIGN KEY (following_user_id) REFERENCES users(id),
+    UNIQUE KEY unique_followers (follower_user_id, following_user_id)
+);
+
+
+curl http://localhost:3000/feed
+
+curl -X POST -H "Content-Type: application/json" -d '{"text":"post cache"}' http://localhost:3000/publish
