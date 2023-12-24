@@ -29,6 +29,3 @@ CREATE TABLE followers (
 );
 
 
-curl http://localhost:3000/feed
-
-curl -X POST -H "Content-Type: application/json" -d '{"text":"post cache"}' http://localhost:3000/publish
