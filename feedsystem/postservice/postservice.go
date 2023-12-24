@@ -1,20 +1,34 @@
 package postservice
 
 import (
+	"encoding/json"
 	"feedsystem/cache"
 	"feedsystem/db"
 	"feedsystem/types"
 	"fmt"
 )
 
-func Create(db *db.Mysql, cache *cache.Redis, rp types.Request) bool {
-	id, err := db.CreateTweet(rp.Text, rp.UserID)
+func Create(db *db.Mysql, cache *cache.Redis, rp types.Request) (int64, bool) {
+	id, created, err := db.CreateTweet(rp.Text, rp.UserID)
 	if err != nil {
-		return false
+		return 0, false
 	}
 
 	go func() {
-		err = cache.Set("posts."+fmt.Sprint(id), rp.Text)
+		p := types.Post{
+			ID:        int(id),
+			UserID:    rp.UserID,
+			Text:      rp.Text,
+			CreatedAt: created,
+		}
+
+		j, err := json.Marshal(p)
+		if err != nil {
+			fmt.Println(err)
+			return
+		}
+
+		err = cache.Set("post:"+fmt.Sprint(id), string(j))
 		if err != nil {
 			fmt.Println(err)
 		} else {
@@ -22,5 +36,5 @@ func Create(db *db.Mysql, cache *cache.Redis, rp types.Request) bool {
 		}
 	}()
 
-	return true
+	return id, true
 }

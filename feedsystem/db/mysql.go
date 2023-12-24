@@ -3,7 +3,9 @@ package db
 import (
 	"database/sql"
 	"errors"
+	"feedsystem/types"
 	"fmt"
+	"time"
 
 	_ "github.com/go-sql-driver/mysql"
 )
@@ -28,41 +30,49 @@ func NewMysql(host, user, password, port, database string) (*Mysql, error) {
 	}, nil
 }
 
-type Tweet struct {
-	ID        int    `json:"id"`
-	Text      string `json:"text"`
-	CreatedAt string `json:"created_at"`
-}
-
-func (m *Mysql) CreateTweet(text string, userID int) (int64, error) {
+func (m *Mysql) CreateTweet(text string, userID int) (int64, time.Time, error) {
 	r, err := m.Db.Exec("INSERT INTO tweets (text, user_id) VALUES (?, ?)", text, userID)
+	if err != nil {
+		return 0, time.Time{}, err
+	}
 
 	lastInsertID, err := r.LastInsertId()
 	if err != nil {
-		return 0, err
+		return 0, time.Time{}, err
 	}
 
-	return lastInsertID, nil
+	var createdAtBytes []byte
+	err = m.Db.QueryRow("SELECT created_at FROM tweets WHERE id = ?", lastInsertID).Scan(&createdAtBytes)
+	if err != nil {
+		fmt.Println(err)
+	}
+
+	createdAt, err := time.Parse("2006-01-02 15:04:05", string(createdAtBytes))
+	if err != nil {
+		return 0, time.Time{}, err
+	}
+
+	return lastInsertID, createdAt, nil
 }
 
-func (m *Mysql) GetTweetsFollowing(userID int) ([]Tweet, error) {
+func (m *Mysql) GetTweetsFollowing(userID int) ([]types.Post, error) {
 	rows, err := m.Db.Query("select id, text, created_at from tweets t where user_id IN (SELECT f.follower_user_id FROM followers f WHERE f.following_user_id = ?)", userID)
 	if err != nil {
 		return nil, err
 	}
 
-	tweets := []Tweet{}
+	posts := []types.Post{}
 	for rows.Next() {
-		var tweet Tweet
-		err = rows.Scan(&tweet.ID, &tweet.Text, &tweet.CreatedAt)
+		var p types.Post
+		err = rows.Scan(&p.ID, &p.Text, &p.CreatedAt)
 		if err != nil {
 			return nil, err
 		}
 
-		tweets = append(tweets, tweet)
+		posts = append(posts, p)
 	}
 
-	return tweets, nil
+	return posts, nil
 }
 
 func (m *Mysql) GetFollwers(userID int) ([]int, error) {

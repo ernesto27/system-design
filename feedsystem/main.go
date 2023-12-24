@@ -28,41 +28,61 @@ func handlePublish(w http.ResponseWriter, r *http.Request, db *db.Mysql, cache *
 
 	userID := 1
 	requestPayload.UserID = userID
-	postCreate := postservice.Create(db, cache, requestPayload)
-	if !postCreate {
+	postID, success := postservice.Create(db, cache, requestPayload)
+	if !success {
 		jsonResponse.Status = "error"
 		jsonResponse.Message = "error creating tweet"
 		responseJSON(w, jsonResponse)
 		return
 	}
 
-	nf := newsfeed.New(userID, cache, db)
-	err = nf.SaveCache(requestPayload.Text)
-	if err != nil {
-		fmt.Println(err)
-	}
+	go func() {
+		nf := newsfeed.New(userID, cache, db)
+		err = nf.SaveCache(fmt.Sprint(postID))
+		if err != nil {
+			fmt.Println(err)
+		}
+	}()
 
 	jsonResponse.Status = "success"
 	jsonResponse.Message = "tweet created"
 	responseJSON(w, jsonResponse)
 }
 
-func handleFeed(w http.ResponseWriter, r *http.Request, db *db.Mysql) {
-	tweets, err := db.GetTweetsFollowing(22)
+func handleFeed(w http.ResponseWriter, r *http.Request, db *db.Mysql, cache *cache.Redis) {
+	userID := 4
+
+	jsonResponse := types.JSONResponse{}
+
+	nf := newsfeed.New(userID, cache, db)
+	userPosts, err := nf.GetPostsCache()
 	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		w.Write([]byte("error getting tweets"))
+		jsonResponse.Status = "error"
+		jsonResponse.Message = "error getting posts"
+		responseJSON(w, jsonResponse)
 		return
 	}
 
-	d, err := json.Marshal(tweets)
-	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		w.Write([]byte("error getting tweets"))
-		return
-	}
-	w.Header().Set("Content-Type", "application/json")
-	w.Write(d)
+	jsonResponse.Status = "success"
+	jsonResponse.Message = "success getting posts"
+	jsonResponse.Data = userPosts
+	responseJSON(w, jsonResponse)
+
+	// tweets, err := db.GetTweetsFollowing(22)
+	// if err != nil {
+	// 	w.WriteHeader(http.StatusInternalServerError)
+	// 	w.Write([]byte("error getting tweets"))
+	// 	return
+	// }
+
+	// d, err := json.Marshal(tweets)
+	// if err != nil {
+	// 	w.WriteHeader(http.StatusInternalServerError)
+	// 	w.Write([]byte("error getting tweets"))
+	// 	return
+	// }
+	// w.Header().Set("Content-Type", "application/json")
+	// w.Write(d)
 }
 
 func responseJSON(w http.ResponseWriter, data interface{}) {
@@ -103,7 +123,7 @@ func main() {
 	r := chi.NewRouter()
 	r.Use(middleware.Logger)
 	r.Get("/feed", func(w http.ResponseWriter, r *http.Request) {
-		handleFeed(w, r, mydb)
+		handleFeed(w, r, mydb, cache)
 	})
 	r.Post("/publish", func(w http.ResponseWriter, r *http.Request) {
 		handlePublish(w, r, mydb, cache)

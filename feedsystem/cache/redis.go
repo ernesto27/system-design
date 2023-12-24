@@ -28,7 +28,7 @@ func (r *Redis) Get(key string) (string, error) {
 	return r.redis.Get(key).Result()
 }
 
-func (r *Redis) ListSet(key, value string) error {
+func (r *Redis) SetList(key, value string) error {
 	err := r.redis.LPush(key, value).Err()
 	if err != nil {
 		return err
@@ -37,7 +37,7 @@ func (r *Redis) ListSet(key, value string) error {
 	return nil
 }
 
-func (r *Redis) ListGet(key string) ([]string, error) {
+func (r *Redis) GetList(key string) ([]string, error) {
 	posts, err := r.redis.LRange(key, 0, -1).Result()
 	if err != nil {
 		return nil, err

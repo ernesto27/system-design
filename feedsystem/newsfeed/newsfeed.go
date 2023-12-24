@@ -1,9 +1,13 @@
 package newsfeed
 
 import (
+	"encoding/json"
 	"feedsystem/cache"
 	"feedsystem/db"
+	"feedsystem/types"
 	"fmt"
+	"strconv"
+	"strings"
 )
 
 type newsFeed struct {
@@ -30,14 +34,60 @@ func (n *newsFeed) SaveCache(data string) error {
 	// save post userid postid on cache newsfeed:userid
 	for _, id := range ids {
 		value := fmt.Sprint(n.userID) + ":" + data
-		err = n.Cache.ListSet("feed:"+fmt.Sprint(id), value)
+		err = n.Cache.SetList("feed:"+fmt.Sprint(id), value)
 		if err != nil {
 			fmt.Println(err)
 		}
 	}
 
 	return nil
+}
 
+func (n *newsFeed) GetPostsCache() ([]types.Post, error) {
+	resp := []types.Post{}
+	userPost, err := n.Cache.GetList("feed:" + fmt.Sprint(n.userID))
+	if err != nil {
+		return resp, err
+	}
+
+	for _, p := range userPost {
+		d := strings.Split(p, ":")
+		if len(d) == 2 {
+			userID, err := strconv.Atoi(d[0])
+			if err != nil {
+				fmt.Println(err)
+				continue
+			}
+			postID, err := strconv.Atoi(d[1])
+			if err != nil {
+				fmt.Println(err)
+				continue
+			}
+
+			// Get content post
+			post, err := n.Cache.Get("post:" + fmt.Sprint(postID))
+			if err != nil {
+				fmt.Println(err)
+				continue
+			}
+
+			var p types.Post
+			err = json.Unmarshal([]byte(post), &p)
+			if err != nil {
+				fmt.Println(err)
+				continue
+			}
+
+			resp = append(resp, types.Post{
+				ID:     userID,
+				UserID: postID,
+				Text:   post,
+			})
+		}
+
+	}
+
+	return resp, nil
 }
 
 func (n *newsFeed) GetFollowersIDs() ([]int, error) {
