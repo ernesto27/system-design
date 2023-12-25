@@ -43,9 +43,13 @@ func (n *newsFeed) SaveCache(data string) error {
 	return nil
 }
 
-func (n *newsFeed) GetPostsCache() ([]types.Post, error) {
+func (n *newsFeed) GetPostsCache(page int) ([]types.Post, error) {
+	const limit = 3
+	var start int64 = int64((page - 1) * limit)
+	var stop int64 = int64(((page - 1) * limit) + limit - 1)
+
 	resp := []types.Post{}
-	userPost, err := n.Cache.GetList("feed:" + fmt.Sprint(n.userID))
+	userPost, err := n.Cache.GetList("feed:"+fmt.Sprint(n.userID), start, stop)
 	if err != nil {
 		return resp, err
 	}
@@ -79,9 +83,9 @@ func (n *newsFeed) GetPostsCache() ([]types.Post, error) {
 			}
 
 			resp = append(resp, types.Post{
-				ID:     userID,
-				UserID: postID,
-				Text:   post,
+				ID:     postID,
+				UserID: userID,
+				Text:   p.Text,
 			})
 		}
 

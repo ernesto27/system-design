@@ -37,8 +37,8 @@ func (r *Redis) SetList(key, value string) error {
 	return nil
 }
 
-func (r *Redis) GetList(key string) ([]string, error) {
-	posts, err := r.redis.LRange(key, 0, -1).Result()
+func (r *Redis) GetList(key string, start int64, stop int64) ([]string, error) {
+	posts, err := r.redis.LRange(key, start, stop).Result()
 	if err != nil {
 		return nil, err
 	}

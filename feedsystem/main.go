@@ -9,6 +9,7 @@ import (
 	"feedsystem/types"
 	"fmt"
 	"net/http"
+	"strconv"
 
 	"github.com/go-chi/chi"
 	"github.com/go-chi/chi/middleware"
@@ -51,11 +52,23 @@ func handlePublish(w http.ResponseWriter, r *http.Request, db *db.Mysql, cache *
 
 func handleFeed(w http.ResponseWriter, r *http.Request, db *db.Mysql, cache *cache.Redis) {
 	userID := 4
-
 	jsonResponse := types.JSONResponse{}
 
+	page := r.URL.Query().Get("page")
+	if page == "" {
+		page = "1"
+	}
+
+	p, err := strconv.Atoi(page)
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		jsonResponse.Message = "Invalid page"
+		responseJSON(w, jsonResponse)
+		return
+	}
+
 	nf := newsfeed.New(userID, cache, db)
-	userPosts, err := nf.GetPostsCache()
+	userPosts, err := nf.GetPostsCache(p)
 	if err != nil {
 		jsonResponse.Status = "error"
 		jsonResponse.Message = "error getting posts"
@@ -68,21 +81,6 @@ func handleFeed(w http.ResponseWriter, r *http.Request, db *db.Mysql, cache *cac
 	jsonResponse.Data = userPosts
 	responseJSON(w, jsonResponse)
 
-	// tweets, err := db.GetTweetsFollowing(22)
-	// if err != nil {
-	// 	w.WriteHeader(http.StatusInternalServerError)
-	// 	w.Write([]byte("error getting tweets"))
-	// 	return
-	// }
-
-	// d, err := json.Marshal(tweets)
-	// if err != nil {
-	// 	w.WriteHeader(http.StatusInternalServerError)
-	// 	w.Write([]byte("error getting tweets"))
-	// 	return
-	// }
-	// w.Header().Set("Content-Type", "application/json")
-	// w.Write(d)
 }
 
 func responseJSON(w http.ResponseWriter, data interface{}) {
@@ -110,15 +108,6 @@ func main() {
 	must(err)
 
 	cache := cache.NewRedis("localhost", "6381")
-
-	// nf := newsfeed.New(1, cache, mydb)
-	// // ids, err := nf.GetFollowersIDs()
-	// // if err != nil {
-	// // 	panic(err)
-	// // }
-	// // fmt.Println(ids)
-	// err = nf.SaveCache("88")
-	// must(err)
 
 	r := chi.NewRouter()
 	r.Use(middleware.Logger)
