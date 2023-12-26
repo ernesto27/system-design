@@ -17,7 +17,6 @@ type Engine struct {
 }
 
 func NewEngine(filename string) *Engine {
-	//file, err := os.Open("file.txt")
 	file, err := os.OpenFile(filename, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0644)
 	if err != nil {
 		fmt.Println("Error opening file:", err)
@@ -31,18 +30,18 @@ func NewEngine(filename string) *Engine {
 	}
 }
 
-func (c *Engine) Get(key string) []byte {
+func (c *Engine) Get(key string) string {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
 	if _, ok := c.m[key]; !ok {
-		return []byte{}
+		return ""
 	}
 
 	_, err := c.file.Seek(c.m[key]+int64(len(key))+1, 0)
 	if err != nil {
 		fmt.Println("Error seeking file:", err)
-		return nil
+		return ""
 	}
 
 	buffer := make([]byte, 1)
@@ -65,10 +64,17 @@ func (c *Engine) Get(key string) []byte {
 
 		content = append(content, buffer[0])
 	}
-	return content
+	return string(content)
 }
 
 func (c *Engine) Set(key string, value string) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	c.setRaw(key, value)
+}
+
+func (c *Engine) setRaw(key string, value string) {
 	offset, err := c.file.Seek(0, io.SeekEnd)
 	if err != nil {
 		fmt.Println("Error seeking file:", err)
@@ -85,20 +91,22 @@ func (c *Engine) Set(key string, value string) {
 	c.m[key] = offset
 }
 
+const Seconds = 5
+
 func (c *Engine) CompactFile() {
 	for {
-		time.Sleep(5 * time.Second)
+		time.Sleep(time.Duration(Seconds) * time.Second)
 		fmt.Println("Compacting file...")
 		c.mu.Lock()
 
-		backupFile, err := os.OpenFile("backup.txt", os.O_RDWR|os.O_TRUNC, 0644)
+		// TODO - do something with this
+		backupFile, err := os.OpenFile("backup.txt", os.O_RDWR|os.O_TRUNC|os.O_CREATE, 0644)
 		if err != nil {
 			fmt.Println("Error creating backup file:", err)
 			c.mu.Unlock()
 			continue
 		}
 
-		fmt.Println(c.file)
 		_, err = io.Copy(backupFile, c.file)
 		if err != nil {
 			fmt.Println("Error copying file contents to backup file:", err)
@@ -133,7 +141,7 @@ func (c *Engine) CompactFile() {
 		}
 
 		for k, v := range m {
-			c.Set(k, v)
+			c.setRaw(k, v)
 		}
 
 		c.file.Seek(0, 0)
@@ -141,6 +149,27 @@ func (c *Engine) CompactFile() {
 		backupFile.Close()
 
 	}
+}
+
+func (c *Engine) GetFileContent() string {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	_, err := c.file.Seek(0, 0)
+	if err != nil {
+		fmt.Println(err)
+		return ""
+	}
+
+	scanner := bufio.NewScanner(c.file)
+
+	var content []string
+	for scanner.Scan() {
+		line := scanner.Text()
+		content = append(content, line)
+	}
+
+	return strings.Join(content, "\n")
 }
 
 func (c *Engine) Close() {
