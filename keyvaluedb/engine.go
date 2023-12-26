@@ -115,23 +115,7 @@ func (c *Engine) CompactFile() {
 			continue
 		}
 
-		_, err = c.file.Seek(0, 0)
-		if err != nil {
-			fmt.Println(err)
-			c.mu.Unlock()
-			continue
-		}
-
-		scanner := bufio.NewScanner(c.file)
-
-		m := make(map[string]string)
-		for scanner.Scan() {
-			line := scanner.Text()
-			parts := strings.Split(line, ":")
-			if len(parts) >= 2 {
-				m[parts[0]] = parts[1]
-			}
-		}
+		m := c.GetMapFromFile()
 
 		err = c.file.Truncate(0)
 		if err != nil {
@@ -149,6 +133,40 @@ func (c *Engine) CompactFile() {
 		backupFile.Close()
 
 	}
+}
+
+func (c *Engine) Restore() {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	m := c.GetMapFromFile()
+
+	for k, v := range m {
+		c.setRaw(k, v)
+	}
+
+	c.file.Seek(0, 0)
+}
+
+func (c *Engine) GetMapFromFile() map[string]string {
+	m := make(map[string]string)
+	_, err := c.file.Seek(0, 0)
+	if err != nil {
+		fmt.Println(err)
+		return m
+	}
+
+	scanner := bufio.NewScanner(c.file)
+
+	for scanner.Scan() {
+		line := scanner.Text()
+		parts := strings.Split(line, ":")
+		if len(parts) >= 2 {
+			m[parts[0]] = parts[1]
+		}
+	}
+
+	return m
 }
 
 func (c *Engine) GetFileContent() string {
