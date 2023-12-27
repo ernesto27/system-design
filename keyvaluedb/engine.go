@@ -67,28 +67,55 @@ func (c *Engine) Get(key string) string {
 	return string(content)
 }
 
-func (c *Engine) Set(key string, value string) {
+func (c *Engine) Set(key string, value string) error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
-	c.setRaw(key, value)
+	return c.setRaw(key, value)
 }
 
-func (c *Engine) setRaw(key string, value string) {
+func (c *Engine) setRaw(key string, value string) error {
+	offset, err := c.saveToFile(key, value)
+	if err != nil {
+		return err
+	}
+
+	c.setKey(key, offset)
+	return nil
+}
+
+func (c *Engine) setKey(key string, value int64) {
+	c.m[key] = value
+}
+
+const limit = int64(1024 * 1024)
+
+func (c *Engine) saveToFile(key string, value string) (int64, error) {
 	offset, err := c.file.Seek(0, io.SeekEnd)
 	if err != nil {
 		fmt.Println("Error seeking file:", err)
-		panic(err)
+		return 0, err
 	}
 
 	// Append text to the file
 	_, err = c.file.WriteString(key + ":" + value + "\n")
 	if err != nil {
 		fmt.Println("Error appending text:", err)
-		return
+		return 0, err
 	}
 
-	c.m[key] = offset
+	fileInfo, err := c.file.Stat()
+	if err != nil {
+		fmt.Println("Error getting file info:", err)
+		return 0, err
+	}
+
+	if fileInfo.Size() > limit {
+		fmt.Println("File size limit reached")
+		return 0, err
+	}
+
+	return offset, nil
 }
 
 const Seconds = 5
@@ -141,8 +168,8 @@ func (c *Engine) Restore() {
 
 	m := c.GetMapFromFile()
 
-	for k, v := range m {
-		c.setRaw(k, v)
+	for k, _ := range m {
+		c.setKey(k, 9)
 	}
 
 	c.file.Seek(0, 0)
@@ -156,14 +183,19 @@ func (c *Engine) GetMapFromFile() map[string]string {
 		return m
 	}
 
+	var totalBytesRead int64
 	scanner := bufio.NewScanner(c.file)
 
 	for scanner.Scan() {
 		line := scanner.Text()
+		offset := totalBytesRead
+		fmt.Println(offset)
 		parts := strings.Split(line, ":")
 		if len(parts) >= 2 {
 			m[parts[0]] = parts[1]
 		}
+
+		totalBytesRead += int64(len(line) + 1)
 	}
 
 	return m
