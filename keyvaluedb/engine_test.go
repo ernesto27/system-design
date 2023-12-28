@@ -6,6 +6,9 @@ import (
 	"time"
 )
 
+const fileData = "file_test.txt"
+const fileDelete = "delete_test.txt"
+
 func TestEngine_Get(t *testing.T) {
 	// Create a temporary file for testing
 	tmpfile, err := os.CreateTemp("", "testfile")
@@ -14,7 +17,7 @@ func TestEngine_Get(t *testing.T) {
 	}
 	defer os.Remove(tmpfile.Name())
 
-	e := NewEngine(tmpfile.Name())
+	e := NewEngine(tmpfile.Name(), fileDelete)
 	e.Set("key1", "value1")
 	e.Set("key2", "value2")
 	e.Set("key99", "value99")
@@ -59,11 +62,10 @@ func TestEngine_Get(t *testing.T) {
 }
 
 func TestEngine_Compact(t *testing.T) {
-
-	os.Remove("file_test.txt")
+	os.Remove(fileData)
 	v1 := "latestvalue1"
 	v2 := "latestvalue2"
-	e := NewEngine("file_test.txt")
+	e := NewEngine(fileData, fileDelete)
 	e.Set("key1", "value1")
 	e.Set("key2", "value2")
 	e.Set("key1", v1)
@@ -84,26 +86,95 @@ func TestEngine_Compact(t *testing.T) {
 
 	time.Sleep((Seconds + 3) * time.Second)
 
-	if len(e.GetFileContent()) != 3 {
-		t.Errorf("Expected %d, but got %d", 3, len(e.GetFileContent()))
+	if len(e.GetFileContent(e.file)) != 3 {
+		t.Errorf("Expected %d, but got %d", 3, len(e.GetFileContent(e.file)))
 	}
 
 }
 
 func TestEngine_Restore(t *testing.T) {
-	os.Remove("file_test.txt")
-	e := NewEngine("file_test.txt")
+	os.Remove(fileData)
+	e := NewEngine(fileData, fileDelete)
 
 	e.Set("key1_restore", "value1")
 	e.Set("key2_restore", "value2")
 
 	e.Close()
 
-	e = NewEngine("file_test.txt")
+	e = NewEngine(fileData, fileDelete)
 	e.Restore()
 	k := e.Get("key1_restore")
 
 	if k != "value1" {
 		t.Errorf("Expected %s, but got %s", "value1", k)
 	}
+}
+
+func TestEngine_DeleteKey(t *testing.T) {
+	os.Remove(fileData)
+	os.Remove(fileDelete)
+	e := NewEngine(fileData, fileDelete)
+
+	e.Set("key1_delete", "value1")
+	e.Set("key2_delete", "value2")
+
+	err := e.Delete("key1_delete")
+	if err != nil {
+		panic(err)
+	}
+
+	k := e.Get("key1_delete")
+
+	if k != "" {
+		t.Errorf("Expected %s, but got %s", "", k)
+	}
+
+	if len(e.GetFileContent(e.fileDelete)) != 1 {
+		t.Errorf("Expected %d, but got %d", 1, len(e.GetFileContent(e.file)))
+	}
+}
+
+func TestEngine_DeleteFromFile(t *testing.T) {
+	os.Remove(fileData)
+	os.Remove(fileDelete)
+	e := NewEngine(fileData, fileDelete)
+
+	e.Set("key1_delete", "value1")
+	e.Set("key2_delete", "value2")
+	e.Set("key3_delete", "value3")
+
+	err := e.Delete("key2_delete")
+	if err != nil {
+		panic(err)
+	}
+
+	if len(e.GetFileContent(e.fileDelete)) != 1 {
+		t.Errorf("Expected %d, but got %d", 1, len(e.GetFileContent(e.file)))
+	}
+
+	go e.DeleteFromFile()
+	time.Sleep((Seconds + 3) * time.Second)
+
+	if len(e.GetFileContent(e.fileDelete)) != 0 {
+		t.Errorf("Expected %d, but got %d", 0, len(e.GetFileContent(e.fileDelete)))
+	}
+}
+
+func TestEngine_DeleteKeyFromFile(t *testing.T) {
+	os.Remove(fileData)
+	os.Remove(fileDelete)
+	e := NewEngine(fileData, fileDelete)
+
+	e.Set("key1_delete", "value1")
+	e.Set("key2_delete", "value2")
+	e.Set("key3_delete", "value3")
+
+	e.Delete("key2_delete")
+
+	e.deleteKeyFromFile([]string{"key2_delete", "key3_delete"})
+
+	if len(e.GetFileContent(e.file)) != 1 {
+		t.Errorf("Expected %d, but got %d", 1, len(e.GetFileContent(e.file)))
+	}
+
 }
