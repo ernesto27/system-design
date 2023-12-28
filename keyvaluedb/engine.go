@@ -142,7 +142,7 @@ func (c *Engine) CompactFile() {
 			continue
 		}
 
-		m := c.GetMapFromFile()
+		_, m := c.GetMapFromFile()
 
 		err = c.file.Truncate(0)
 		if err != nil {
@@ -166,21 +166,29 @@ func (c *Engine) Restore() {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
-	m := c.GetMapFromFile()
+	items, _ := c.GetMapFromFile()
 
-	for k, _ := range m {
-		c.setKey(k, 9)
+	for _, v := range items {
+		c.setKey(v.Key, v.Offset)
 	}
 
 	c.file.Seek(0, 0)
 }
 
-func (c *Engine) GetMapFromFile() map[string]string {
+type Item struct {
+	Key    string
+	Value  string
+	Offset int64
+}
+
+func (c *Engine) GetMapFromFile() ([]Item, map[string]string) {
 	m := make(map[string]string)
+	i := []Item{}
+
 	_, err := c.file.Seek(0, 0)
 	if err != nil {
 		fmt.Println(err)
-		return m
+		return i, m
 	}
 
 	var totalBytesRead int64
@@ -193,22 +201,27 @@ func (c *Engine) GetMapFromFile() map[string]string {
 		parts := strings.Split(line, ":")
 		if len(parts) >= 2 {
 			m[parts[0]] = parts[1]
+			totalBytesRead += int64(len(line) + 1)
+			i = append(i, Item{
+				Key:    parts[0],
+				Value:  parts[1],
+				Offset: offset,
+			})
 		}
 
-		totalBytesRead += int64(len(line) + 1)
 	}
 
-	return m
+	return i, m
 }
 
-func (c *Engine) GetFileContent() string {
+func (c *Engine) GetFileContent() []string {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
 	_, err := c.file.Seek(0, 0)
 	if err != nil {
 		fmt.Println(err)
-		return ""
+		return []string{}
 	}
 
 	scanner := bufio.NewScanner(c.file)
@@ -219,7 +232,7 @@ func (c *Engine) GetFileContent() string {
 		content = append(content, line)
 	}
 
-	return strings.Join(content, "\n")
+	return content
 }
 
 func (c *Engine) Close() {
