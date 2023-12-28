@@ -104,16 +104,16 @@ func (c *Engine) saveToFile(key string, value string) (int64, error) {
 		return 0, err
 	}
 
-	fileInfo, err := c.file.Stat()
-	if err != nil {
-		fmt.Println("Error getting file info:", err)
-		return 0, err
-	}
+	// fileInfo, err := c.file.Stat()
+	// if err != nil {
+	// 	fmt.Println("Error getting file info:", err)
+	// 	return 0, err
+	// }
 
-	if fileInfo.Size() > limit {
-		fmt.Println("File size limit reached")
-		return 0, err
-	}
+	// if fileInfo.Size() > limit {
+	// 	fmt.Println("File size limit reached, create new file")
+	// 	return 0, err
+	// }
 
 	return offset, nil
 }
@@ -197,7 +197,6 @@ func (c *Engine) GetMapFromFile() ([]Item, map[string]string) {
 	for scanner.Scan() {
 		line := scanner.Text()
 		offset := totalBytesRead
-		fmt.Println(offset)
 		parts := strings.Split(line, ":")
 		if len(parts) >= 2 {
 			m[parts[0]] = parts[1]
@@ -208,10 +207,15 @@ func (c *Engine) GetMapFromFile() ([]Item, map[string]string) {
 				Offset: offset,
 			})
 		}
-
 	}
 
 	return i, m
+}
+
+func (e *Engine) DeleteKey(key string) {
+	e.mu.Lock()
+	defer e.mu.Unlock()
+
 }
 
 func (c *Engine) GetFileContent() []string {
