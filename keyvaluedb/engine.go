@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"os/user"
+	"path/filepath"
 	"strings"
 	"sync"
 	"time"
@@ -18,17 +20,43 @@ type Engine struct {
 	muDelete   sync.Mutex
 }
 
-func NewEngine(filename string, filenameDelete string) *Engine {
-	file, err := os.OpenFile(filename, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0644)
-	if err != nil {
-		fmt.Println("Error opening file data:", err)
-		panic(err)
+func NewEngine(filename string, filenameDelete string) (*Engine, error) {
+	var fileData string
+	var fileRemove string
+
+	// TODO - find a better way to do this
+	if filename == "" && filenameDelete == "" {
+		configFolderPath, err := getConfigFolder()
+		if err != nil {
+			fmt.Println(err)
+			return nil, err
+		}
+
+		if _, err := os.Stat(configFolderPath); os.IsNotExist(err) {
+			err := os.Mkdir(configFolderPath, 0700)
+			if err != nil {
+				fmt.Println(err)
+				return nil, err
+			}
+		}
+
+		fileData = configFolderPath + "/" + "db.txt"
+		fileRemove = configFolderPath + "/" + "delete.txt"
+	} else {
+		fileData = filename
+		fileRemove = filenameDelete
 	}
 
-	fileDelete, err := os.OpenFile(filenameDelete, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0644)
+	file, err := os.OpenFile(fileData, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0644)
+	if err != nil {
+		fmt.Println("Error opening file data:", err)
+		return nil, err
+	}
+
+	fileDelete, err := os.OpenFile(fileRemove, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0644)
 	if err != nil {
 		fmt.Println("Error opening file delete:", err)
-		panic(err)
+		return nil, err
 	}
 
 	return &Engine{
@@ -37,7 +65,19 @@ func NewEngine(filename string, filenameDelete string) *Engine {
 		fileDelete: fileDelete,
 		mu:         sync.Mutex{},
 		muDelete:   sync.Mutex{},
+	}, nil
+}
+
+func getConfigFolder() (string, error) {
+	currentUser, err := user.Current()
+	if err != nil {
+		return "", err
 	}
+
+	homeDir := currentUser.HomeDir
+	configFolder := ".config/keyvaluedb"
+	configFolderPath := filepath.Join(homeDir, configFolder)
+	return configFolderPath, nil
 }
 
 func (c *Engine) Get(key string) (string, error) {

@@ -10,14 +10,9 @@ const fileData = "file_test.txt"
 const fileDelete = "delete_test.txt"
 
 func TestEngine_Get(t *testing.T) {
-	// Create a temporary file for testing
-	tmpfile, err := os.CreateTemp("", "testfile")
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer os.Remove(tmpfile.Name())
+	os.Remove(fileData)
 
-	e := NewEngine(tmpfile.Name(), fileDelete)
+	e, _ := NewEngine(fileData, fileDelete)
 	e.Set("key1", "value1")
 	e.Set("key2", "value2")
 	e.Set("key99", "value99")
@@ -65,7 +60,7 @@ func TestEngine_Compact(t *testing.T) {
 	os.Remove(fileData)
 	v1 := "latestvalue1"
 	v2 := "latestvalue2"
-	e := NewEngine(fileData, fileDelete)
+	e, _ := NewEngine(fileData, fileDelete)
 	e.Set("key1", "value1")
 	e.Set("key2", "value2")
 	e.Set("key1", v1)
@@ -94,14 +89,14 @@ func TestEngine_Compact(t *testing.T) {
 
 func TestEngine_Restore(t *testing.T) {
 	os.Remove(fileData)
-	e := NewEngine(fileData, fileDelete)
+	e, _ := NewEngine(fileData, fileDelete)
 
 	e.Set("key1_restore", "value1")
 	e.Set("key2_restore", "value2")
 
 	e.Close()
 
-	e = NewEngine(fileData, fileDelete)
+	e, _ = NewEngine(fileData, fileDelete)
 	e.Restore()
 	k, _ := e.Get("key1_restore")
 
@@ -113,7 +108,7 @@ func TestEngine_Restore(t *testing.T) {
 func TestEngine_DeleteKey(t *testing.T) {
 	os.Remove(fileData)
 	os.Remove(fileDelete)
-	e := NewEngine(fileData, fileDelete)
+	e, _ := NewEngine(fileData, fileDelete)
 
 	e.Set("key1_delete", "value1")
 	e.Set("key2_delete", "value2")
@@ -137,7 +132,7 @@ func TestEngine_DeleteKey(t *testing.T) {
 func TestEngine_DeleteFromFile(t *testing.T) {
 	os.Remove(fileData)
 	os.Remove(fileDelete)
-	e := NewEngine(fileData, fileDelete)
+	e, _ := NewEngine(fileData, fileDelete)
 
 	e.Set("key1_delete", "value1")
 	e.Set("key2_delete", "value2")
@@ -163,7 +158,7 @@ func TestEngine_DeleteFromFile(t *testing.T) {
 func TestEngine_DeleteKeyFromFile(t *testing.T) {
 	os.Remove(fileData)
 	os.Remove(fileDelete)
-	e := NewEngine(fileData, fileDelete)
+	e, _ := NewEngine(fileData, fileDelete)
 
 	e.Set("key1_delete", "value1")
 	e.Set("key2_delete", "value2")
