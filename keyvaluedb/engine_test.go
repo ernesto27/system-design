@@ -56,6 +56,16 @@ func TestEngine_Get(t *testing.T) {
 	defer e.Close()
 }
 
+func TestEngine_SetError(t *testing.T) {
+	e, _ := NewEngine(fileData, fileDelete)
+	err := e.Set("ke y1", "value1")
+
+	if err == nil {
+		t.Errorf("Expected error, but got nil")
+	}
+
+}
+
 func TestEngine_Compact(t *testing.T) {
 	os.Remove(fileData)
 	v1 := "latestvalue1"

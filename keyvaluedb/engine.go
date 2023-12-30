@@ -20,6 +20,8 @@ type Engine struct {
 	muDelete   sync.Mutex
 }
 
+var keyValueSeparator = " "
+
 func NewEngine(filename string, filenameDelete string) (*Engine, error) {
 	var fileData string
 	var fileRemove string
@@ -121,6 +123,10 @@ func (c *Engine) Set(key string, value string) error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
+	if strings.Contains(key, " ") {
+		return fmt.Errorf("key cannot contain spaces")
+	}
+
 	return c.setRaw(key, value)
 }
 
@@ -147,7 +153,7 @@ func (c *Engine) saveToFile(key string, value string) (int64, error) {
 		return 0, err
 	}
 
-	_, err = c.file.WriteString(key + ":" + value + "\n")
+	_, err = c.file.WriteString(key + keyValueSeparator + value + "\n")
 	if err != nil {
 		fmt.Println("Error appending text:", err)
 		return 0, err
@@ -246,7 +252,7 @@ func (c *Engine) GetMapFromFile() ([]Item, map[string]string) {
 	for scanner.Scan() {
 		line := scanner.Text()
 		offset := totalBytesRead
-		parts := strings.Split(line, ":")
+		parts := strings.Split(line, keyValueSeparator)
 		if len(parts) >= 2 {
 			m[parts[0]] = parts[1]
 			totalBytesRead += int64(len(line) + 1)
@@ -347,7 +353,7 @@ func (c *Engine) deleteKeyFromFile(keys []string) error {
 	for scanner.Scan() {
 		l := scanner.Text()
 
-		parts := strings.Split(l, ":")
+		parts := strings.Split(l, keyValueSeparator)
 		if len(parts) >= 2 {
 			found := false
 			for _, k := range keys {
