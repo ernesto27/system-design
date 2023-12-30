@@ -48,7 +48,7 @@ func TestEngine_Get(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 
-			got := e.Get(tt.args.key)
+			got, _ := e.Get(tt.args.key)
 
 			if got != tt.want {
 				t.Errorf("Expected %v, but got %v", tt.want, got)
@@ -72,12 +72,12 @@ func TestEngine_Compact(t *testing.T) {
 
 	go e.CompactFile()
 
-	v := e.Get("key1")
+	v, _ := e.Get("key1")
 	if v != v1 {
 		t.Errorf("Expected %s, but got %s", v1, v)
 	}
 
-	v = e.Get("key2")
+	v, _ = e.Get("key2")
 	if v != v2 {
 		t.Errorf("Expected %s, but got %s", v2, v)
 	}
@@ -101,7 +101,7 @@ func TestEngine_Restore(t *testing.T) {
 
 	e = NewEngine("file_test.txt")
 	e.Restore()
-	k := e.Get("key1_restore")
+	k, _ := e.Get("key1_restore")
 
 	if k != "value1" {
 		t.Errorf("Expected %s, but got %s", "value1", k)

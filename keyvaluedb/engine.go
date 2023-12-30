@@ -30,18 +30,18 @@ func NewEngine(filename string) *Engine {
 	}
 }
 
-func (c *Engine) Get(key string) string {
+func (c *Engine) Get(key string) (string, error) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
 	if _, ok := c.m[key]; !ok {
-		return ""
+		return "", fmt.Errorf("key not found")
 	}
 
 	_, err := c.file.Seek(c.m[key]+int64(len(key))+1, 0)
 	if err != nil {
 		fmt.Println("Error seeking file:", err)
-		return ""
+		return "", err
 	}
 
 	buffer := make([]byte, 1)
@@ -64,7 +64,7 @@ func (c *Engine) Get(key string) string {
 
 		content = append(content, buffer[0])
 	}
-	return string(content)
+	return string(content), nil
 }
 
 func (c *Engine) Set(key string, value string) error {
@@ -118,7 +118,7 @@ func (c *Engine) saveToFile(key string, value string) (int64, error) {
 	return offset, nil
 }
 
-const Seconds = 5
+const Seconds = 60
 
 func (c *Engine) CompactFile() {
 	for {
