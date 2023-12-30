@@ -74,6 +74,28 @@ func handlerGet(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+func handlerDelete(w http.ResponseWriter, r *http.Request) {
+	if r.Method == "DELETE" {
+		key := r.URL.Query().Get("key")
+		err := e.Delete(key)
+		if err != nil {
+			responseJSON(w, ResponseJson{
+				Status:  "error",
+				Message: err.Error(),
+			}, http.StatusInternalServerError)
+			return
+		}
+
+		responseJSON(w, ResponseJson{
+			Status:  "success",
+			Message: "Key deleted successfully.",
+		}, http.StatusOK)
+	} else {
+		fmt.Println("Invalid request method.")
+		fmt.Fprintf(w, "Invalid request method.")
+	}
+}
+
 func responseJSON(w http.ResponseWriter, data interface{}, status int) {
 	d, err := json.Marshal(data)
 	w.Header().Set("Content-Type", "application/json")
@@ -96,9 +118,12 @@ func main() {
 	e.Restore()
 
 	go e.CompactFile()
+	go e.DeleteFromFile()
 
 	http.HandleFunc("/set", handlerSet)
 	http.HandleFunc("/get", handlerGet)
+	http.HandleFunc("/delete", handlerDelete)
+
 	address := ":8080"
 
 	fmt.Printf("Server is listening on http://localhost%s\n", address)
