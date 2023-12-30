@@ -11,22 +11,32 @@ import (
 )
 
 type Engine struct {
-	m    map[string]int64
-	file *os.File
-	mu   sync.Mutex
+	m          map[string]int64
+	file       *os.File
+	fileDelete *os.File
+	mu         sync.Mutex
+	muDelete   sync.Mutex
 }
 
-func NewEngine(filename string) *Engine {
+func NewEngine(filename string, filenameDelete string) *Engine {
 	file, err := os.OpenFile(filename, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0644)
 	if err != nil {
-		fmt.Println("Error opening file:", err)
+		fmt.Println("Error opening file data:", err)
+		panic(err)
+	}
+
+	fileDelete, err := os.OpenFile(filenameDelete, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0644)
+	if err != nil {
+		fmt.Println("Error opening file delete:", err)
 		panic(err)
 	}
 
 	return &Engine{
-		m:    make(map[string]int64),
-		file: file,
-		mu:   sync.Mutex{},
+		m:          make(map[string]int64),
+		file:       file,
+		fileDelete: fileDelete,
+		mu:         sync.Mutex{},
+		muDelete:   sync.Mutex{},
 	}
 }
 
@@ -97,7 +107,6 @@ func (c *Engine) saveToFile(key string, value string) (int64, error) {
 		return 0, err
 	}
 
-	// Append text to the file
 	_, err = c.file.WriteString(key + ":" + value + "\n")
 	if err != nil {
 		fmt.Println("Error appending text:", err)
@@ -212,23 +221,148 @@ func (c *Engine) GetMapFromFile() ([]Item, map[string]string) {
 	return i, m
 }
 
-func (e *Engine) DeleteKey(key string) {
+func (e *Engine) Delete(key string) error {
+	e.muDelete.Lock()
+	defer e.muDelete.Unlock()
+	_, err := e.fileDelete.Seek(0, io.SeekEnd)
+	if err != nil {
+		fmt.Println("Error seeking file:", err)
+		return err
+	}
+
+	_, err = e.fileDelete.WriteString(key + "\n")
+	if err != nil {
+		fmt.Println("Error writing to file:", err)
+		return err
+	}
+
 	e.mu.Lock()
 	defer e.mu.Unlock()
+	delete(e.m, key)
 
+	return nil
 }
 
-func (c *Engine) GetFileContent() []string {
+const secondsDelete = 5
+
+func (e *Engine) DeleteFromFile() {
+	for {
+		time.Sleep(secondsDelete * time.Second)
+		fmt.Println("Deleting from file...")
+		e.muDelete.Lock()
+
+		_, err := e.fileDelete.Seek(0, 0)
+		if err != nil {
+			fmt.Println(err)
+			e.muDelete.Unlock()
+			continue
+		}
+
+		scanner := bufio.NewScanner(e.fileDelete)
+
+		content := []string{}
+		for scanner.Scan() {
+			line := scanner.Text()
+			if line != "" {
+				content = append(content, line)
+			}
+		}
+
+		err = e.deleteKeyFromFile(content)
+		if err != nil {
+			fmt.Println(err)
+			e.muDelete.Unlock()
+			continue
+		}
+
+		err = e.fileDelete.Truncate(0)
+		if err != nil {
+			fmt.Println(err)
+			e.muDelete.Unlock()
+			continue
+		}
+
+		e.muDelete.Unlock()
+	}
+}
+
+func (c *Engine) deleteKeyFromFile(keys []string) error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
 	_, err := c.file.Seek(0, 0)
 	if err != nil {
 		fmt.Println(err)
+		return err
+	}
+
+	tempFile, err := os.CreateTemp("", "tempfile")
+	if err != nil {
+		fmt.Println(err)
+		return err
+	}
+	defer tempFile.Close()
+
+	scanner := bufio.NewScanner(c.file)
+	for scanner.Scan() {
+		l := scanner.Text()
+
+		parts := strings.Split(l, ":")
+		if len(parts) >= 2 {
+			found := false
+			for _, k := range keys {
+				if parts[0] == k {
+					found = true
+					break
+				}
+			}
+
+			if !found {
+				tempFile.WriteString(l + "\n")
+			}
+		}
+	}
+
+	_, err = c.file.Seek(0, 0)
+	if err != nil {
+		fmt.Println(err)
+		return err
+	}
+
+	err = c.file.Truncate(0)
+	if err != nil {
+		fmt.Println(err)
+		return err
+	}
+
+	_, err = tempFile.Seek(0, 0)
+	if err != nil {
+		// restore the original file
+		fmt.Println(err)
+		return err
+	}
+
+	_, err = io.Copy(c.file, tempFile)
+	if err != nil {
+		// restore the original file
+		fmt.Println(err)
+		return err
+	}
+
+	return nil
+}
+
+func (c *Engine) GetFileContent(f *os.File) []string {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	_, err := f.Seek(0, 0)
+	if err != nil {
+		fmt.Println(err)
 		return []string{}
 	}
 
-	scanner := bufio.NewScanner(c.file)
+	scanner := bufio.NewScanner(f)
 
 	var content []string
 	for scanner.Scan() {
