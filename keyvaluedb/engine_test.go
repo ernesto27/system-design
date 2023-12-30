@@ -123,7 +123,7 @@ func TestEngine_DeleteKey(t *testing.T) {
 		panic(err)
 	}
 
-	k := e.Get("key1_delete")
+	k, _ := e.Get("key1_delete")
 
 	if k != "" {
 		t.Errorf("Expected %s, but got %s", "", k)

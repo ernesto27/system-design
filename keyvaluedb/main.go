@@ -91,7 +91,7 @@ func responseJSON(w http.ResponseWriter, data interface{}, status int) {
 var e *Engine
 
 func main() {
-	e = NewEngine("db.txt")
+	e = NewEngine("db.txt", "delete.txt")
 	defer e.Close()
 	e.Restore()
 
