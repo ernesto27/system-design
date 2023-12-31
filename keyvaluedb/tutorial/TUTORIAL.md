@@ -1,27 +1,32 @@
-
+# KeyValue Database tutorial
 
 In this tutorial we will create a simple key value database using go.
-We can think in somethink like redis or etcd but with a very limited set of features.
+We can think in something like redis or etcd but with a very limited set of features.
 
-Why
+### But Why?
 Because i think make something from scratch is a great way to learn and understand how things works under the hood, 
-and also is a great way to learn a new language if you are starting with or have little experience with Go creating 
-a real like world project
+also if you want to learn a new language or do you have a little experience with Go creating 
+a real like world project is a great way to learn the language.
 
-How it works
+### How it works
 The database will be a simple key value store, we will use a hash map to store the data in memory and we will use a file to persist the data on disk.
 
 
-In order to mantain the project simple we will have a simple http api to interact with it, we will use the standard Go library to create the http server, altouhg use HTTP is an overhead, we will use it because is simple and easy to use instead of create a custom protocol like redis, mysql, etcd, etc.
+We will use tests to check that everything works as expected after we add or modify the code.
+also we will have a simple http api to interact with it, we will use the standard Go library to create the http server, although use HTTP is seems like  an overhead, we are going to use it because is simpler and easy to implement instead of create a custom protocol like redis, mysql, etcd or another database.
 
 Example using curl
 
 We send a json payload with a key, value dataW
 
-curl http://localhost:8080/set?key=foo&value=bar
+```bash
+curl -X POST -H "Content-Type: application/json" -d '{"key": "mykey", "value": "from curl"}' http://localhost:8000/set
+```
 
 Example get value by key
+```bash
 curl http://localhost:8000/get?key=foo
+```
 
 We  will also create a library to interact with the database from go code
 
@@ -31,10 +36,13 @@ e := db.Get("foo") // bar
 
 In this first part of the tutorial we will do this 
 
-- Create go project 
+- Create go project
 - Create engine package
-- Set and Get values from memory
 - Add tests
+- Persist data on disk
+- Set data on file 
+- Get data from key
+- Compact data from file
 
 I assume that you have go installed and you have basic knowledge of the language  and at least create some basic project , if not please check the official documentation https://golang.org/doc/
 
@@ -47,7 +55,7 @@ mkdir keyvaluedb && cd keyvaluedb && go mod init keyvaluedb
 Create a new file main.go and add the following code to check that everything is working
 
 main.go
-```bash
+```go
 package main
 
 
@@ -70,7 +78,7 @@ We will create a new package called engine, this package will contain all the lo
 This file is part of the main package.
 
 engine.go
-```bash
+```go
 
 package main
 
@@ -114,7 +122,7 @@ if key not exists return an error.
 
 add this on main.go
 
-```bash
+```go
 
 func main() {
     e := NewEngine()
@@ -141,7 +149,7 @@ Althoug we can use main.go for test the code,  is a good idea to create a test i
 
 Create a new file engine_test.go and add the following code
 
-```bash
+```go
 package main
 
 import "testing"
@@ -185,8 +193,7 @@ Update the Set method to save the data on file, the idea is to append the data a
 https://en.wikipedia.org/wiki/Append-only
 
 
-```bash
-
+```go
 type Engine struct {
 	data map[string]string
 	file *os.File
@@ -254,7 +261,7 @@ We will continue uses a map to store key,  but we will change the type of the va
 we have to make this changes
 engine.go
 
-```bash
+```go
 type Engine struct {
 	data map[string]int64
 	file *os.File
@@ -306,7 +313,7 @@ key will be created, we are going to fix that problem later.
 
 Wc must update the Get function on engine.go
 
-```bash
+```go
 func (e *Engine) Get(key string) (string, error) {
 	e.mu.Lock()
 	defer e.mu.Unlock()
@@ -369,7 +376,7 @@ At this moment we have a problem, if we use the Set function multiple times with
 
 We need some refactor , first create a Compact function on engine.go
 
-```bash
+```go
 
 const Seconds = 5
 
@@ -425,7 +432,7 @@ This function will execute every 5 seconds,  first we create a new file called t
 
 Add function GetMapFromFile in engine.go
 
-```bash
+```go
 
 type Item struct {
 	Key    string
@@ -464,7 +471,7 @@ We created a Item struct for the key, value data,  on the GetMapFromFile functio
 
 add this functions and refactor code on engine.go
 
-```bash
+```go
 func (e *Engine) Set(key string, value string) error {
 	e.mu.Lock()
 	defer e.mu.Unlock()
@@ -517,7 +524,7 @@ To check this create a new test
 
 engine_test.go
 
-```bash
+```go
 func TestEngine_Compact(t *testing.T) {
 	os.Remove("data.txt")
 	v1 := "latestvalue1"
@@ -564,9 +571,62 @@ key3 value3
 
 Run test
 
+```
 go test
 
+```
 
+### Restore data from file on restore/start
+
+At this moment the project works fine, we can set, get value and run tests withour a problem, but we have a problem, if we restart or the server/process crash, we lost all the data on memory, especifically on the map.
+we need to restore the data that is saved on the filed to the map.
+
+add this function on engine.go
+
+```go
+func (e *Engine) Restore() {
+	e.mu.Lock()
+	defer e.mu.Unlock()
+
+	items, _ := e.GetMapFromFile()
+
+	for _, v := range items {
+		e.setKey(v.Key, v.Offset)
+	}
+}
+
+func (c *Engine) Close() {
+	c.file.Close()
+}
+
+
+```
+
+This function read data from database file and get a map calling the function GetMapFromFile, after that we loop over the map and save the key, value on the map,  also add a function that close the file descriptor to prevent memory leaks.
+
+We need to call the function restore after get a Engine object, add this tests on engine_test.go
+
+```go
+func TestEngine_Restore(t *testing.T) {
+	os.Remove("data.txt")
+	e, _ := NewEngine()
+
+	e.Set("key1_restore", "value1")
+	e.Set("key2_restore", "value2")
+
+	e.Close()
+
+	e, _ = NewEngine()
+	e.Restore()
+	k, _ := e.Get("key1_restore")
+
+	if k != "value1" {
+		t.Errorf("Expected %s, but got %s", "value1", k)
+	}
+}
+```
+in this test we remove the data.txt file, after that we set some values, close the file and create a new Engine object (this simulates the creation of a new instance after crash), after that we call the Restore function and get the value of a key, if the value is not the expected return an error.
+Check this test also removing the call to e.Restore, you should see an error because the key not exists on the map.
 
 
 
@@ -595,12 +655,11 @@ use hash - byte offset to get value from file on O(1)
 
 tests
 
-3 
 
 restart , restore items
 
 Delete item
 
-Limit files,  use various files for data
-
 Service HTTP db
+
+save data files on user/.config/  folder

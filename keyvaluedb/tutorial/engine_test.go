@@ -44,3 +44,21 @@ func TestEngine_Compact(t *testing.T) {
 	}
 
 }
+
+func TestEngine_Restore(t *testing.T) {
+	os.Remove("data.txt")
+	e, _ := NewEngine()
+
+	e.Set("key1_restore", "value1")
+	e.Set("key2_restore", "value2")
+
+	e.Close()
+
+	e, _ = NewEngine()
+	e.Restore()
+	k, _ := e.Get("key1_restore")
+
+	if k != "value1" {
+		t.Errorf("Expected %s, but got %s", "value1", k)
+	}
+}

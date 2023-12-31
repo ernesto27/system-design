@@ -205,3 +205,18 @@ func (c *Engine) GetFileContent(f *os.File) []string {
 
 	return content
 }
+
+func (e *Engine) Restore() {
+	e.mu.Lock()
+	defer e.mu.Unlock()
+
+	items, _ := e.GetMapFromFile()
+
+	for _, v := range items {
+		e.setKey(v.Key, v.Offset)
+	}
+}
+
+func (c *Engine) Close() {
+	c.file.Close()
+}

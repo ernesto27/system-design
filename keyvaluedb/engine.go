@@ -421,4 +421,5 @@ func (c *Engine) GetFileContent(f *os.File) []string {
 
 func (c *Engine) Close() {
 	c.file.Close()
+	c.fileDelete.Close()
 }
