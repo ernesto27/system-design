@@ -245,6 +245,334 @@ Finally we use the WriteString function to write the key value pair to the file,
 
 
 
+### Get data from key
+
+Previusly we access to data from key using a map, this is because we saved the the value on memory, this works fine but because now we save the data on a file we search the data here.
+
+We will continue uses a map to store key,  but we will change the type of the value,  instead of save the string value,  we will save the byte offset of the value on the file, in this way we can access directly to the value of the key using 0(1) time complexity,  another option could be to loop over the file and search the value, but this will be O(n) time complexity and if we a lot of entries this could be pretty slow and inefficient.
+
+we have to make this changes
+engine.go
+
+```bash
+type Engine struct {
+	data map[string]int64
+	file *os.File
+	mu   sync.Mutex
+}
+
+func NewEngine() (*Engine, error) {
+	file, err := os.OpenFile("data.txt", os.O_RDWR|os.O_CREATE|os.O_APPEND, 0644)
+	if err != nil {
+		fmt.Println("Error opening file data:", err)
+		return nil, err
+	}
+
+	return &Engine{
+		data: make(map[string]int64),
+		file: file,
+		mu:   sync.Mutex{},
+	}, nil
+}
+
+func (e *Engine) Set(key, value string) error {
+	e.mu.Lock()
+	defer e.mu.Unlock()
+
+	offset, err := e.file.Seek(0, io.SeekEnd)
+	if err != nil {
+		fmt.Println("Error seeking file:", err)
+		return err
+	}
+
+	_, err = e.file.WriteString(key + keyValueSeparator + value + "\n")
+	if err != nil {
+		fmt.Println("Error appending text:", err)
+		return err
+	}
+
+	e.data[key] = offset
+	return nil
+}
+
+```
+
+In this code we change the type of the data map from string to int64 in order to save the offset of key, 
+also in the Set we obtaint the offset using the Seek function and save it on the map after write the data to the file,
+we use the io.SeekEnd parameter to move the cursor to the end of the file, remember that we always want to append data to end of the file,
+with this approach if you use set multiple times with the same key the value will be append to the file and multiple entries with the same 
+key will be created, we are going to fix that problem later.
+
+
+Wc must update the Get function on engine.go
+
+```bash
+func (e *Engine) Get(key string) (string, error) {
+	e.mu.Lock()
+	defer e.mu.Unlock()
+
+	if _, ok := e.data[key]; !ok {
+		return "", fmt.Errorf("key not found")
+	}
+
+	_, err := e.file.Seek(e.data[key]+int64(len(key))+1, 0)
+	if err != nil {
+		fmt.Println("Error seeking file:", err)
+		return "", err
+	}
+
+	buffer := make([]byte, 1)
+	var content []byte
+
+	for {
+		n, err := e.file.Read(buffer)
+		if err != nil {
+			fmt.Println("Error reading file:", err)
+			break
+		}
+
+		if n == 0 {
+			break
+		}
+
+		if buffer[0] == '\n' {
+			break
+		}
+
+		content = append(content, buffer[0])
+	}
+	return string(content), nil
+}
+```
+
+We use the Seek function to move the cursor to the offset of the key, we also add a little tricky logic that we will next,
+for example if we have the key-value "foo bar",
+we have to obtaint the offset for key saved on the data map , plus the len of the key bar (4) plus (1) for the space separator, after that we have the cursor at the start of the value.
+
+```bash
+_, err := e.file.Seek(e.data[key]+int64(len(key))+1, 0)
+```
+
+Next we create a buffer of 1 byte, this is because we need to read the file byte by byte, we also create a content variable to save the value of the key, we use a for loop to read the file, if we found a new line or we reach the end of the file we break the loop, if not we append the byte to the content variable.
+
+If we run test, everything should be working fine.
+
+```bash
+go run test
+```
+
+
+### Compact data from file
+
+At this moment we have a problem, if we use the Set function multiple times with the same key, the value will be append to the file and multiple entries with the same key will be created, we need to fix this problem, although the map will always return the last value of the key, we need to clean the file for old entries.
+
+
+We need some refactor , first create a Compact function on engine.go
+
+```bash
+
+const Seconds = 5
+
+func (e *Engine) CompactFile() {
+	for {
+		time.Sleep(time.Duration(Seconds) * time.Second)
+		fmt.Println("Compacting file...")
+		e.mu.Lock()
+
+		tempFile, err := os.OpenFile("temp.txt", os.O_RDWR|os.O_TRUNC|os.O_CREATE, 0644)
+		if err != nil {
+			fmt.Println("Error creating backup file:", err)
+			e.mu.Unlock()
+			continue
+		}
+
+		_, err = io.Copy(tempFile, e.file)
+		if err != nil {
+			fmt.Println("Error copying file contents to backup file:", err)
+			e.mu.Unlock()
+			tempFile.Close()
+			continue
+		}
+
+		_, m := e.GetMapFromFile()
+
+		err = e.file.Truncate(0)
+		if err != nil {
+			fmt.Println(err)
+			e.mu.Unlock()
+			continue
+		}
+
+		for k, v := range m {
+			e.setRaw(k, v)
+		}
+
+		e.file.Seek(0, 0)
+		e.mu.Unlock()
+		tempFile.Close()
+	}
+}
+```
+
+This function will executes as a background job using a goroutine,  for example
+
+```bash
+go e.CompactFile()
+```
+
+This function will execute every 5 seconds,  first we create a new file called temp.txt, this file will be used as a backup of the original file, we copy the content of the original file to the temp file, after that we get the map of the file using the GetMapFromFile function, after that we truncate the file, after that we loop over the map and use the setRaw function to write the data to the file, finally we move the cursor to the start of the file and unlock the mutex for future uses, if we have any error we must unlock the mutex and continue with the loop.
+
+
+Add function GetMapFromFile in engine.go
+
+```bash
+
+type Item struct {
+	Key    string
+	Value  string
+}
+
+func (c *Engine) GetMapFromFile() ([]Item, map[string]string) {
+	m := make(map[string]string)
+	i := []Item{}
+
+	_, err := c.file.Seek(0, 0)
+	if err != nil {
+		fmt.Println(err)
+		return i, m
+	}
+
+	scanner := bufio.NewScanner(c.file)
+
+	for scanner.Scan() {
+		line := scanner.Text()
+		parts := strings.Split(line, keyValueSeparator)
+		if len(parts) >= 2 {
+			m[parts[0]] = parts[1]
+			i = append(i, Item{
+				Key:   parts[0],
+				Value: parts[1],
+			})
+		}
+	}
+
+	return i, m
+}
+```
+
+We created a Item struct for the key, value data,  on the GetMapFromFile function we create a map and a slice of Item, after that we move the cursor to the start of the file, after that we use a scanner to read the file line by line, we split the line by the space separator and save the key, value on the map and the slice of Item, finally we return the slice of Item and the map for later uses.
+
+add this functions and refactor code on engine.go
+
+```bash
+func (e *Engine) Set(key string, value string) error {
+	e.mu.Lock()
+	defer e.mu.Unlock()
+
+	if strings.Contains(key, " ") {
+		return fmt.Errorf("key cannot contain spaces")
+	}
+
+	return e.setRaw(key, value)
+}
+
+func (e *Engine) setRaw(key string, value string) error {
+	offset, err := e.saveToFile(key, value)
+	if err != nil {
+		return err
+	}
+
+	e.setKey(key, offset)
+	return nil
+}
+
+func (e *Engine) setKey(key string, value int64) {
+	e.data[key] = value
+}
+
+func (c *Engine) saveToFile(key string, value string) (int64, error) {
+	offset, err := c.file.Seek(0, io.SeekEnd)
+	if err != nil {
+		fmt.Println("Error seeking file:", err)
+		return 0, err
+	}
+
+	_, err = c.file.WriteString(key + keyValueSeparator + value + "\n")
+	if err != nil {
+		fmt.Println("Error appending text:", err)
+		return 0, err
+	}
+
+	return offset, nil
+}
+```
+
+On set function we check if the key contains spaces, we must do that because we use a blank space as a separator of key, value on the file, 
+after we call a function call setRaw, that uses other functions .
+
+saveToFile: this function save data in file and return the offset of the key on the file.
+setKey: this function save the key and value offset on the map.
+
+To check this create a new test
+
+engine_test.go
+
+```bash
+func TestEngine_Compact(t *testing.T) {
+	os.Remove("data.txt")
+	v1 := "latestvalue1"
+	v2 := "latestvalue2"
+	e, _ := NewEngine()
+	e.Set("key1", "value1")
+	e.Set("key2", "value2")
+	e.Set("key1", v1)
+	e.Set("key2", v2)
+	e.Set("key3", "value3")
+
+	go e.CompactFile()
+
+	time.Sleep((Seconds + 3) * time.Second)
+	if len(e.GetFileContent(e.file)) != 3 {
+		t.Errorf("Expected %d, but got %d", 3, len(e.GetFileContent(e.file)))
+	}
+
+}
+```
+
+First we remove the data.txt file, later we will fix that and uses another specific file for testing, 
+After we set some repeated with diferent values, this will create a file wit this data
+
+```
+key1 value1
+key2 value2
+key1 latestvalue1
+key2 latestvalue2
+key3 value3
+```
+
+we see that we have key and key repeated, in order to clean that we call the CompactFile function using a goroutine, this runs every 5 seconds.
+we wait for that to run and check count of lines/data on the data.file.
+
+that should be 3, and have this data.
+
+
+```
+key1 latestvalue1
+key2 latestvalue2
+key3 value3
+```
+
+Run test
+
+go test
+
+
+
+
+
+
+
+
 
 
 
