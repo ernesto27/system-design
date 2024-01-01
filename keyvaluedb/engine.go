@@ -159,16 +159,10 @@ func (c *Engine) saveToFile(key string, value string) (int64, error) {
 		return 0, err
 	}
 
-	// fileInfo, err := c.file.Stat()
-	// if err != nil {
-	// 	fmt.Println("Error getting file info:", err)
-	// 	return 0, err
-	// }
-
-	// if fileInfo.Size() > limit {
-	// 	fmt.Println("File size limit reached, create new file")
-	// 	return 0, err
-	// }
+	err = c.file.Sync()
+	if err != nil {
+		return 0, err
+	}
 
 	return offset, nil
 }

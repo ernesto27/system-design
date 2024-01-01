@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"os"
 	"testing"
 	"time"
@@ -12,14 +13,23 @@ const fileDelete = "delete_test.txt"
 func TestEngine_Get(t *testing.T) {
 	os.Remove(fileData)
 
+	type args struct {
+		key string
+	}
+
+	type user struct {
+		ID   int    `json:"id"`
+		Name string `json:"name"`
+	}
+
+	u := user{ID: 1, Name: "ernesto"}
+	j, _ := json.Marshal(u)
+
 	e, _ := NewEngine(fileData, fileDelete)
 	e.Set("key1", "value1")
 	e.Set("key2", "value2")
 	e.Set("key99", "value99")
-
-	type args struct {
-		key string
-	}
+	e.Set("json", string(j))
 
 	tests := []struct {
 		name string
@@ -40,6 +50,11 @@ func TestEngine_Get(t *testing.T) {
 			name: "Key 99 exists",
 			args: args{key: "key99"},
 			want: "value99",
+		},
+		{
+			name: "set json",
+			args: args{key: "json"},
+			want: `{"id":1,"name":"ernesto"}`,
 		},
 	}
 
