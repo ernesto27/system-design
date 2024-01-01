@@ -2,6 +2,7 @@ package main
 
 import (
 	"bufio"
+	"bytes"
 	"fmt"
 	"io"
 	"os"
@@ -336,12 +337,8 @@ func (c *Engine) deleteKeyFromFile(keys []string) error {
 		return err
 	}
 
-	tempFile, err := os.CreateTemp("", "tempfile")
-	if err != nil {
-		fmt.Println(err)
-		return err
-	}
-	defer tempFile.Close()
+	var bs []byte
+	buf := bytes.NewBuffer(bs)
 
 	scanner := bufio.NewScanner(c.file)
 	for scanner.Scan() {
@@ -358,7 +355,7 @@ func (c *Engine) deleteKeyFromFile(keys []string) error {
 			}
 
 			if !found {
-				tempFile.WriteString(l + "\n")
+				buf.WriteString(l + "\n")
 			}
 		}
 	}
@@ -375,16 +372,14 @@ func (c *Engine) deleteKeyFromFile(keys []string) error {
 		return err
 	}
 
-	_, err = tempFile.Seek(0, 0)
+	_, err = c.file.Seek(0, 0)
 	if err != nil {
-		// restore the original file
 		fmt.Println(err)
 		return err
 	}
 
-	_, err = io.Copy(c.file, tempFile)
+	_, err = buf.WriteTo(c.file)
 	if err != nil {
-		// restore the original file
 		fmt.Println(err)
 		return err
 	}
