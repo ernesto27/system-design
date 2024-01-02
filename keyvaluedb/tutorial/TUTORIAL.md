@@ -630,6 +630,267 @@ Check this test also removing the call to e.Restore, you should see an error bec
 
 
 
+### Delete item
+Next feature will be an option to delete keys, the API usage is this
+
+```go
+e := NewEngine()
+e.Set("foo", "bar")
+e.Delete("foo")
+```
+
+We need to create another file in order to track all keys that need to be remove, this job will be execute in an asyncronous way, we will use a goroutine to do that.
+
+We need to make updates on engine.go
+
+```go
+type Engine struct {
+	data       map[string]int64
+	file       *os.File
+	fileDelete *os.File
+	mu         sync.Mutex
+	muDelete   sync.Mutex
+}
+
+var keyValueSeparator = " "
+
+func NewEngine() (*Engine, error) {
+	file, err := os.OpenFile("data.txt", os.O_RDWR|os.O_CREATE|os.O_APPEND, 0644)
+	if err != nil {
+		fmt.Println("Error opening file data:", err)
+		return nil, err
+	}
+
+	fileDelete, err := os.OpenFile("delete.txt", os.O_RDWR|os.O_CREATE|os.O_APPEND, 0644)
+	if err != nil {
+		fmt.Println("Error opening file delete:", err)
+		return nil, err
+	}
+
+	return &Engine{
+		data:       make(map[string]int64),
+		file:       file,
+		fileDelete: fileDelete,
+		mu:         sync.Mutex{},
+	}, nil
+}
+
+```
+
+First we add a new property on Engine struct called fileDelete, this is a pointer to a os.File, this file will be used to save the keys that need to be deleted, we also add a new mutex called muDelete, this is needed to prevent concurrency problems when we write data to the file.
+
+
+Also add this new functions
+
+```go
+func (e *Engine) Delete(key string) error {
+	e.muDelete.Lock()
+	defer e.muDelete.Unlock()
+	_, err := e.fileDelete.Seek(0, io.SeekEnd)
+	if err != nil {
+		fmt.Println("Error seeking file:", err)
+		return err
+	}
+
+	_, err = e.fileDelete.WriteString(key + "\n")
+	if err != nil {
+		fmt.Println("Error writing to file:", err)
+		return err
+	}
+
+	e.mu.Lock()
+	defer e.mu.Unlock()
+	delete(e.m, key)
+
+	return nil
+}
+
+```
+
+In this function we fist lock our delete file mutex, after that we move the cursor to the end of the file and write the key that we obtaint for the parameter.
+If everything works fine we delete the key from the map, using the other mutex.
+We use defer keyword to unlock the mutex, this assures that the unlock will be called after the function finish.
+
+Add test for this 
+
+```go
+
+func TestEngine_DeleteKey(t *testing.T) {
+	os.Remove("data.txt")
+	os.Remove("remove.txt")
+	e, _ := NewEngine()
+
+	e.Set("key1_delete", "value1")
+	e.Set("key2_delete", "value2")
+
+	err := e.Delete("key1_delete")
+	if err != nil {
+		panic(err)
+	}
+
+	k, _ := e.Get("key1_delete")
+
+	if k != "" {
+		t.Errorf("Expected %s, but got %s", "", k)
+	}
+
+	if len(e.GetFileContent(e.fileDelete)) != 1 {
+		t.Errorf("Expected %d, but got %d", 1, len(e.GetFileContent(e.file)))
+	}
+}
+
+```
+We add remove for the delete file in order to have a clean state on tests, 
+after that we set some values, delete one of them and check that the key not exists on the map, lastly check that the delete file has one entry.
+
+At the moment we delete the item for the map and add a entry on the delete.txt file,  but at the moment we are not doing anyting with the data.txt file, for that matter we need to create a couple of function that resolves that.
+
+```go
+
+const secondsDelete = 5
+func (e *Engine) DeleteFromFile() {
+	for {
+		time.Sleep(secondsDelete * time.Second)
+		fmt.Println("Deleting from file...")
+		e.muDelete.Lock()
+
+		_, err := e.fileDelete.Seek(0, 0)
+		if err != nil {
+			fmt.Println(err)
+			e.muDelete.Unlock()
+			continue
+		}
+
+		scanner := bufio.NewScanner(e.fileDelete)
+
+		content := []string{}
+		for scanner.Scan() {
+			line := scanner.Text()
+			if line != "" {
+				content = append(content, line)
+			}
+		}
+
+		err = e.deleteKeyFromFile(content)
+		if err != nil {
+			fmt.Println(err)
+			e.muDelete.Unlock()
+			continue
+		}
+
+		err = e.fileDelete.Truncate(0)
+		if err != nil {
+			fmt.Println(err)
+			e.muDelete.Unlock()
+			continue
+		}
+
+		e.muDelete.Unlock()
+	}
+}
+```
+
+This function runs on background and will be called using a goroutine, 
+we create a variable secondsDelete that will be used to configure the time that the function will wait to run again,
+After we create a loop that uses the mutex created for the delete file, 
+read the file line by line and save the content on a slice of string, after  we call a function called deleteKeyFromFile ( next to analyse ) that will make the changes in order to delete the keys found on the data.txt
+finally we truncate the delete file and unlock the mutex.
+
+```go
+func (c *Engine) deleteKeyFromFile(keys []string) error {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	_, err := c.file.Seek(0, 0)
+	if err != nil {
+		fmt.Println(err)
+		return err
+	}
+
+	var bs []byte
+	buf := bytes.NewBuffer(bs)
+
+	scanner := bufio.NewScanner(c.file)
+	for scanner.Scan() {
+		l := scanner.Text()
+
+		parts := strings.Split(l, keyValueSeparator)
+		if len(parts) >= 2 {
+			found := false
+			for _, k := range keys {
+				if parts[0] == k {
+					found = true
+					break
+				}
+			}
+
+			if !found {
+				buf.WriteString(l + "\n")
+			}
+		}
+	}
+
+	_, err = c.file.Seek(0, 0)
+	if err != nil {
+		fmt.Println(err)
+		return err
+	}
+
+	err = c.file.Truncate(0)
+	if err != nil {
+		fmt.Println(err)
+		return err
+	}
+
+
+	_, err = buf.WriteTo(c.file)
+	if err != nil {
+		fmt.Println(err)
+		return err
+	}
+
+	return nil
+}
+```
+This is a long function,  we explain step by step what we do here.
+the keys parameter is a slice of string that contains the keys that need to be deleted, 
+we lock the mutex of the data.txt file, after that we move the cursor to the start of this file, 
+we  also create a buffer variable of bytes, this will be used to get the items that not need to be deleted,
+we check that looping on the keys parameter and validating key of the data.txt,
+if variable found is false we use the writeString function to write the line to the buffer, otherwise we continue with the loop.
+
+After that we have the variable buffer with the data that not be deleted, we move the cursor to the start of the file, truncate the file and finally copy the content of the buffer on the data.txt.
+
+add this test
+
+```go
+func TestEngine_DeleteKeyFromFile(t *testing.T) {
+	os.Remove("data.txt")
+	os.Remove("delete.txt")
+	e, _ := NewEngine()
+
+	e.Set("key1_delete", "value1")
+	e.Set("key2_delete", "value2")
+	e.Set("key3_delete", "value3")
+
+	e.deleteKeyFromFile([]string{"key2_delete", "key3_delete"})
+
+	if len(e.GetFileContent(e.file)) != 1 {
+		t.Errorf("Expected %d, but got %d", 1, len(e.GetFileContent(e.file)))
+	}
+}
+```
+
+This test create some keys and call the deleteKeyFromFile function with two keys that need to be deleted, after that we check that the data.txt file has only one entry.
+
+
+
+
+
+
+
+
+
 
 
 

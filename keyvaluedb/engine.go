@@ -372,12 +372,6 @@ func (c *Engine) deleteKeyFromFile(keys []string) error {
 		return err
 	}
 
-	_, err = c.file.Seek(0, 0)
-	if err != nil {
-		fmt.Println(err)
-		return err
-	}
-
 	_, err = buf.WriteTo(c.file)
 	if err != nil {
 		fmt.Println(err)
