@@ -331,7 +331,18 @@ func (c *Engine) deleteKeyFromFile(keys []string) error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
-	_, err := c.file.Seek(0, 0)
+	tempFile, err := os.CreateTemp("", "tempfile_")
+	if err != nil {
+		return err
+	}
+	defer tempFile.Close()
+
+	_, err = io.Copy(tempFile, c.file)
+	if err != nil {
+		return err
+	}
+
+	_, err = c.file.Seek(0, 0)
 	if err != nil {
 		fmt.Println(err)
 		return err

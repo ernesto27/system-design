@@ -189,8 +189,6 @@ func TestEngine_DeleteKeyFromFile(t *testing.T) {
 	e.Set("key2_delete", "value2")
 	e.Set("key3_delete", "value3")
 
-	e.Delete("key2_delete")
-
 	e.deleteKeyFromFile([]string{"key2_delete", "key3_delete"})
 
 	if len(e.GetFileContent(e.file)) != 1 {
