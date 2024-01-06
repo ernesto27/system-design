@@ -168,7 +168,7 @@ func (c *Engine) saveToFile(key string, value string) (int64, error) {
 	return offset, nil
 }
 
-const Seconds = 5
+const Seconds = 50
 
 func (c *Engine) CompactFile() {
 	for {

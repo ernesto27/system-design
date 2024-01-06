@@ -39,7 +39,7 @@ func TestEngine_Compact(t *testing.T) {
 
 	time.Sleep((Seconds + 3) * time.Second)
 
-	if len(e.GetFileContent(e.file)) != 32 {
+	if len(e.GetFileContent(e.file)) != 3 {
 		t.Errorf("Expected %d, but got %d", 3, len(e.GetFileContent(e.file)))
 	}
 

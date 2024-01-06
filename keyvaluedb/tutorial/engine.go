@@ -39,6 +39,7 @@ func NewEngine() (*Engine, error) {
 		file:       file,
 		fileDelete: fileDelete,
 		mu:         sync.Mutex{},
+		muDelete:   sync.Mutex{},
 	}, nil
 }
 
@@ -148,16 +149,20 @@ func (c *Engine) GetMapFromFile() ([]Item, map[string]string) {
 		return i, m
 	}
 
+	var totalBytesRead int64
 	scanner := bufio.NewScanner(c.file)
 
 	for scanner.Scan() {
 		line := scanner.Text()
+		offset := totalBytesRead
 		parts := strings.Split(line, keyValueSeparator)
 		if len(parts) >= 2 {
 			m[parts[0]] = parts[1]
+			totalBytesRead += int64(len(line) + 1)
 			i = append(i, Item{
-				Key:   parts[0],
-				Value: parts[1],
+				Key:    parts[0],
+				Value:  parts[1],
+				Offset: offset,
 			})
 		}
 	}

@@ -881,7 +881,261 @@ func TestEngine_DeleteKeyFromFile(t *testing.T) {
 }
 ```
 
-This test create some keys and call the deleteKeyFromFile function with two keys that need to be deleted, after that we check that the data.txt file has only one entry.
+This test create some keys and call the deleteKeyFromFile function with two keys that need to be deleted, after that we check that the delete.txt file has only one entry.
+
+
+
+### Create HTTP service
+
+At the moment we are testing the code of engine.go using tests, that is great because you can check all the feautures of the project with a single command and gain more trust in your code,  but we do not have any service or way to interact with our database, in order to change that, we are going to create a simple http server, we will expose three endpoint to create, get and delete keys on the database.
+
+On main.go add this code.
+
+```go
+package main
+
+import (
+	"fmt"
+	"net/http"
+)
+
+func handlerSet(w http.ResponseWriter, r *http.Request)    {}
+func handlerGet(w http.ResponseWriter, r *http.Request)    {}
+func handlerDelete(w http.ResponseWriter, r *http.Request) {}
+
+var e *Engine
+
+func main() {
+	var err error
+	e, err = NewEngine()
+	if err != nil {
+		panic(err)
+	}
+	defer e.Close()
+	e.Restore()
+
+	go e.CompactFile()
+	go e.DeleteFromFile()
+
+	http.HandleFunc("/set", handlerSet)
+	http.HandleFunc("/get", handlerGet)
+	http.HandleFunc("/delete", handlerDelete)
+
+	address := ":8080"
+
+	fmt.Printf("Server is listening on http://localhost%s\n", address)
+	err := http.ListenAndServe(address, nil)
+	if err != nil {
+		fmt.Println("Error:", err)
+	}
+}
+
+```
+
+In this code we create three functions that will be used as handlers for the http server, at the moment are empty we will change that in the future.
+On main function we first create a instance of the Engine DB ( we use a global e variable to get a more easy access on the handlers) and panic if there is an error, 
+after we call the restore function, we have to run this with the service start in order to recover for crashes or error,  this get the data from the file and save it on the map data structure,   
+next we call the CompactFill, and DeleteFromFIle on background using a goroutine,
+CompactFill will remove duplicate values on the database, 
+DeleteFromFIle will remove keys-value from the file database,
+Lastly we create the routes on the http server and start on port 8080.
+
+
+We need a change on the engine.go, in order to restore works correctly
+
+```go
+func (c *Engine) GetMapFromFile() ([]Item, map[string]string) {
+	m := make(map[string]string)
+	i := []Item{}
+
+	_, err := c.file.Seek(0, 0)
+	if err != nil {
+		fmt.Println(err)
+		return i, m
+	}
+
+	var totalBytesRead int64
+	scanner := bufio.NewScanner(c.file)
+
+	for scanner.Scan() {
+		line := scanner.Text()
+		offset := totalBytesRead
+		parts := strings.Split(line, keyValueSeparator)
+		if len(parts) >= 2 {
+			m[parts[0]] = parts[1]
+			totalBytesRead += int64(len(line) + 1)
+			i = append(i, Item{
+				Key:    parts[0],
+				Value:  parts[1],
+				Offset: offset,
+			})
+		}
+	}
+
+	return i, m
+}
+```
+
+We need to set the offset value on the Item struct, this is the value of the key map struct the we use to get items from database, we created a totalBytesRead variable that will be used to calculate the offset of the key, to obtain that we sum the len of the line plus one for the new line character, on every iteration of the loop we set the offset value and create a Item struct.
+
+
+#### Update handlers
+
+We must update the handlers create previously on main.go,  the basic idea is to use the methods of the engine file and respond a JSON on an endpoint http.
+
+main.go
+```go
+
+type RequestPayload struct {
+	Key   string `json:"key"`
+	Value string `json:"value"`
+}
+
+type ResponseJson struct {
+	Status  string `json:"key"`
+	Message string `json:"value"`
+}
+
+func handlerSet(w http.ResponseWriter, r *http.Request) {
+	if r.Method == "POST" {
+		body, err := io.ReadAll(r.Body)
+		if err != nil {
+			http.Error(w, "Error reading request body", http.StatusBadRequest)
+			return
+		}
+
+		var rp RequestPayload
+
+		err = json.Unmarshal(body, &rp)
+		if err != nil {
+			http.Error(w, "Error decoding JSON", http.StatusBadRequest)
+			return
+		}
+
+		err = e.Set(rp.Key, rp.Value)
+		if err != nil {
+			responseJSON(w, ResponseJson{
+				Status:  "error",
+				Message: err.Error(),
+			}, http.StatusInternalServerError)
+			return
+		}
+
+		responseJSON(w, ResponseJson{
+			Status:  "success",
+			Message: "Key value pair saved successfully.",
+		}, http.StatusOK)
+	} else {
+		fmt.Println("Invalid request method.")
+		fmt.Fprintf(w, "Invalid request method.")
+	}
+}
+
+func responseJSON(w http.ResponseWriter, data interface{}, status int) {
+	d, err := json.Marshal(data)
+	w.Header().Set("Content-Type", "application/json")
+
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte("Internal server errror"))
+		return
+	}
+
+	w.WriteHeader(status)
+	w.Write(d)
+}
+
+```
+
+We created a few new structs,  RequestPayload is needed to decode the JSON payload sent by the client
+and Response is used to send a JSON response to the client.
+In the function handlerSet we first check the method of the request, if is not a POST request we return an error, 
+We read the Body of the request and decode the JSON payload to the RequestPayload struct and check for errors,
+after that we call the Set function of the engine file,  we now return a response using a function called responseJSON the we will check next.
+
+ResponseJSON is a helper function that we used to prevent repeat code multiple times, this function receive a interface (basically any struct is valid), if something goes wrong we return a 500 error,
+otherwise we set a status code with the value received from the argument, set the content type to application/json and write the JSON response to the client.
+
+We can test this using curl
+
+```bash
+go run .
+
+curl -X POST -H "Content-Type: application/json" -d '{"key": "mykey", "value": "from curl"}' http://localhost:8080/set
+```
+
+This should return a json success message and save data on the data.txt database file
+
+
+#### Get handler
+
+```go
+
+func handlerGet(w http.ResponseWriter, r *http.Request) {
+	if r.Method == "GET" {
+		key := r.URL.Query().Get("key")
+		value, err := e.Get(key)
+		if err != nil {
+			responseJSON(w, ResponseJson{
+				Status:  "error",
+				Message: err.Error(),
+			}, http.StatusNotFound)
+			return
+		}
+
+		responseJSON(w, RequestPayload{
+			Key:   key,
+			Value: value,
+		}, http.StatusOK)
+	} else {
+		fmt.Println("Invalid request method.")
+		fmt.Fprintf(w, "Invalid request method.")
+	}
+}
+```
+
+In this function we first check the method of the request, if is not a GET request we return an error like in the set function, 
+next we get the key from the query params and uses the Get function of the engine instance, if something goes wrong we return a 404 error, otherwise we return a JSON response with the key and value.
+
+Test with curl 
+
+```bash
+curl http://localhost:8080/get?key=mykey
+```
+
+
+#### Delete handler
+
+```go
+func handlerDelete(w http.ResponseWriter, r *http.Request) {
+	if r.Method == "DELETE" {
+		key := r.URL.Query().Get("key")
+		err := e.Delete(key)
+		if err != nil {
+			responseJSON(w, ResponseJson{
+				Status:  "error",
+				Message: err.Error(),
+			}, http.StatusInternalServerError)
+			return
+		}
+
+		responseJSON(w, ResponseJson{
+			Status:  "success",
+			Message: "Key deleted successfully.",
+		}, http.StatusOK)
+	} else {
+		fmt.Println("Invalid request method.")
+		fmt.Fprintf(w, "Invalid request method.")
+	}
+}
+```
+This function is very similar to the Get function, the only difference is that we use the Delete function of the engine instance instead and change the message response
+
+test in curl 
+
+```bash
+curl -X DELETE http://localhost:8080/delete?key=mykey
+```
 
 
 
@@ -893,33 +1147,6 @@ This test create some keys and call the deleteKeyFromFile function with two keys
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-2
-
-Add file  append to persists  data 
-
-use iteration to search values
-
-use hash - byte offset to get value from file on O(1)
-
-tests
-
-
-restart , restore items
-
-Delete item
 
 Service HTTP db
 
