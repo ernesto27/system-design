@@ -114,7 +114,7 @@ var e *Engine
 
 func main() {
 	var err error
-	e, err = NewEngine()
+	e, err = NewEngine(Config{})
 	if err != nil {
 		panic(err)
 	}

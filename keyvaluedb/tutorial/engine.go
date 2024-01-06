@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"os/user"
+	"path/filepath"
 	"strings"
 	"sync"
 	"time"
@@ -19,16 +21,40 @@ type Engine struct {
 	muDelete   sync.Mutex
 }
 
+type Config struct {
+	FileData   string
+	FileRemove string
+}
+
 var keyValueSeparator = " "
 
-func NewEngine() (*Engine, error) {
-	file, err := os.OpenFile("data.txt", os.O_RDWR|os.O_CREATE|os.O_APPEND, 0644)
+func NewEngine(cfg Config) (*Engine, error) {
+	if cfg.FileData == "" && cfg.FileRemove == "" {
+		configFolderPath, err := getConfigFolder()
+		if err != nil {
+			fmt.Println(err)
+			return nil, err
+		}
+
+		if _, err := os.Stat(configFolderPath); os.IsNotExist(err) {
+			err := os.Mkdir(configFolderPath, 0700)
+			if err != nil {
+				fmt.Println(err)
+				return nil, err
+			}
+		}
+
+		cfg.FileData = configFolderPath + "/" + "data.txt"
+		cfg.FileRemove = configFolderPath + "/" + "delete.txt"
+	}
+
+	file, err := os.OpenFile(cfg.FileData, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0644)
 	if err != nil {
 		fmt.Println("Error opening file data:", err)
 		return nil, err
 	}
 
-	fileDelete, err := os.OpenFile("delete.txt", os.O_RDWR|os.O_CREATE|os.O_APPEND, 0644)
+	fileDelete, err := os.OpenFile(cfg.FileRemove, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0644)
 	if err != nil {
 		fmt.Println("Error opening file delete:", err)
 		return nil, err
@@ -357,6 +383,19 @@ func (c *Engine) deleteKeyFromFile(keys []string) error {
 	return nil
 }
 
+func getConfigFolder() (string, error) {
+	currentUser, err := user.Current()
+	if err != nil {
+		return "", err
+	}
+
+	homeDir := currentUser.HomeDir
+	configFolder := ".config/keyvaluedb"
+	configFolderPath := filepath.Join(homeDir, configFolder)
+	return configFolderPath, nil
+}
+
 func (c *Engine) Close() {
 	c.file.Close()
+	c.fileDelete.Close()
 }

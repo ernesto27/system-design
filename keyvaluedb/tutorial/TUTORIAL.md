@@ -1,23 +1,22 @@
 # KeyValue Database tutorial
 
-In this tutorial we will create a simple key value database using go.
-We can think in something like redis or etcd but with a very limited set of features.
+In this tutorial we are going to create a simple key value database using go.
+We can think in something like redis or etcd but with a very limited set of features and not ready for production.
 
-### But Why?
-Because i think make something from scratch is a great way to learn and understand how things works under the hood, 
-also if you want to learn a new language or do you have a little experience with Go creating 
-a real like world project is a great way to learn the language.
+## Nic, But Why?
+Because i think to create something from scratch is a great way to learn and understand how things works under the hood, 
+also if you know the basic on Golang and want to learn more about the language,  create a real like project like this is a great way to improve your skills.
 
 ### How it works
-The database will be a simple key value store, we will use a hash map to store the data in memory and we will use a file to persist the data on disk.
+The database will be a simple key value store, we will use a hash map to store the key, map to data in memory and we will use a file to persist the data on disk.
 
 
-We will use tests to check that everything works as expected after we add or modify the code.
-also we will have a simple http api to interact with it, we will use the standard Go library to create the http server, although use HTTP is seems like  an overhead, we are going to use it because is simpler and easy to implement instead of create a custom protocol like redis, mysql, etcd or another database.
+We will use tests to check that everything works as expected after we add or modify the code,  this is very important to prevent bugs and have more trust in the code.
+also we will have a simple http api to interact with it, we will use the standard Go library to create the http server, although use HTTP is seems like  an overhead, we are going to use it because is simpler and easy to implement instead of create a custom protocol like exits on redis, mysql, etcd or another database and is pretty easy to test.
 
 Example using curl
 
-We send a json payload with a key, value dataW
+We send a json payload with a key, value data
 
 ```bash
 curl -X POST -H "Content-Type: application/json" -d '{"key": "mykey", "value": "from curl"}' http://localhost:8000/set
@@ -28,13 +27,7 @@ Example get value by key
 curl http://localhost:8000/get?key=foo
 ```
 
-We  will also create a library to interact with the database from go code
-
-e := db.Connect("localhost", 8080)
-e := db.Set("foo", "bar") // nil
-e := db.Get("foo") // bar
-
-In this first part of the tutorial we will do this 
+Glossaryhttps://github.com/ernesto27/system-design/tree/master/keyvaluedb/tutorial
 
 - Create go project
 - Create engine package
@@ -43,16 +36,23 @@ In this first part of the tutorial we will do this
 - Set data on file 
 - Get data from key
 - Compact data from file
+- Restore data from file on restore/start
+- Delete item
+- Create HTTP service
+- Update database files path
 
-I assume that you have go installed and you have basic knowledge of the language  and at least create some basic project , if not please check the official documentation https://golang.org/doc/
+
+I am not expend much time explaining things abouts golang sintax so i assume that you have go installed, you have basic knowledge of the language and at least create some basic project , if not please check the official documentation https://golang.org/doc/
 
 ### Create go project
 
-Create a new folder, go to the folder and create a new go module with the name keyvaluedb ( you can change this name for the name you want, is not important at this moment)
+To start this project create a new folde called "keyvaluedb" go into that and create a new go module with the name keyvaluedb ( you can change this name for the name you want, is not important at this moment)
 
+```bash
 mkdir keyvaluedb && cd keyvaluedb && go mod init keyvaluedb
+```
 
-Create a new file main.go and add the following code to check that everything is working
+Add a new file main.go and paste or write the following code to check at least that everything is working
 
 main.go
 ```go
@@ -68,14 +68,16 @@ func main() {
 
 Run the project
 
+```bash
 go run main.go
+```
 
 You should see the message Hello world print in the console.
 
 ### Create engine package
 
-We will create a new package called engine, this package will contain all the logic of the database,  create a new file engine.go and add the following code.
-This file is part of the main package.
+We will create a new package called engine, this package will contain all the logic of the database,  so for that create a new file engine.go and add the following code.
+
 
 engine.go
 ```go
@@ -112,7 +114,7 @@ func (e *Engine) Get(key string) (string, error) {
 
 ```
 
-This code create a new struct called Engine, this struct will contain the data of the database, in this case we will use a simple map to store the data in memory, we will add persistence on a file later.
+This code create a new struct called Engine, this will contain the data of the database, in this case we will use a simple map to store the data in memory, we will add persistence on a file later.
 
 The NewEngine function will create a new instance of the Engine struct, the important thing here is notice that we initialize the data map with make, this is important because if we don't do this the map will be nil and we will get a panic when we try to add a new key value pair.
 
@@ -139,13 +141,15 @@ func main() {
 
 Run the project using 
 
+```bash
 go run main.go
+```
 
-this should return the value "bar"
+
+This create a new instance on Engine,  set a new key value pair and get the value of the key, if the key not exists return an error, if everything works fine print the value on the console.
 
 ### Add tests
-
-Althoug we can use main.go for test the code,  is a good idea to create a test in order to check the code in a more professional way, is true that in this moment seems like a overkilll,  but because we will add more features to the code is a good idea to have automated tests at the beggining.
+Althoug we can use main.go for test the code,  is a good idea to create a test in order to check the code in a more professional, easy and stable way, is true that in this moment seems like an overkilll,  but because we will add more features to the code is a good idea to have automated tests from the beggining.
 
 Create a new file engine_test.go and add the following code
 
@@ -174,22 +178,23 @@ func Test_SetGetKeyValue(t *testing.T) {
 
 ```
 
-This code create a new test function called Test_SetGetKeyValue, this function create a new instance of the Engine struct, set a new key value pair and get the value of the key, if the value is not the expected return an error, also check that if we try to get a key that not exists return an error.
+This code create a new test function called Test_SetGetKeyValue, this function create a new instance of the Engine struct, set a new key value pair and get the value of the key, if the value is not the expected return an error, also test that if we try to get a key that not exists return an error, 
+we use the testing native native golang package to tests, we are not going to use any external libraries.
 
 
 ### Persist data on disk
-At the moment we only store key, value on memory, that works fine, but the problem is that if we restart the server we lost all the data, in order to persist the data we will save the key, value pair on file separate by a space and distict items by a new line, for example
+At the moment we only store key, value on memory, that works fine, but the problem is that if we restart the server or if a crash happened we lost all the data, in order to prevent the data we will save the key, value pair on file ,  this key value will be separate by a space and we separate items by a new line,  for example
 
 data.txt
 
 ```
 foo bar
 bar foo
+user1 {"id": 1, "name": "ernesto"} 
 ```
 
 #### Set data on file 
-
-Update the Set method to save the data on file, the idea is to append the data at end of the file,  using something called append only file, this is a common pattern used in databases like redis, etcd, etc.
+Update the Set method to save the data on file, the idea is to append the data at end of the file,  using a concept called append only file, this is a common pattern used in databases like redis, etcd, etc, where information can only be added or appended and not modified or deleted
 https://en.wikipedia.org/wiki/Append-only
 
 
@@ -246,17 +251,16 @@ if the file not exists create a new one, we also initialize the mutex property.
 
 In the Set function we use Lock in order to prevent problems when we write data to the file on this critical section of code, we use defer to unlock the mutex when the function finish.
 
-After we use the Seek function to move the cursor to the end of the file, this is because we want to append data to the file.
+After we use the Seek function to move the cursor to the end of the file, this is because we want always to append data to the file.
 
 Finally we use the WriteString function to write the key value pair to the file, we also add a new line at the end of the string, this is because we want to separate the key value pair by a new line.
 
 
 
 ### Get data from key
+Previusly we access to data from key using a map, this is because we saved the the value on memory, this works fine but because now we are saving the data on a file we should search the data here.
 
-Previusly we access to data from key using a map, this is because we saved the the value on memory, this works fine but because now we save the data on a file we search the data here.
-
-We will continue uses a map to store key,  but we will change the type of the value,  instead of save the string value,  we will save the byte offset of the value on the file, in this way we can access directly to the value of the key using 0(1) time complexity,  another option could be to loop over the file and search the value, but this will be O(n) time complexity and if we a lot of entries this could be pretty slow and inefficient.
+We will continue uses a map to store key, but we will change the type of the value,  instead of save the string value,  we will save the byte offset of the value on the file, with this we can go directly to a offset in the file  ,another option could be to loop over the file and search the value, but this will be O(n) time complexity and if we a lot of entries this could be pretty slow and inefficient.
 
 we have to make this changes
 engine.go
@@ -308,10 +312,10 @@ In this code we change the type of the data map from string to int64 in order to
 also in the Set we obtaint the offset using the Seek function and save it on the map after write the data to the file,
 we use the io.SeekEnd parameter to move the cursor to the end of the file, remember that we always want to append data to end of the file,
 with this approach if you use set multiple times with the same key the value will be append to the file and multiple entries with the same 
-key will be created, we are going to fix that problem later.
+key will be created, we are going to fix that duplication data problem later.
 
 
-Wc must update the Get function on engine.go
+We must update the Get function on engine.go
 
 ```go
 func (e *Engine) Get(key string) (string, error) {
@@ -352,7 +356,7 @@ func (e *Engine) Get(key string) (string, error) {
 }
 ```
 
-We use the Seek function to move the cursor to the offset of the key, we also add a little tricky logic that we will next,
+We use the Seek function to move the cursor to the offset of the key, we also add a logic that we will check next,
 for example if we have the key-value "foo bar",
 we have to obtaint the offset for key saved on the data map , plus the len of the key bar (4) plus (1) for the space separator, after that we have the cursor at the start of the value.
 
@@ -1138,16 +1142,141 @@ curl -X DELETE http://localhost:8080/delete?key=mykey
 ```
 
 
+### Update database files path
+
+Currently we have the project running using tests and also exposing a http server, this works we have some problems with this approach.
+We use the same files for tests and for the server, so when we run a test we are modifying and deleting the data created via API endpoints.
+The file is save relative to the current path in which the project is running, this is not a good,  because if we start the service from another path we will create a new Database file.
+
+To fix that we we use this approach, 
+in tests, we must define the name of the files data and delete.txt and for the server we will the path of the current user running the project, and save this on a folder called .config/keyvaluedb 
+
+The .config values is uses for multiple applications to save data,  for example discord, chrome, VirtualBox, etc save files on this place
+
+update engine.go
+
+```go
+type Config struct {
+	FileData   string
+	FileRemove string
+}
+
+var keyValueSeparator = " "
+
+func NewEngine(cfg Config) (*Engine, error) {
+	if cfg.FileData == "" && cfg.FileRemove == "" {
+		configFolderPath, err := getConfigFolder()
+		if err != nil {
+			fmt.Println(err)
+			return nil, err
+		}
+
+		if _, err := os.Stat(configFolderPath); os.IsNotExist(err) {
+			err := os.Mkdir(configFolderPath, 0700)
+			if err != nil {
+				fmt.Println(err)
+				return nil, err
+			}
+		}
+
+		cfg.FileData = configFolderPath + "/" + "data.txt"
+		cfg.FileRemove = configFolderPath + "/" + "delete.txt"
+	}
+
+	file, err := os.OpenFile(cfg.FileData, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0644)
+	if err != nil {
+		fmt.Println("Error opening file data:", err)
+		return nil, err
+	}
+
+	fileDelete, err := os.OpenFile(cfg.FileRemove, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0644)
+	if err != nil {
+		fmt.Println("Error opening file delete:", err)
+		return nil, err
+	}
+
+	return &Engine{
+		data:       make(map[string]int64),
+		file:       file,
+		fileDelete: fileDelete,
+		mu:         sync.Mutex{},
+		muDelete:   sync.Mutex{},
+	}, nil
+}
+
+func getConfigFolder() (string, error) {
+	currentUser, err := user.Current()
+	if err != nil {
+		return "", err
+	}
+
+	homeDir := currentUser.HomeDir
+	configFolder := ".config/keyvaluedb"
+	configFolderPath := filepath.Join(homeDir, configFolder)
+	return configFolderPath, nil
+}
+
+```
+
+We add a Config struct , this will help us for set file data and delete on testing,  NewEngine function now receives a config struct as a parameter,  if the file data and delete,  we use the current user path /.config/keyvaluedb to save data, 
+we use the function getConfigFolder to get the path of the current user,  back on NewEngine we check if that folder exists and if not we create it, after that we set the path of the files using the config struct.
+
+We need to update the tests to use the config struct
+
+```go
+
+var cfg = Config{
+	FileData:   "data.txt",
+	FileRemove: "delete.txt",
+}
+
+func Test_SetGetKeyValue(t *testing.T) {
+	e, _ := NewEngine(cfg)
+	e.Set("test", "data")
+	e.Set("foo", "bar")
+	value, err := e.Get("foo")
+	if err != nil {
+		t.Error(err)
+	}
+	if value != "bar" {
+		t.Error("value should be bar")
+	}
+
+	_, err = e.Get("notfound")
+	if err == nil {
+		t.Error("should return error")
+	}
+}
+```
+
+We need to update all the calls to NewEngine in order use the cfg variable.
+
+Update main.go
+
+```go
+e, err = NewEngine(Config{})
+
+```
+
+In this case we pass a empty config struct, this is for use the current path folder to save files.
+
+Run the server and save some data
+
+```bash
+go run .
+curl -X POST -H "Content-Type: application/json" -d '{"key": "mykey", "value": "from curl"}' http://localhost:8080/set
+```
+
+After that we can check the data.txt file on the path of the current user
+
+```bash
+cat ~/.config/keyvaluedb/data.txt
+```
+
+Full code github 
+https://github.com/ernesto27/system-design/tree/master/keyvaluedb/tutorial
 
 
+### Conclusion
 
 
-
-
-
-
-
-
-Service HTTP db
-
-save data files on user/.config/  folder
