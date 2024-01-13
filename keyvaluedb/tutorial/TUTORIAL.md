@@ -5,14 +5,14 @@ We can think in something like redis or etcd but with a very limited set of feat
 
 ## Nic, But Why?
 Because i think to create something from scratch is a great way to learn and understand how things works under the hood, 
-also if you know the basic on Golang and want to learn more about the language,  create a real like project like this is a great way to improve your skills.
+also if you know the basic on Golang and want to learn more about the language,  create a real  project like this is a great way to improve your skills, for that reason i am not go to deeply explaining sintax or basic concepts of the language.
+
 
 ### How it works
-The database will be a simple key value store, we will use a hash map to store the key, map to data in memory and we will use a file to persist the data on disk.
+The database will be a simple key value store, we will use a hash map to store the key that map to some data,  we will use a file to persist data on disk.
 
-
-We will use tests to check that everything works as expected after we add or modify the code,  this is very important to prevent bugs and have more trust in the code.
-also we will have a simple http api to interact with it, we will use the standard Go library to create the http server, although use HTTP is seems like  an overhead, we are going to use it because is simpler and easy to implement instead of create a custom protocol like exits on redis, mysql, etcd or another database and is pretty easy to test.
+We will use tests to check that everything works as expected after we add or modify the code,  this is very important to prevent bugs and have more trust in our code.
+also we will have a simple http api to interact with it, we will use the standard Go library to create the http server, although use HTTP is seems like an overhead, we are going to use it because is simpler and easy to implement instead of create a custom protocol like exits on redis, mysql, etcd or another database , and is pretty easy to test.
 
 Example using curl
 
@@ -27,7 +27,7 @@ Example get value by key
 curl http://localhost:8000/get?key=foo
 ```
 
-Glossaryhttps://github.com/ernesto27/system-design/tree/master/keyvaluedb/tutorial
+Glossary https://github.com/ernesto27/system-design/tree/master/keyvaluedb/tutorial
 
 - Create go project
 - Create engine package
@@ -42,17 +42,16 @@ Glossaryhttps://github.com/ernesto27/system-design/tree/master/keyvaluedb/tutori
 - Update database files path
 
 
-I am not expend much time explaining things abouts golang sintax so i assume that you have go installed, you have basic knowledge of the language and at least create some basic project , if not please check the official documentation https://golang.org/doc/
+I am not expend much time explaining things abouts golang sintax so i assume that you have go installed, you have basic knowledge of the language and at least create some basic project, if you need a refresh take a look here https://gobyexample.com/.
 
 ### Create go project
-
-To start this project create a new folde called "keyvaluedb" go into that and create a new go module with the name keyvaluedb ( you can change this name for the name you want, is not important at this moment)
+To start this project create a new folde called "keyvaluedb" go into that and create a new go module with the name keyvaluedb ( you can change this name for the name you want, if you do that remberber imports path where import local files)
 
 ```bash
 mkdir keyvaluedb && cd keyvaluedb && go mod init keyvaluedb
 ```
 
-Add a new file main.go and paste or write the following code to check at least that everything is working
+Add a new file main.go and paste or write the following code to check at least that everything is working fine.
 
 main.go
 ```go
@@ -69,10 +68,10 @@ func main() {
 Run the project
 
 ```bash
-go run main.go
+go run main.go 
 ```
 
-You should see the message Hello world print in the console.
+You should see the message Hello world print in the console, if not check your golang installation https://go.dev/doc/install.
 
 ### Create engine package
 
@@ -114,15 +113,15 @@ func (e *Engine) Get(key string) (string, error) {
 
 ```
 
-This code create a new struct called Engine, this will contain the data of the database, in this case we will use a simple map to store the data in memory, we will add persistence on a file later.
+This code create a new struct called Engine, this will contain the data of the database, in this case we will use a simple map to store the data in memory, later we will add persistence on a file.
 
-The NewEngine function will create a new instance of the Engine struct, the important thing here is notice that we initialize the data map with make, this is important because if we don't do this the map will be nil and we will get a panic when we try to add a new key value pair.
+The NewEngine function create a new instance of the Engine struct, the important thing here is notice that we initialize the data map with make, this is a must because if we don't do this, the map will be nil and we will get a panic when we try to add a new key value pair.
 
 The struct has two methods, Set and Get, Set will add a new key value pair to the map and Get will return the value of a key if exists, 
 if key not exists return an error.
 
 
-add this on main.go
+In order to check , add this on main.go
 
 ```go
 
@@ -131,10 +130,9 @@ func main() {
     e.Set("foo", "bar")
     value, err := e.Get("foo")
     if err != nil {
-        fmt.Println(err)
+        panic(err)
     }
     fmt.Println(value)
-
 }
 
 ```
@@ -146,10 +144,10 @@ go run main.go
 ```
 
 
-This create a new instance on Engine,  set a new key value pair and get the value of the key, if the key not exists return an error, if everything works fine print the value on the console.
+This create a new instance on Engine,  set a new key value pair and get the value of the key, if the key not exists, panic and print error, otherwise print the value on the console.
 
 ### Add tests
-Althoug we can use main.go for test the code,  is a good idea to create a test in order to check the code in a more professional, easy and stable way, is true that in this moment seems like an overkilll,  but because we will add more features to the code is a good idea to have automated tests from the beggining.
+Althoug we can use main.go for test the code, is a good idea to start using tests in order to check the code in a more consice, easy and stable way, is true that in this moment seems like an overkill,  but because we will add more features to the code is a good idea to have automated tests from the beggining and check all with a single command.
 
 Create a new file engine_test.go and add the following code
 
@@ -178,12 +176,12 @@ func Test_SetGetKeyValue(t *testing.T) {
 
 ```
 
-This code create a new test function called Test_SetGetKeyValue, this function create a new instance of the Engine struct, set a new key value pair and get the value of the key, if the value is not the expected return an error, also test that if we try to get a key that not exists return an error, 
+This code create a new test function called Test_SetGetKeyValue, this function has a new instance of the Engine struct, set a new key value pair and get the value of the key, if the value is not the expected return an error, 
 we use the testing native native golang package to tests, we are not going to use any external libraries.
 
 
 ### Persist data on disk
-At the moment we only store key, value on memory, that works fine, but the problem is that if we restart the server or if a crash happened we lost all the data, in order to prevent the data we will save the key, value pair on file ,  this key value will be separate by a space and we separate items by a new line,  for example
+At the moment we only store key, value on memory, that works fine, but the problem is that if we for example restart the server or if a crash happened we lost all the data that we previously saved using Set method, in order to prevent that, the key/value data will be save on a file,  this key value will be separate by a space and we differenciate items by a new line,  for example
 
 data.txt
 
@@ -194,9 +192,11 @@ user1 {"id": 1, "name": "ernesto"}
 ```
 
 #### Set data on file 
-Update the Set method to save the data on file, the idea is to append the data at end of the file,  using a concept called append only file, this is a common pattern used in databases like redis, etcd, etc, where information can only be added or appended and not modified or deleted
+We are goint to update the Set method to save the data on file, the idea is to append the data at end of the file,  using a concept called append only file, this is a common pattern used in  some databases, where information can only be added or appended and not modified or deleted.
 https://en.wikipedia.org/wiki/Append-only
 
+
+engine.go
 
 ```go
 type Engine struct {
@@ -246,78 +246,31 @@ In this code we update the Engine structs with two new properties.
 file: this property is a pointer to a os.File, this is used to read and write data from a file.
 mu: this is for prevent concurrency problems when we write data to the file, 
 
-In the  NewEngine function we open the file in read and write mode, and configure to append data to the file when writing. 
-if the file not exists create a new one, we also initialize the mutex property.
+In the  NewEngine function we open the file in read and write mode, and configure to append data to the file when writing, if the file not exists create a new one, we also initialize the mutex property.
 
-In the Set function we use Lock in order to prevent problems when we write data to the file on this critical section of code, we use defer to unlock the mutex when the function finish.
+In the Set function we use Lock in order to prevent problems when we write data, this is a must if we want to prevent conflicts if multiple clients try to write data to this file in the same moment, we use defer function to unlock the mutex when the Set method finish.
 
-After we use the Seek function to move the cursor to the end of the file, this is because we want always to append data to the file.
+After we use the Seek function to move the cursor to the end of the file, this is because we need to append data to the file.
 
 Finally we use the WriteString function to write the key value pair to the file, we also add a new line at the end of the string, this is because we want to separate the key value pair by a new line.
 
 
 
 ### Get data from key
-Previusly we access to data from key using a map, this is because we saved the the value on memory, this works fine but because now we are saving the data on a file we should search the data here.
+Previusly we access to data from key using a map, this is because we saved the the value on memory, this works but because now we are saving the data on a file we should search the data there.
 
-We will continue uses a map to store key, but we will change the type of the value,  instead of save the string value,  we will save the byte offset of the value on the file, with this we can go directly to a offset in the file  ,another option could be to loop over the file and search the value, but this will be O(n) time complexity and if we a lot of entries this could be pretty slow and inefficient.
+We will continue uses a map to store key, but we will change the type of the value,  instead of save the string value,  we will save the byte offset of the value on the file, with this we can go directly to a offset in the file, another option could be to loop over the file and search the value, but this will be an O(n) time complexity notation type, so if we a lot of entries that could be pretty slow and inefficient.
 
-we have to make this changes
-engine.go
+we have to make changes in engine.go
 
 ```go
+
 type Engine struct {
 	data map[string]int64
 	file *os.File
 	mu   sync.Mutex
 }
 
-func NewEngine() (*Engine, error) {
-	file, err := os.OpenFile("data.txt", os.O_RDWR|os.O_CREATE|os.O_APPEND, 0644)
-	if err != nil {
-		fmt.Println("Error opening file data:", err)
-		return nil, err
-	}
-
-	return &Engine{
-		data: make(map[string]int64),
-		file: file,
-		mu:   sync.Mutex{},
-	}, nil
-}
-
-func (e *Engine) Set(key, value string) error {
-	e.mu.Lock()
-	defer e.mu.Unlock()
-
-	offset, err := e.file.Seek(0, io.SeekEnd)
-	if err != nil {
-		fmt.Println("Error seeking file:", err)
-		return err
-	}
-
-	_, err = e.file.WriteString(key + keyValueSeparator + value + "\n")
-	if err != nil {
-		fmt.Println("Error appending text:", err)
-		return err
-	}
-
-	e.data[key] = offset
-	return nil
-}
-
-```
-
-In this code we change the type of the data map from string to int64 in order to save the offset of key, 
-also in the Set we obtaint the offset using the Seek function and save it on the map after write the data to the file,
-we use the io.SeekEnd parameter to move the cursor to the end of the file, remember that we always want to append data to end of the file,
-with this approach if you use set multiple times with the same key the value will be append to the file and multiple entries with the same 
-key will be created, we are going to fix that duplication data problem later.
-
-
-We must update the Get function on engine.go
-
-```go
 func (e *Engine) Get(key string) (string, error) {
 	e.mu.Lock()
 	defer e.mu.Unlock()
@@ -355,6 +308,7 @@ func (e *Engine) Get(key string) (string, error) {
 	return string(content), nil
 }
 ```
+
 
 We use the Seek function to move the cursor to the offset of the key, we also add a logic that we will check next,
 for example if we have the key-value "foo bar",
@@ -1279,4 +1233,6 @@ https://github.com/ernesto27/system-design/tree/master/keyvaluedb/tutorial
 
 ### Conclusion
 
+In this tutorial we finished a very simple implementation of a key value store, althoug you must use in production a real and stable Database,  is a good exercise to understand how things are made from scracth and understand concepts that help us how to choose hour next database for some project.  
+we used a lot of concepts like concurrency, mutex, file write/read, http server, etc.
 
