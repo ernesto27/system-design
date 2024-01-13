@@ -140,7 +140,7 @@ func main() {
 Run the project using 
 
 ```bash
-go run main.go
+go run .
 ```
 
 
@@ -179,6 +179,12 @@ func Test_SetGetKeyValue(t *testing.T) {
 This code create a new test function called Test_SetGetKeyValue, this function has a new instance of the Engine struct, set a new key value pair and get the value of the key, if the value is not the expected return an error, 
 we use the testing native native golang package to tests, we are not going to use any external libraries.
 
+Run tests 
+
+```bash
+go test
+```
+
 
 ### Persist data on disk
 At the moment we only store key, value on memory, that works fine, but the problem is that if we for example restart the server or if a crash happened we lost all the data that we previously saved using Set method, in order to prevent that, the key/value data will be save on a file,  this key value will be separate by a space and we differenciate items by a new line,  for example
@@ -200,7 +206,7 @@ engine.go
 
 ```go
 type Engine struct {
-	data map[string]string
+	data map[string]int64
 	file *os.File
 	mu   sync.Mutex
 }
@@ -215,7 +221,7 @@ func NewEngine() (*Engine, error) {
 	}
 
 	return &Engine{
-		data: make(map[string]string),
+		data: make(map[string]int64),
 		file: file,
 		mu:   sync.Mutex{},
 	}, nil
@@ -225,7 +231,7 @@ func (e *Engine) Set(key, value string) error {
 	e.mu.Lock()
 	defer e.mu.Unlock()
 
-	_, err := e.file.Seek(0, io.SeekEnd)
+	offset, err := e.file.Seek(0, io.SeekEnd)
 	if err != nil {
 		fmt.Println("Error seeking file:", err)
 		return err
@@ -237,39 +243,30 @@ func (e *Engine) Set(key, value string) error {
 		return err
 	}
 
-	e.data[key] = value
+	e.data[key] = offset
 	return nil
 }
 ```
 
-In this code we update the Engine structs with two new properties.
+In this code we update the Engine structs:
+data: change the type of value map to a int64 instead of a string.
 file: this property is a pointer to a os.File, this is used to read and write data from a file.
 mu: this is for prevent concurrency problems when we write data to the file, 
 
-In the  NewEngine function we open the file in read and write mode, and configure to append data to the file when writing, if the file not exists create a new one, we also initialize the mutex property.
-
-In the Set function we use Lock in order to prevent problems when we write data, this is a must if we want to prevent conflicts if multiple clients try to write data to this file in the same moment, we use defer function to unlock the mutex when the Set method finish.
-
+In the  NewEngine function we open the file in read and write mode and configure to append data to the file when writing, if the file not exists create a new one, we also initialize the mutex property and initialize a map data structure.
+In the Set function we use Lock in order to prevent problems when we write data, this is a must if we want to prevent conflicts when multiple clients try to write data to this file in the same moment, we use defer function to unlock the mutex when the Set method finish.
 After we use the Seek function to move the cursor to the end of the file, this is because we need to append data to the file.
-
-Finally we use the WriteString function to write the key value pair to the file, we also add a new line at the end of the string, this is because we want to separate the key value pair by a new line.
-
+We use the WriteString function to write the key value pair to the file, we also add a new line at the end of the string, this is because we want to separate the key value pair by a new line.
+Finally we now set the value of the map data with the value of the offset return by the Seek function,  remember that with this new approach we need to search the  data value on a file and not on memory.
 
 
 ### Get data from key
-Previusly we access to data from key using a map, this is because we saved the the value on memory, this works but because now we are saving the data on a file we should search the data there.
+Previusly we access to data directly for the map structure on memory, because in the previous step we start to save data in file ,  we need to change the Get method.
 
-We will continue uses a map to store key, but we will change the type of the value,  instead of save the string value,  we will save the byte offset of the value on the file, with this we can go directly to a offset in the file, another option could be to loop over the file and search the value, but this will be an O(n) time complexity notation type, so if we a lot of entries that could be pretty slow and inefficient.
 
-we have to make changes in engine.go
+engine.go
 
 ```go
-
-type Engine struct {
-	data map[string]int64
-	file *os.File
-	mu   sync.Mutex
-}
 
 func (e *Engine) Get(key string) (string, error) {
 	e.mu.Lock()
@@ -309,18 +306,45 @@ func (e *Engine) Get(key string) (string, error) {
 }
 ```
 
+We validate if key exists on data map structure, if not exists, returns an error,
+we use the Seek function to move the cursor to the offset of the key that is required by parameter on the method,
+for example if we have the key-value "foo bar" saved on disk
+we have to obtian the offset for key saved on the data map , plus the len of the key bar (4) plus (1) for the space separator, after that we have the cursor at the start of the value.
 
-We use the Seek function to move the cursor to the offset of the key, we also add a logic that we will check next,
-for example if we have the key-value "foo bar",
-we have to obtaint the offset for key saved on the data map , plus the len of the key bar (4) plus (1) for the space separator, after that we have the cursor at the start of the value.
-
-```bash
+```go
 _, err := e.file.Seek(e.data[key]+int64(len(key))+1, 0)
 ```
+after call this Seek method, the cursor of the file is at the start of the value of the key, with our example that should be on start of "bar"
 
-Next we create a buffer of 1 byte, this is because we need to read the file byte by byte, we also create a content variable to save the value of the key, we use a for loop to read the file, if we found a new line or we reach the end of the file we break the loop, if not we append the byte to the content variable.
 
-If we run test, everything should be working fine.
+Next we create a buffer of 1 byte, this is because we need to read the file byte by byte, we also create a content variable to save the value of the key in a slice of bytes, next we use a for loop to read the file, if we found a new line or reach the end of the file we break the loop, otherwise we append the byte to the content variable,
+lastly the end of the method we transform the byte slice to a string and return the value.
+
+
+Because we are now returning an error on the NewEngine function we should update our tests.
+engine_test.go 
+
+```go
+func Test_SetGetKeyValue(t *testing.T) {
+	e, _ := NewEngine()
+	e.Set("foo", "bar")
+	value, err := e.Get("foo")
+	if err != nil {
+		t.Error(err)
+	}
+	if value != "bar" {
+		t.Error("value should be bar")
+	}
+
+	_, err = e.Get("notfound")
+	if err == nil {
+		t.Error("should return error")
+	}
+
+}
+```
+
+If now run tests, everything should be working fine.
 
 ```bash
 go run test
@@ -329,7 +353,7 @@ go run test
 
 ### Compact data from file
 
-At this moment we have a problem, if we use the Set function multiple times with the same key, the value will be append to the file and multiple entries with the same key will be created, we need to fix this problem, although the map will always return the last value of the key, we need to clean the file for old entries.
+At this moment code is working well but we have a problem with the data, if we use the Set function multiple times with the same key, the value will be append to the file and multiple entries with the same key will be created, although the map will always return the last value of the key, we need to fix this problem and clean the file for old unused entries.
 
 
 We need some refactor , first create a Compact function on engine.go
@@ -343,21 +367,6 @@ func (e *Engine) CompactFile() {
 		time.Sleep(time.Duration(Seconds) * time.Second)
 		fmt.Println("Compacting file...")
 		e.mu.Lock()
-
-		tempFile, err := os.OpenFile("temp.txt", os.O_RDWR|os.O_TRUNC|os.O_CREATE, 0644)
-		if err != nil {
-			fmt.Println("Error creating backup file:", err)
-			e.mu.Unlock()
-			continue
-		}
-
-		_, err = io.Copy(tempFile, e.file)
-		if err != nil {
-			fmt.Println("Error copying file contents to backup file:", err)
-			e.mu.Unlock()
-			tempFile.Close()
-			continue
-		}
 
 		_, m := e.GetMapFromFile()
 
@@ -374,18 +383,19 @@ func (e *Engine) CompactFile() {
 
 		e.file.Seek(0, 0)
 		e.mu.Unlock()
-		tempFile.Close()
 	}
 }
 ```
 
-This function will executes as a background job using a goroutine,  for example
+This method will be run as a background job using a goroutine, like this 
 
 ```bash
 go e.CompactFile()
 ```
 
-This function will execute every 5 seconds,  first we create a new file called temp.txt, this file will be used as a backup of the original file, we copy the content of the original file to the temp file, after that we get the map of the file using the GetMapFromFile function, after that we truncate the file, after that we loop over the map and use the setRaw function to write the data to the file, finally we move the cursor to the start of the file and unlock the mutex for future uses, if we have any error we must unlock the mutex and continue with the loop.
+We get the map of the file using the GetMapFromFile method,  next we truncate the original file,
+after that we loop over the map data and use the setRaw function to write the data to the file, finally we move the cursor to the start of the file and unlock the mutex for future uses, if we have any error we must unlock the mutex and continue with the loop.
+that works because the map data only have the latests and valid key values pairs.
 
 
 Add function GetMapFromFile in engine.go
@@ -395,6 +405,7 @@ Add function GetMapFromFile in engine.go
 type Item struct {
 	Key    string
 	Value  string
+	Offset int64
 }
 
 func (c *Engine) GetMapFromFile() ([]Item, map[string]string) {
@@ -407,16 +418,19 @@ func (c *Engine) GetMapFromFile() ([]Item, map[string]string) {
 		return i, m
 	}
 
+	var totalBytesRead int64
 	scanner := bufio.NewScanner(c.file)
 
 	for scanner.Scan() {
 		line := scanner.Text()
+		offset := totalBytesRead
 		parts := strings.Split(line, keyValueSeparator)
 		if len(parts) >= 2 {
 			m[parts[0]] = parts[1]
 			i = append(i, Item{
 				Key:   parts[0],
 				Value: parts[1],
+				Offset: offset,
 			})
 		}
 	}
@@ -425,9 +439,12 @@ func (c *Engine) GetMapFromFile() ([]Item, map[string]string) {
 }
 ```
 
-We created a Item struct for the key, value data,  on the GetMapFromFile function we create a map and a slice of Item, after that we move the cursor to the start of the file, after that we use a scanner to read the file line by line, we split the line by the space separator and save the key, value on the map and the slice of Item, finally we return the slice of Item and the map for later uses.
+We created a Item struct for the key, value data, on the GetMapFromFile method we create a map and a slice of Item, after that we move the cursor to the start of the file and we use a scanner to read the file line by line, we split the line by the space separator and save the key, value on the map and the slice of Item, finally we return the slice of Item and the map for later uses.
 
-add this functions and refactor code on engine.go
+We need to set the offset value on the Item struct, this is the value of the key map struct the we use to get items from database, we created a totalBytesRead variable that will be used to calculate the offset of the key, to obtain that we sum the len of the line plus one for the new line character, on every iteration of the loop we set the offset value and create a Item struct.
+
+
+update methods in engine.go
 
 ```go
 func (e *Engine) Set(key string, value string) error {
@@ -472,13 +489,39 @@ func (c *Engine) saveToFile(key string, value string) (int64, error) {
 }
 ```
 
-On set function we check if the key contains spaces, we must do that because we use a blank space as a separator of key, value on the file, 
-after we call a function call setRaw, that uses other functions .
+On set function we check if the key contains spaces, we must do that because we use a blank space as a separator of key/value on the file, next we call a method call setRaw, that uses this other methods.
 
 saveToFile: this function save data in file and return the offset of the key on the file.
 setKey: this function save the key and value offset on the map.
 
-To check this create a new test
+
+Add this test on engine_test.go
+
+```go
+func (c *Engine) GetFileContent(f *os.File) []string {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	_, err := f.Seek(0, 0)
+	if err != nil {
+		fmt.Println(err)
+		return []string{}
+	}
+
+	scanner := bufio.NewScanner(f)
+
+	var content []string
+	for scanner.Scan() {
+		line := scanner.Text()
+		content = append(content, line)
+	}
+
+	return content
+}
+```
+We also add a method call GetFileContent, this is a helper function that we use to get the content of a file, we use this function on the tests.
+
+To check all this changes create a new test
 
 engine_test.go
 
@@ -505,7 +548,7 @@ func TestEngine_Compact(t *testing.T) {
 ```
 
 First we remove the data.txt file, later we will fix that and uses another specific file for testing, 
-After we set some repeated with diferent values, this will create a file wit this data
+After we set some repeated keys with diferent values, this will create a file with this data
 
 ```
 key1 value1
@@ -515,11 +558,9 @@ key2 latestvalue2
 key3 value3
 ```
 
-we see that we have key and key repeated, in order to clean that we call the CompactFile function using a goroutine, this runs every 5 seconds.
-we wait for that to run and check count of lines/data on the data.file.
-
+we see that we have some keys repeated, in order to clean that we call the CompactFile function using a goroutine, this runs every 5 seconds.
+we wait for that to run and check count of lines/data on the data.txt file, 
 that should be 3, and have this data.
-
 
 ```
 key1 latestvalue1
@@ -535,9 +576,8 @@ go test
 ```
 
 ### Restore data from file on restore/start
-
-At this moment the project works fine, we can set, get value and run tests withour a problem, but we have a problem, if we restart or the server/process crash, we lost all the data on memory, especifically on the map.
-we need to restore the data that is saved on the filed to the map.
+At this moment the project works fine, we can set, get value and run tests, but we have something to pay attention, if we restart or the server/process crash, we lost all the data on memory, especifically key value saved on map structure.
+we need to restore the data that is saved on the file on the map memory in order to Set method workd normally.
 
 add this function on engine.go
 
@@ -560,9 +600,11 @@ func (c *Engine) Close() {
 
 ```
 
-This function read data from database file and get a map calling the function GetMapFromFile, after that we loop over the map and save the key, value on the map,  also add a function that close the file descriptor to prevent memory leaks.
+This method read data from database file and get a map calling the method GetMapFromFile, after that we loop over the map and save the key, value on the map using the setKey method that we create before, like in all methods that write or read a file we use a mutex to prevent concurrency problems.
 
-We need to call the function restore after get a Engine object, add this tests on engine_test.go
+The Close method close the file when program finish, this is necessary to prevent memory leaks.
+
+Add this tests on engine_test.go.
 
 ```go
 func TestEngine_Restore(t *testing.T) {
@@ -583,8 +625,8 @@ func TestEngine_Restore(t *testing.T) {
 	}
 }
 ```
-in this test we remove the data.txt file, after that we set some values, close the file and create a new Engine object (this simulates the creation of a new instance after crash), after that we call the Restore function and get the value of a key, if the value is not the expected return an error.
-Check this test also removing the call to e.Restore, you should see an error because the key not exists on the map.
+in this test we remove the data.txt file, after that we set some values, close the file and create a new Engine object (this simulates the creation of a new instance after a crash), next we call the Restore function and get the value of a key, if the value is not the expected return an error.
+
 
 
 
@@ -635,10 +677,9 @@ func NewEngine() (*Engine, error) {
 
 ```
 
-First we add a new property on Engine struct called fileDelete, this is a pointer to a os.File, this file will be used to save the keys that need to be deleted, we also add a new mutex called muDelete, this is needed to prevent concurrency problems when we write data to the file.
+First we add a new property on Engine struct called fileDelete, this is a pointer to a os.File, this will be used to save the keys that need to be deleted, we also add a new mutex called muDelete.
 
-
-Also add this new functions
+Add this new method on engine.go
 
 ```go
 func (e *Engine) Delete(key string) error {
@@ -658,16 +699,16 @@ func (e *Engine) Delete(key string) error {
 
 	e.mu.Lock()
 	defer e.mu.Unlock()
-	delete(e.m, key)
+	delete(e.data, key)
 
 	return nil
 }
 
 ```
 
-In this function we fist lock our delete file mutex, after that we move the cursor to the end of the file and write the key that we obtaint for the parameter.
-If everything works fine we delete the key from the map, using the other mutex.
-We use defer keyword to unlock the mutex, this assures that the unlock will be called after the function finish.
+In this function we fist lock our delete file mutex, after we move the cursor to the end of the file and write the key that we obtain from the parameter, is the same approach that we use when we save key/value data on the other file.
+If everything works fine we delete the key from the map, here we must use the other mutext because we are making changes on the map structure of data,
+
 
 Add test for this 
 
@@ -698,10 +739,10 @@ func TestEngine_DeleteKey(t *testing.T) {
 }
 
 ```
-We add remove for the delete file in order to have a clean state on tests, 
-after that we set some values, delete one of them and check that the key not exists on the map, lastly check that the delete file has one entry.
+We add remove call for the delete file in order to have a clean state on tests, 
+after that we set some values, delete one of them and check that the key not exists on the map, lastly check that the delete file has only one entry.
 
-At the moment we delete the item for the map and add a entry on the delete.txt file,  but at the moment we are not doing anyting with the data.txt file, for that matter we need to create a couple of function that resolves that.
+At the moment we delete the item for the map and add a entry on the delete.txt file,  but  we are not doing anyting with the data.txt file, for that matter we need to create a couple of function that resolves that.
 
 ```go
 
@@ -748,9 +789,9 @@ func (e *Engine) DeleteFromFile() {
 }
 ```
 
-This function runs on background and will be called using a goroutine, 
-we create a variable secondsDelete that will be used to configure the time that the function will wait to run again,
-After we create a loop that uses the mutex created for the delete file, 
+This method runs on background and will be called using a goroutine, 
+we create a variable secondsDelete that will be used to configure the time that the method will wait to run again,
+after we create a loop that uses the mutex created for the delete file, 
 read the file line by line and save the content on a slice of string, after  we call a function called deleteKeyFromFile ( next to analyse ) that will make the changes in order to delete the keys found on the data.txt
 finally we truncate the delete file and unlock the mutex.
 
@@ -810,14 +851,13 @@ func (c *Engine) deleteKeyFromFile(keys []string) error {
 	return nil
 }
 ```
-This is a long function,  we explain step by step what we do here.
-the keys parameter is a slice of string that contains the keys that need to be deleted, 
+This method recieved a keys parameters, this is a slice of string that contains the keys that need to be deleted, 
 we lock the mutex of the data.txt file, after that we move the cursor to the start of this file, 
 we  also create a buffer variable of bytes, this will be used to get the items that not need to be deleted,
 we check that looping on the keys parameter and validating key of the data.txt,
 if variable found is false we use the writeString function to write the line to the buffer, otherwise we continue with the loop.
 
-After that we have the variable buffer with the data that not be deleted, we move the cursor to the start of the file, truncate the file and finally copy the content of the buffer on the data.txt.
+After that we have the variable buffer with the data that is not mark to be deleted, we move the cursor to the start of the file, truncate that and finally copy the content of the buffer on the data.txt.
 
 add this test
 
@@ -844,8 +884,7 @@ This test create some keys and call the deleteKeyFromFile function with two keys
 
 
 ### Create HTTP service
-
-At the moment we are testing the code of engine.go using tests, that is great because you can check all the feautures of the project with a single command and gain more trust in your code,  but we do not have any service or way to interact with our database, in order to change that, we are going to create a simple http server, we will expose three endpoint to create, get and delete keys on the database.
+At the moment we are testing the code of engine.go using tests, that is great because you can check all the feautures d the project with a single command and gain more confidence in your code when you need to make changes or updates,  but we do not have any service or way to interact with our database from external clients, in order to change that, we are going to create a simple http server, we will expose three endpoint to create, get and delete keys on the database.
 
 On main.go add this code.
 
@@ -882,7 +921,7 @@ func main() {
 	address := ":8080"
 
 	fmt.Printf("Server is listening on http://localhost%s\n", address)
-	err := http.ListenAndServe(address, nil)
+	err = http.ListenAndServe(address, nil)
 	if err != nil {
 		fmt.Println("Error:", err)
 	}
@@ -890,56 +929,19 @@ func main() {
 
 ```
 
-In this code we create three functions that will be used as handlers for the http server, at the moment are empty we will change that in the future.
+In this code we create three functions that will be used as handlers for the http server, at the moment are empty, we will change that in the future.
 On main function we first create a instance of the Engine DB ( we use a global e variable to get a more easy access on the handlers) and panic if there is an error, 
 after we call the restore function, we have to run this with the service start in order to recover for crashes or error,  this get the data from the file and save it on the map data structure,   
-next we call the CompactFill, and DeleteFromFIle on background using a goroutine,
-CompactFill will remove duplicate values on the database, 
+next we call the CompactFile, and DeleteFromFile on background using a goroutine,
+CompactFill will remove duplicate values on the file database, 
 DeleteFromFIle will remove keys-value from the file database,
 Lastly we create the routes on the http server and start on port 8080.
 
 
-We need a change on the engine.go, in order to restore works correctly
-
-```go
-func (c *Engine) GetMapFromFile() ([]Item, map[string]string) {
-	m := make(map[string]string)
-	i := []Item{}
-
-	_, err := c.file.Seek(0, 0)
-	if err != nil {
-		fmt.Println(err)
-		return i, m
-	}
-
-	var totalBytesRead int64
-	scanner := bufio.NewScanner(c.file)
-
-	for scanner.Scan() {
-		line := scanner.Text()
-		offset := totalBytesRead
-		parts := strings.Split(line, keyValueSeparator)
-		if len(parts) >= 2 {
-			m[parts[0]] = parts[1]
-			totalBytesRead += int64(len(line) + 1)
-			i = append(i, Item{
-				Key:    parts[0],
-				Value:  parts[1],
-				Offset: offset,
-			})
-		}
-	}
-
-	return i, m
-}
-```
-
-We need to set the offset value on the Item struct, this is the value of the key map struct the we use to get items from database, we created a totalBytesRead variable that will be used to calculate the offset of the key, to obtain that we sum the len of the line plus one for the new line character, on every iteration of the loop we set the offset value and create a Item struct.
-
 
 #### Update handlers
 
-We must update the handlers create previously on main.go,  the basic idea is to use the methods of the engine file and respond a JSON on an endpoint http.
+We must update the handlers create previously on main.go,  the basic idea is to use the methods of the engine file and respond a JSON in an endpoint http.
 
 main.go
 ```go
@@ -1005,7 +1007,7 @@ func responseJSON(w http.ResponseWriter, data interface{}, status int) {
 
 ```
 
-We created a few new structs,  RequestPayload is needed to decode the JSON payload sent by the client
+We created a few new structs, RequestPayload is needed to decode the JSON payload sent by the client
 and Response is used to send a JSON response to the client.
 In the function handlerSet we first check the method of the request, if is not a POST request we return an error, 
 We read the Body of the request and decode the JSON payload to the RequestPayload struct and check for errors,
@@ -1019,7 +1021,7 @@ We can test this using curl
 ```bash
 go run .
 
-curl -X POST -H "Content-Type: application/json" -d '{"key": "mykey", "value": "from curl"}' http://localhost:8080/set
+curl -X POST -H "Content-Type: application/json" -d '{"key": "mykey", "value": "myvalue"}' http://localhost:8080/set
 ```
 
 This should return a json success message and save data on the data.txt database file
@@ -1058,6 +1060,7 @@ next we get the key from the query params and uses the Get function of the engin
 Test with curl 
 
 ```bash
+go run .
 curl http://localhost:8080/get?key=mykey
 ```
 
@@ -1092,6 +1095,7 @@ This function is very similar to the Get function, the only difference is that w
 test in curl 
 
 ```bash
+go run .
 curl -X DELETE http://localhost:8080/delete?key=mykey
 ```
 
@@ -1099,13 +1103,20 @@ curl -X DELETE http://localhost:8080/delete?key=mykey
 ### Update database files path
 
 Currently we have the project running using tests and also exposing a http server, this works we have some problems with this approach.
-We use the same files for tests and for the server, so when we run a test we are modifying and deleting the data created via API endpoints.
-The file is save relative to the current path in which the project is running, this is not a good,  because if we start the service from another path we will create a new Database file.
+We are using the same files for tests and for the server, so when we run a test we are modifying and deleting the data created via API endpoints.
+The file is save relative to the current path in which the project is running, this is not a good thing,  because if we start the service from another path we will create a new Database file.
 
 To fix that we we use this approach, 
-in tests, we must define the name of the files data and delete.txt and for the server we will the path of the current user running the project, and save this on a folder called .config/keyvaluedb 
+in tests, we must define the name of the files data and delete and for the server and not tests instances we must use the path of the current user running the project, and save this on a folder called keyvaluedb the lives in .config home user folder.
 
-The .config values is uses for multiple applications to save data,  for example discord, chrome, VirtualBox, etc save files on this place
+The .config values is uses for multiple applications to save data,  for example discord, chrome, VirtualBox, etc save files on this place.
+
+Check in your machine with this command
+
+```bash
+ls ~/.config
+```
+
 
 update engine.go
 
@@ -1172,10 +1183,10 @@ func getConfigFolder() (string, error) {
 
 ```
 
-We add a Config struct , this will help us for set file data and delete on testing,  NewEngine function now receives a config struct as a parameter,  if the file data and delete,  we use the current user path /.config/keyvaluedb to save data, 
-we use the function getConfigFolder to get the path of the current user,  back on NewEngine we check if that folder exists and if not we create it, after that we set the path of the files using the config struct.
+We add a Config struct , this will help us for set file data and delete on testing,  NewEngine function now receives a config struct as a parameter,  if the file data and delete is not set ( empty strings default ),  we use the current user path /.config/keyvaluedb to save data of the application, 
+we use the function getConfigFolder to get the path of the current user, on NewEngine we check if that folder exists and if not we create it, after that we set the path of the files using the config struct.
 
-We need to update the tests to use the config struct
+We need to update the tests to check this.
 
 ```go
 
@@ -1212,13 +1223,13 @@ e, err = NewEngine(Config{})
 
 ```
 
-In this case we pass a empty config struct, this is for use the current path folder to save files.
+In this case we pass a empty config struct, we are going to use that for the http server.
 
 Run the server and save some data
 
 ```bash
 go run .
-curl -X POST -H "Content-Type: application/json" -d '{"key": "mykey", "value": "from curl"}' http://localhost:8080/set
+curl -X POST -H "Content-Type: application/json" -d '{"key": "mykey", "value": "bar"}' http://localhost:8080/set
 ```
 
 After that we can check the data.txt file on the path of the current user
@@ -1233,6 +1244,8 @@ https://github.com/ernesto27/system-design/tree/master/keyvaluedb/tutorial
 
 ### Conclusion
 
-In this tutorial we finished a very simple implementation of a key value store, althoug you must use in production a real and stable Database,  is a good exercise to understand how things are made from scracth and understand concepts that help us how to choose hour next database for some project.  
-we used a lot of concepts like concurrency, mutex, file write/read, http server, etc.
+In this tutorial we finished a very simple implementation of a key value store, although you must use in production a real and stable Database,  is a good exercise to understand how things are made from scatch and understand concepts that help us how to choose hour next database for some project.  
+we used a lot of concepts like concurrency, mutex, file write/read, http server, etc that would be very useful in other projects.
+
+
 
