@@ -3,6 +3,8 @@ package main
 import (
 	"context"
 	"fmt"
+	"io"
+	"log"
 	"os"
 	"time"
 
@@ -12,6 +14,7 @@ import (
 	"github.com/aws/aws-sdk-go/aws/request"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/s3"
+	"github.com/joho/godotenv"
 )
 
 // Uploads a file to S3 given a bucket and object key. Also takes a duration
@@ -26,11 +29,25 @@ import (
 //	# Upload myfile.txt to myBucket/myKey. Must complete within 10 minutes or will fail
 //	go run withContext.go -b mybucket -k myKey -d 10m < myfile.txt
 func main() {
-	var bucket, key string
+
+	// cmd := exec.Command("ffmpeg", "-i", "video.mp4", "-vf", "scale=1280:720", "output.mp4")
+	// err := cmd.Run()
+	// if err != nil {
+	// 	log.Fatal(err)
+	// }
+
+	err := godotenv.Load()
+	if err != nil {
+		log.Fatal("Error loading .env file")
+	}
+
+	// return
+
 	var timeout time.Duration
 
-	bucket = ""
-	key = ""
+	bucket := os.Getenv("AWS_S3_BUCKET")
+	key := os.Getenv("AWS_S3_ACCESS_KEY")
+	secret := os.Getenv("AWS_S3_SECRET")
 	timeout = 1000 * time.Second
 
 	// All clients require a Session. The Session provides the client with
@@ -40,7 +57,7 @@ func main() {
 	// more information.
 	sess := session.Must(session.NewSession(&aws.Config{
 		Region:      aws.String("us-west-2"),
-		Credentials: credentials.NewStaticCredentials("", "", ""),
+		Credentials: credentials.NewStaticCredentials(key, secret, ""),
 	}))
 
 	// Create a new instance of the service's client with a Session.
@@ -69,12 +86,35 @@ func main() {
 	}
 	defer file.Close()
 
+	o, err := svc.GetObject(&s3.GetObjectInput{
+		Bucket: aws.String(bucket),
+		Key:    aws.String("image1.jpg"),
+	})
+	if err != nil {
+		panic(err)
+	}
+
+	file, err = os.Create("download1.jpg")
+	if err != nil {
+		fmt.Println("Error creating file:", err)
+		return
+	}
+	defer file.Close()
+
+	_, err = io.Copy(file, o.Body)
+	if err != nil {
+		fmt.Println("Error copying data to file:", err)
+		return
+	}
+
+	return
+
 	// Uploads the object to S3. The Context will interrupt the request if the
 	// timeout expires.
 	_, err = svc.PutObjectWithContext(ctx, &s3.PutObjectInput{
 		Bucket:             aws.String(bucket),
 		Body:               file,
-		Key:                aws.String("image.jpg"),
+		Key:                aws.String("image1.jpg"),
 		ContentDisposition: aws.String("attachment"),
 	})
 	if err != nil {
