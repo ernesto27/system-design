@@ -44,8 +44,25 @@ export const handler = async (event) => {
           const output = execSync(`ffmpeg -y -i ${filePath} -vf scale=${resolution} -preset ${preset} -crf ${crf} ${outputFile}`, { encoding: 'utf-8' });
       
           console.log(output); // Print ffmpeg output for demonstration purposes
-      
-            console.log('ffmpeg process completed successfully.');
+          console.log('ffmpeg process completed successfully.');
+          
+          const videoBody = fs.readFileSync(outputFile);
+          try {
+            const destparams = {
+              Bucket: "",
+              Key: "myvideo.mp4",
+              Body: videoBody,
+              ContentType: "mp4"
+            };
+          
+            const putResult = await s3.send(new PutObjectCommand(destparams));
+            console.log(putResult)
+          
+          } catch (error) {
+            console.log(error);
+            return;
+          }
+        
         } catch (error) {
             console.error(`ffmpeg process exited with error: ${error.stderr}`);
         }
