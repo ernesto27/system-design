@@ -68,25 +68,18 @@ func getBucketList() *string {
 	return result.Buckets[0].Name
 }
 
-func convertFile() {
-	outputVideo := "/tmp/output.mp4"
-	out, err := exec.Command("ffmpeg", "-i", "/tmp/video.mp4", "-vf", "scale=640:480", outputVideo).Output()
+func convertFile(inputFile string, outputFile string) error {
+	out, err := exec.Command("ffmpeg", "-i", inputFile, "-vf", "scale=640:480", outputFile).Output()
 
 	if err != nil {
 		fmt.Printf("%s", err)
-		return
+		return err
 	}
 
 	fmt.Println("Command Successfully Executed")
 	res := string(out[:])
 	fmt.Println(res)
-
-	// out, err := exec.Command("ffmpeg", "-help").Output()
-	// if err != nil {
-	// 	fmt.Printf("%s", err)
-	// 	return
-	// }
-	// fmt.Println(string(out[:]))
+	return nil
 }
 
 func handlerTriggerS3Bucket(ctx context.Context, s3Event events.S3Event) error {
@@ -146,17 +139,22 @@ func handlerTriggerS3Bucket(ctx context.Context, s3Event events.S3Event) error {
 			return err
 		}
 
-		filename := "/tmp/video.mp4"
+		inputFile := "/tmp/input-" + key
+		outputFile := "/tmp/output-" + key
 		// Write the bytes to the file
-		err = os.WriteFile(filename, buf.Bytes(), 0644)
+		err = os.WriteFile(inputFile, buf.Bytes(), 0644)
 		if err != nil {
 			fmt.Fprintln(os.Stderr, err)
 			return err
 		}
 
-		convertFile()
+		err = convertFile(inputFile, outputFile)
+		if err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			return err
+		}
 
-		fileToUpload, err := os.ReadFile("/tmp/output.mp4")
+		fileToUpload, err := os.ReadFile(outputFile)
 		if err != nil {
 			fmt.Fprintln(os.Stderr, err)
 			return err
