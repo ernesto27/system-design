@@ -205,6 +205,91 @@ curl http://localhost:8080/upload
 ```
 
 
+# Create ECR container image repository
+On the AWS dashboard search for ECR and click on the first option that appears on the results, 
+select private access for the image and choose any name,  for other options use the default values and click on Create Repository
+
+![ecr](./ecr.png)
+
+We need to install the AWS cli on our machine,  this is necessary to authenticate to our AWS account and upload the image on the registry.
+So follow instructions on this page besides your SO.
+
+https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html 
+
+
+Before upload the image,  we must create a docker image of our application, for that matter create a Dockerfile file on the ecs folder.
+
+Dockerfile
+
+```Dockerfile
+# syntax=docker/dockerfile:1
+
+# Build the application from source
+FROM golang:1.22 AS build-stage
+
+WORKDIR /app
+
+COPY go.mod go.sum ./
+RUN go mod download
+
+COPY *.go ./
+
+RUN CGO_ENABLED=0 GOOS=linux go build -o /ecs-api
+
+FROM gcr.io/distroless/base-debian11 AS build-release-stage
+
+WORKDIR /
+
+COPY --from=build-stage /ecs-api /ecs-api
+COPY .env ./
+
+EXPOSE 80
+
+
+ENTRYPOINT ["/ecs-api"]
+```
+
+We use the multi build docker buildkit feature in this definition, 
+first we create a image call build-stage,  in this setup we use the official golang 1.21 version,  copy the go.mod and go.sum files and all the files .go files that we have in our project, finally create the binary of our application using go build command.
+
+The second image is the release image, we use the distroless base image,  this is a minimal image that only contains the necessary to run our application, this has the advantege that is more secure and lightweight than the offical,  also copy the binary create on the previous step, the .env file,  and expose the port 80 ( this is the value the we have to define on the .env file ),  the ENTRYPOINT value is the command that executes our binary.
+
+
+
+Create image
+
+```bash
+docker build -t ecs-api .
+```
+
+Run the API server on background and expose service on port 8080
+
+```bash
+docker run -d -p 8080:80 ecs-api
+```
+
+Test service using curl
+
+```bash
+curl localhost:8080
+```
+
+That sould return the version of the API server.
+
+#### Upload image to image registry
+Go to the details of the repository that we created before, click on option "View push commands",  this show the commands that we need to execute on our machine to authenticate and upload the image to the registry.
+
+This is the commands that we need to execute on our machine, for example something like this  .
+
+```bash
+aws ecr get-login-password --region us-west-2 | docker login --username AWS --password-stdin 99999.dkr.ecr.us-west-2.amazonaws.com
+
+docker build -t ecs-api .
+
+docker push 99999.dkr.ecr.us-west-2.amazonaws.com/aws-tutorial:latest
+```
+
+After a successful push,  we can see the image list on the ECR aws dashboard, 
 
 
 
