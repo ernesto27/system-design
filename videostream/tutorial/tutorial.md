@@ -289,7 +289,81 @@ docker build -t ecs-api .
 docker push 99999.dkr.ecr.us-west-2.amazonaws.com/aws-tutorial:latest
 ```
 
-After a successful push,  we can see the image list on the ECR aws dashboard, 
+After a successful push,  we can see the image list on the ECR aws dashboard, we see the URI of the image when, we need this value when we create a ECS service next,  so copy that value on some place.
+
+
+# ECS - Create Elastic Container Service
+ECS, or Amazon Elastic Container Service, is a fully managed container orchestration service provided by AWS. It allows developers to easily run, stop, and manage containers on a cluster. This service abstracts away the complexity of managing the underlying infrastructure, such as provisioning and scaling EC2 instances.
+
+Go to the ECS section on AWS dashboard using the search box, click on Create Cluster.
+Select any name you want, fot example something like "aws-tutorial",
+in the Infrastructure section select the option AWS Fargate, this is a serveless feature that allow us not worry about the overhead of the maintance of the machines,  mantain the other options with the default values and click on "Create".
+
+![cluster](./cluster.png)
+
+#### Create task definition
+
+We need to create a Task definition, this allow us to create a configuration for our  Docker containers, such as CPU, memory requirements, networking configuration, image URI, etc.
+
+Before create that, we must created a "Task execution role",  for that matter go to 
+IAM -> Access management -> Roles
+
+Select AWS service as en entity type, in the use case select "Elasctic Container Service" -> Elastic Container Service Task click on Next.
+
+In the permissions policies search box,  type or copy "AmazonECSTaskExecutionRolePolicy",  select that policy and click on Next.
+This is permission is required to access to other AWS services required by ECS.
+
+![role](./role-permission.png)
+
+Enter a role name and click on Create role, remember that value , because we will need that on next section.
+
+
+On the ECS dashboard, click on "Task Definitions" sidebar, after go to "Create new Task Definition".
+This is a very long form, with more of the options we will stick with the default values, but we need to change the following:
+
+Task definition family:
+Put a name for the task definition, for example "aws-tutorial-task"
+
+
+Infrastructure requirements:
+On Launch type select AWS Fargate Serverless,
+
+Operating system/Architecture:
+Select Linux/x86_64, this is the architecture of our docker image.
+
+**Task size**:
+
+Because this is a tutorial we are going to use the minimum values,  so put 1GB for memory and 0.5 vCPU, change this values if you need more resources for your application.
+
+**Task execution role**:
+
+Select the role that we created before,  this is required for pulls a image for ECR, save logs to CloudWatch and other actions that required ECS in order to works.
+
+**Container details**:
+
+Image URI:
+Select the URI of the image the we upload to ECR before.
+
+Port mappings:
+Check this specific values.
+port: 80
+
+Protocol: TCP
+
+App protocol: HTTP
+
+Leaves the other containers configurations with the default values.
+
+
+Storage, Monitoring and Tags are optional, so we can skip that sections and click on create
+
+
+
+
+
+
+
+
 
 
 
