@@ -301,7 +301,7 @@ in the Infrastructure section select the option AWS Fargate, this is a serveless
 
 ![cluster](./cluster.png)
 
-#### Create task definition
+### Create task definition
 
 We need to create a Task definition, this allow us to create a configuration for our  Docker containers, such as CPU, memory requirements, networking configuration, image URI, etc.
 
@@ -355,7 +355,58 @@ App protocol: HTTP
 Leaves the other containers configurations with the default values.
 
 
-Storage, Monitoring and Tags are optional, so we can skip that sections and click on create
+Storage, Monitoring and Tags are optional, so we can skip that sections and click on Create
+
+
+![ecs-container](./ecs-container.png)
+
+### Create service ECS
+
+On ECS dashboard, select the cluster the we created before,  go on service tabs and click on "Create" button.
+
+Environment configuration:
+
+**Application type**:
+
+Choose Service option, this is a best fit for our type of API long running application.
+
+**Task definition**:
+
+On Family select the Task definition that we created in the previous step,
+revisiion should selecte the last version of our task, 
+
+**Service Name**:
+
+Put a name for the service, for example "aws-tutorial-service"
+
+**Service type**;
+
+Choose replica ,this allow us to run multiple copies of our application,  and ECS will manage the load balancing and scaling for us.
+
+
+#### Networking
+On this section leave the VPC with the default values
+
+**Security group**:
+
+Our services run on HTTP port 80, for that reasons we must create a new setup with and onbound rule.
+
+Make sure that public IP on turned on, this is because we are not goind to use a Load Balancer in this tutorial,  so we need to access our service using the public IP of the machine.
+
+![security-group](./security-group.png)
+
+Leave other options with default values and click on "Create"
+
+On the cluster section, click on the Task tab service and go to the task attached to the service.
+
+On the task detail, look up for the PublicIP , test using curl
+
+```bash
+curl http://yourip/
+```
+That should return the api version response of our API service.
+
+
 
 
 
