@@ -62,7 +62,7 @@ func uploadToS3(name string, fileContent io.ReadSeeker) error {
 	timeout := 1000 * time.Second
 
 	sess := session.Must(session.NewSession(&aws.Config{
-		Region:      aws.String("us-west-2"),
+		Region:      aws.String(os.Getenv("AWS_S3_SECRET")),
 		Credentials: credentials.NewStaticCredentials(key, secret, ""),
 	}))
 

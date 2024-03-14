@@ -143,8 +143,8 @@ Create a .env file with this content.
 
 ```
 AWS_S3_BUCKET=your-bucket-name
-AWS_ACCESS_KEY_ID=your-access-key
-AWS_SECRET_ACCESS_KEY=your-secret-key
+AWS_ACCESS_KEY=your-access-key
+AWS_SECRET__KEY=your-secret-key
 AWS_REGION=your-region
 PORT=8080
 ```
@@ -286,7 +286,9 @@ aws ecr get-login-password --region us-west-2 | docker login --username AWS --pa
 
 docker build -t ecs-api .
 
-docker push 99999.dkr.ecr.us-west-2.amazonaws.com/aws-tutorial:latest
+docker tag ecs-api 99999.dkr.ecr.us-west-2.amazonaws.com/aws-tutorial:v0.0.1  
+
+docker push 99999.dkr.ecr.us-west-2.amazonaws.com/aws-tutorial:v0.0.1
 ```
 
 After a successful push,  we can see the image list on the ECR aws dashboard, we see the URI of the image when, we need this value when we create a ECS service next,  so copy that value on some place.
@@ -389,7 +391,7 @@ On this section leave the VPC with the default values
 
 **Security group**:
 
-Our services run on HTTP port 80, for that reasons we must create a new setup with and onbound rule.
+Our services run on HTTP port 80, for that reasons we must create a new config with and onbound rule.
 
 Make sure that public IP on turned on, this is because we are not goind to use a Load Balancer in this tutorial,  so we need to access our service using the public IP of the machine.
 
@@ -405,6 +407,147 @@ On the task detail, look up for the PublicIP , test using curl
 curl http://yourip/
 ```
 That should return the api version response of our API service.
+
+
+# Update API service 
+
+In order to uplaod a file to a S3 bucket we need to update our handler uploadFileHandler with this code.
+
+```go
+
+import (
+	"bytes"
+	"context"
+	"fmt"
+	"io"
+	"log"
+	"net/http"
+	"os"
+	"time"
+
+	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/aws/awserr"
+	"github.com/aws/aws-sdk-go/aws/credentials"
+	"github.com/aws/aws-sdk-go/aws/request"
+	"github.com/aws/aws-sdk-go/aws/session"
+	"github.com/aws/aws-sdk-go/service/s3"
+	"github.com/go-chi/chi"
+	"github.com/go-chi/chi/middleware"
+	"github.com/joho/godotenv"
+)
+
+func uploadFileHandler(w http.ResponseWriter, r *http.Request) {
+	// 10MB maximum file size
+	err := r.ParseMultipartForm(10 << 20)
+	if err != nil {
+		http.Error(w, "Failed to parse multipart form", http.StatusBadRequest)
+		return
+	}
+
+	file, fileHeader, err := r.FormFile("file")
+	if err != nil {
+		http.Error(w, "Failed to retrieve file from form data", http.StatusBadRequest)
+		return
+	}
+	defer file.Close()
+
+	fileBytes := bytes.Buffer{}
+	_, err = io.Copy(&fileBytes, file)
+	if err != nil {
+		http.Error(w, "Failed to read file content", http.StatusInternalServerError)
+		return
+	}
+
+	err = uploadToS3(fileHeader.Filename, bytes.NewReader(fileBytes.Bytes()))
+	if err != nil {
+		http.Error(w, "Failed to upload file to S3", http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+	w.Write([]byte("File uploaded successfully"))
+}
+
+func uploadToS3(name string, fileContent io.ReadSeeker) error {
+	bucket := os.Getenv("AWS_S3_BUCKET")
+	key := os.Getenv("AWS_ACCESS_KEY")
+	secret := os.Getenv("AWS_SECRET_KEY")
+	timeout := 1000 * time.Second
+
+	sess := session.Must(session.NewSession(&aws.Config{
+		Region:      aws.String(os.Getenv("AWS_REGION")),
+		Credentials: credentials.NewStaticCredentials(key, secret, ""),
+	}))
+
+	svc := s3.New(sess)
+
+	ctx := context.Background()
+	var cancelFn func()
+	if timeout > 0 {
+		ctx, cancelFn = context.WithTimeout(ctx, timeout)
+	}
+
+	if cancelFn != nil {
+		defer cancelFn()
+	}
+
+	_, err := svc.PutObjectWithContext(ctx, &s3.PutObjectInput{
+		Bucket:             aws.String(bucket),
+		Body:               fileContent,
+		Key:                aws.String(name),
+		ContentDisposition: aws.String("attachment"),
+	})
+	if err != nil {
+		if aerr, ok := err.(awserr.Error); ok && aerr.Code() == request.CanceledErrorCode {
+			fmt.Fprintf(os.Stderr, "upload canceled due to timeout, %v\n", err)
+			return err
+		} else {
+			fmt.Fprintf(os.Stderr, "failed to upload object, %v\n", err)
+			return err
+		}
+	}
+
+	return nil
+}
+
+```
+
+
+On the handler code, we first set a size limit for the file that client size of 10 MB,  after we check if the value form-data exists on the request and response a message if error exists.
+
+Next we copy the value of file content on a variable on type Buffer bytes, check erros and if everything is ok call a function call 
+uploadToS3,  this function recieve two parameters.
+
+name: this is the filename of the file the the client upload.
+fileContent:  this is a file object content that we are going to upload to S3, we need to convert the bytes to a Reader type in order to implement the io.ReadSeeker interface required by the AWS sdk.
+
+We create a new AWS session using the AWS_ACCESS_KEY  and the AWS_SECRET_KEY, next create a context with a timeout of 60 that we use when we call the PutObjectWithContext method,  this receives a bucket name, file content and the name of file, after that we check if the operation has and error and returns and error if that happened.
+
+#### Upload new image to ECR
+
+```bash
+docker build -t ecs-api .
+docker tag ecs-api 99999.dkr.ecr.us-west-2.amazonaws.com/aws-tutorial:v0.0.2
+docker push 99999.dkr.ecr.us-west-2.amazonaws.com/aws-tutorial:v0.0.2
+```
+
+We must create a new task definition with the new image version, go to Task Definition -> Create New Revision,  search the container config and change the value of the Image URI with the new image version.
+
+![update-task](./update-task.png)
+
+After that, go to cluster -> service -> update service.
+
+on this section, make sure that the revision is the latest value of the task definition and click on Update, 
+after a few seconds we should see the new version deployed.
+
+![update-service](./update-service.png)
+
+Check on the task detail the public IP and test using curl
+
+```bash
+curl -X POST -F "file=@./Screenshot from 2024-02-12 14-11-19.png" http://yourip/upload
+```
+
 
 
 
