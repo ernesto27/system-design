@@ -545,8 +545,118 @@ after a few seconds we should see the new version deployed.
 Check on the task detail the public IP and test using curl
 
 ```bash
-curl -X POST -F "file=@./Screenshot from 2024-02-12 14-11-19.png" http://yourip/upload
+curl -X POST -F "file=@./yourimage.png" http://yourip/upload
 ```
+
+
+# Create lambda container
+We are going to create a container that will be running on lambda function on AWS, this code will be called when we upload a video file on the input aws bucket.
+
+Create a new folder call lambda on your machine and enter on that folder.
+
+Init project
+
+```go
+go mod init lambda-tutorial
+```
+
+Install dependencies
+
+```go
+go get github.com/aws/aws-lambda-go@v1.46.0
+go get github.com/aws/aws-sdk-go@v1.50.35
+go get github.com/joho/godotenv@v1.5.1
+```
+
+
+Create a main.go file with the following content.
+
+```go
+package main
+
+import (
+	"context"
+
+	"github.com/aws/aws-lambda-go/events"
+	"github.com/aws/aws-lambda-go/lambda"
+)
+
+func handler(ctx context.Context, event events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
+	response := events.APIGatewayProxyResponse{
+		StatusCode: 200,
+		Body:       "Hello lambda",
+	}
+	return response, nil
+}
+
+func main() {
+	lambda.Start(handler)
+}
+```
+On main we call the Star method of the lambda sdk, this method requires a function call "handler" that will be executed when the lambda function is invoked, this set a status code 200 and a text response "Hello lambda", we use this mock example to test if it is working correctly using a container.
+
+
+Create a Dockerfile with this content
+
+```Dockerfile
+FROM golang:1.22 as build
+WORKDIR /lambda
+COPY go.mod go.sum ./
+COPY main.go .
+RUN go build -tags lambda.norpc -o main main.go
+
+FROM public.ecr.aws/lambda/provided:al2023
+COPY --from=build /lambda/main ./main
+ENTRYPOINT [ "./main" ]
+```
+We use a multi-stage approach,  first we define a build stage using a golang:1.22 image copy the required files, go.mod, go.sum, main.go and build the binary of our lambda function,  next we use the a AWS official lambda image, this is required in order to work in the context of a lambda function,  copy the binary from the build stage en set the entrypoint command.
+
+
+Build image
+
+```bash
+docker build -t lambda-tutorial .
+```
+
+Create container to test
+
+```bash
+docker run -d -p 9000:8080 \
+--entrypoint /usr/local/bin/aws-lambda-rie \
+lambda-tutorial ./main
+```
+
+Test using curl
+
+```bash
+curl -XPOST "http://localhost:9000/2015-03-31/functions/function/invocations" -d '{}'
+```
+The sould return this 
+
+```json
+{"statusCode":200,"headers":null,"multiValueHeaders":null,"body":"Hello lambda"}
+```
+
+#### Upload image to ECR
+On the ECR aws dashboard,  create a new private repository called "lambda-tutorial" or something similar.
+
+Build and upload the image to the registry, check view push commands on detail image.
+
+```bash
+docker build -t lambda-tutorial:v0.0.1 .
+docker tag lambda-tutorial:v0.0.1 yourURI/lambda-tutorial:v0.0.1
+```
+
+
+# Create lambda service
+
+On the AWS dashboard go to the lambda section,  make sure to select the same region that we use in the S3 bucket section.
+
+
+
+
+
+
 
 
 
