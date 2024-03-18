@@ -1,24 +1,3 @@
-TODO
-
-- Explain project
-- Diagram architecture 
-- Requirements
-- Obtener access, key secret key aws, permisos
-- Crear bucket input
-- Crear role, execution role
-- Crear security group port 80
-- Crer ecs project
-- Create docker image,  upload to registry
-- Create task definition
-- Create service
-- Test version app endpint
-- Test endponint save file on bucket s3
-- Crear bucket output
-- Crear lambda with hello world
-- Crear trigger aws bucket lambda
-- Use ffmpeg to convert video and save on another bucket
-- ECS use load balancer
-
 
 ## 1. Introduction
 Hi, in this tutorial we are going to create a project that allow us to upload a video using a endpoint HTTP and then convert it to another resolution format, think of this as a process that a video service like youtube o vimeo does when an user upload a video on their platform,  in order to accomplish that we are going to use the following AWS services:
@@ -36,6 +15,17 @@ We will deploy our API http using this AWS service,  this allows us to run our a
 Lambda: Serverless functions.
 We will use this service to trigger a event/function when a video in the original format is uploaded to the bucket,  this will get the video and convert it to another resolution after that save that on a different bucket.
 
+
+- Introduction
+- Create user on AWS IAM
+- Create S3 buckets
+- Create API service
+- Create ECR container image repository
+- Create ECS Elastic Container Service
+- Update API service
+- Create lambda container
+- Create lambda service
+- Conclusion
 
 ### Diagram architecture
 
@@ -748,7 +738,7 @@ On the lambda image, we add a new RUN command,  in this we update some dependenc
 wget: required to download ffmpeg bin file.
 tar, xz: required to extract the file.
 
-After installed that dependencies, we download the ffmpeg bin file from the official site, extract the file and create a symbolic link to the /usr/bin/ffmpeg path,  this is required in order to call the ffmpeg from our go code.
+After installed that dependencies, we download the ffmpeg binary file using wget, extract the file and create a symbolic link to the /usr/bin/ffmpeg path,  this is required in order to call the ffmpeg from our golang code.
 
 Add .env file with the definition of the required environemnt variables
 ```
@@ -757,6 +747,217 @@ AWS_ACCESS_KEY=your-access-key
 AWS_SECRET__KEY=your-secret-key
 AWS_REGION=your-region
 ```
+
+Update lambda/main.go
+
+```go
+func convertFile(inputFile string, outputFile string) error {
+	out, err := exec.Command("ffmpeg", "-i", inputFile, "-vf", "scale=640:480", outputFile).Output()
+
+	if err != nil {
+		fmt.Printf("ffmpeg command error:  %s", err)
+		return err
+	}
+
+	fmt.Println("Command Successfully Executed")
+	return nil
+}
+```
+
+In this function we received as parameters the path string of the input and output video files that we use in a ffmepg call,  this command compress the original video file that we upload to the input-bucket,  this is a very basic command that we use for this tutorial, ffmpeg has a lot of options and configurations for different resolutions and formats,  you can check the documentation for more information.
+
+https://img.ly/blog/ultimate-guide-to-ffmpeg/#video-properties
+
+Finally check for an error command and return that value of nil is everything is ok.
+
+```go
+func handlerTriggerS3Bucket(ctx context.Context, s3Event events.S3Event) error {
+	err := godotenv.Load()
+	if err != nil {
+		log.Fatal("Error loading .env file")
+	}
+
+	bucketOutput := os.Getenv("AWS_S3_BUCKET")
+	key := os.Getenv("AWS_ACCESS_KEY")
+	secret := os.Getenv("AWS_SECRET_KEY")
+	region := os.Getenv("AWS_REGION")
+	timeout := 1000 * time.Second
+
+	sess := session.Must(session.NewSession(&aws.Config{
+		Region:      aws.String(region),
+		Credentials: credentials.NewStaticCredentials(key, secret, ""),
+	}))
+
+	svc := s3.New(sess)
+	var cancelFn func()
+	if timeout > 0 {
+		ctx, cancelFn = context.WithTimeout(ctx, timeout)
+	}
+
+	if cancelFn != nil {
+		defer cancelFn()
+	}
+
+	for _, record := range s3Event.Records {
+		bucket := record.S3.Bucket.Name
+		key := record.S3.Object.URLDecodedKey
+
+		obj, err := svc.GetObject(&s3.GetObjectInput{
+			Bucket: aws.String(bucket),
+			Key:    aws.String(key),
+		})
+		if err != nil {
+			log.Printf("error getting head of object %s/%s: %s", bucket, key, err)
+			return err
+		}
+
+		headOutput, err := svc.HeadObject(&s3.HeadObjectInput{
+			Bucket: &bucket,
+			Key:    &key,
+		})
+		if err != nil {
+			log.Printf("error getting head of object %s/%s: %s", bucket, key, err)
+			return err
+		}
+		log.Printf("successfully retrieved %s/%s of type %s", bucket, key, *headOutput.ContentType)
+
+		var buf bytes.Buffer
+		if _, err := io.Copy(&buf, obj.Body); err != nil {
+			fmt.Fprintln(os.Stderr, "Error reading file:", err)
+			return err
+		}
+
+		fmt.Println("File size (bytes):", buf.Len())
+
+		inputFile := "/tmp/input-" + key
+		outputFile := "/tmp/output-" + key
+		err = os.WriteFile(inputFile, buf.Bytes(), 0644)
+		if err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			return err
+		}
+
+		err = convertFile(inputFile, outputFile)
+		if err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			return err
+		}
+
+		fileToUpload, err := os.ReadFile(outputFile)
+		if err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			return err
+		}
+
+		_, err = svc.PutObjectWithContext(ctx, &s3.PutObjectInput{
+			Bucket:             aws.String(bucketOutput),
+			Body:               bytes.NewReader(fileToUpload),
+			Key:                aws.String(key),
+			ContentDisposition: aws.String("attachment"),
+		})
+		if err != nil {
+			if aerr, ok := err.(awserr.Error); ok && aerr.Code() == request.CanceledErrorCode {
+				fmt.Fprintf(os.Stderr, "upload canceled due to timeout, %v\n", err)
+				return err
+			} else {
+				fmt.Fprintf(os.Stderr, "failed to upload object, %v\n", err)
+				return err
+			}
+		}
+	}
+
+	return nil
+}
+
+
+func main() {
+	lambda.Start(handlerTriggerS3Bucket)
+}
+
+```
+handlerTriggerS3Bucket is the handler that will be called when a new file is updated on the input-bucket,  firts we created some helper variables accesing the values that we define in the .env file,  make sure that the value of AWS_S3_BUCKET is the correct output-bucket.
+
+After create a new session using the SDK, this is the same code as the ECS container the did on the previous section, 
+next we obtain the value of the record/file using the events.S3EventRecord type, call the GetObject method in order to retreived the object from S3.
+
+Call HeadObject method to get metadata of the object, this is only for debug purposes, we can see that value later in the CloudWatch logs.
+
+We need to create a buffer variable to copy the value of the object S3 object, if no error happens on that call, we create and save a new file on the /tmp folder,   next call the converFile function created previously that runs the ffmpeg command,  if no error ocurred we read the output file that also is created in the /tmp folder and uploads the file video compress to the output-bucket.
+
+On main we update the function trigger that is called on the lambda.Start method.
+
+Build and upload the image to the registry,  check the commands on the AWS dasboard ECR.
+
+```bash
+docker build -t lambda-tutorial:v0.0.2 .
+docker tag lambda-tutorial:v0.0.1 yourURI/lambda-tutorial:v0.0.2
+docker push yourURI/lambda-tutorial:v0.0.2
+```
+
+#### Update lambda image
+
+Go to the AWS lambda and look up for the update image button
+
+![lambda-update-image](./lambda-update-image.png)
+
+On Container image setting -> Browse images,  look for the lambda image and select the lastest version, in this case the v0.0.2, click on Save, wait for a few seconds and we should see a success message.
+
+Before test, we must to update the configuration of our lambda function,  go to Configuration -> General configuration -> Edit.
+
+
+![lambda-config](./lambda-config.png)
+
+Change the memory value to 256 MB and the timeout to 1 minute, this is required because the ffmpeg command is a complex operation and requires more resources than the default values, also depending of the operation and size of the video file you should change this values accordingly.
+
+Click on Save and wait a few seconds for the changes to take effect.
+
+#### Test 
+
+We are going to use a video sample from this page
+https://file-examples.com/index.php/sample-video-files/sample-mp4-files/
+
+Select the 640x360, size 3MB, that should work fine with our configuration, if you want to use another video take in account that you probably should make changes on the memory and timeout values of the lambda function.
+
+We can test using our API ECS service using curl 
+```bash
+curl -X POST -F "file=@./yourvideo.mp4" http://yourip/upload
+```
+
+Or you can use the S3 dasboard and upload directly on the input-bucket
+
+S3 -> your-bucket -> Upload
+
+![bucket-upload](./bucket-upload.png)
+
+After upload the video, the lambda function should be triggered and compress , upload the video to the output-bucket,  you can check the CloudWatch logs for more information about the process.
+
+Go to 
+
+**Lambda -> your-lambda-function -> Monitor -> View logs in CloudWatch**
+
+Check logs
+
+![logs](./logs.png)
+
+You also should see a new compress video file on your output-bucket,  you can download and check the resolution and size of the file.
+
+
+# Conclusion
+
+In this tutorial we learned how to use different AWS services to create a scalable and serverless application, we
+create a API service using ECS,  a lambda function that compress a video files,  and a S3 bucket that store the original and compress video files.
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

@@ -46,11 +46,6 @@ func convertFile(inputFile string, outputFile string) error {
 }
 
 func handlerTriggerS3Bucket(ctx context.Context, s3Event events.S3Event) error {
-	err := godotenv.Load()
-	if err != nil {
-		log.Fatal("Error loading .env file")
-	}
-
 	bucketOutput := os.Getenv("AWS_S3_BUCKET")
 	key := os.Getenv("AWS_ACCESS_KEY")
 	secret := os.Getenv("AWS_SECRET_KEY")

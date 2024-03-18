@@ -7,7 +7,6 @@ COPY main.go .
 RUN go build -tags lambda.norpc -o main main.go
 # Copy artifacts to a clean image
 FROM public.ecr.aws/lambda/provided:al2023
-RUN ls /etc/os-release
 RUN dnf -y install wget && dnf -y install tar && dnf -y install xz && \ 
     cd /usr/local/bin && \
     mkdir ffmpeg && \ 
