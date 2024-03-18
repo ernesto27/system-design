@@ -1,19 +1,22 @@
 
 ## 1. Introduction
-Hi, in this tutorial we are going to create a project that allow us to upload a video using a endpoint HTTP and then convert it to another resolution format, think of this as a process that a video service like youtube o vimeo does when an user upload a video on their platform,  in order to accomplish that we are going to use the following AWS services:
+Hi, in this tutorial we are going to create a project that allow us to upload a video using a endpoint HTTP and then convert it to another resolution format using another service , think of this as a process that a video platform like youtube o vimeo does when an user upload a video on their servers,  in order to accomplish that we are going to use the following AWS services:
 
-S3: Simple Storage Service
-We will use this service to store the videos in the original and convert resolution format,  we are going to create two different buckets for each purpose.
+**S3 Simple Storage Service:** 
+We will use this service to store the videos in the original format and also in a compresses format, we are going to create two different buckets for each purpose.
 
-Elastic Container Registry:
-This service is for store our docker images for the tutorial.
+**Elastic Container Registry:** 
+This service is for store our docker container images that will be use on ECS and lambda services.
+
+**ECS Elastic Container Service:**
+We will deploy our API http using ECS,this allows us to run our application in a scalable way without going into the complexity of managing the infrastructure manually, we will use containers to package our API service,
+
+**Lambda Serverless functions:**
+We will use this service to trigger a event/function when a video in the original format is uploaded to a bucket,  this will obtain the video and convert it to another resolution ( using ffmpeg )  after save it on a different output bucket.
+
+> AFTER CREATED AND USE/TEST THE SERVICES, BE SURE TO DELETE THAT SERVICES FROM THE AWS DASHBOARD IN ORDER TO AVOID UNWANTED CHARGES.
 
 
-ECS: Elastic Container Service
-We will deploy our API http using this AWS service,  this allows us to run our application in a scalable way, using container without going into the complexity of managing the infrastructure by hand.
-
-Lambda: Serverless functions.
-We will use this service to trigger a event/function when a video in the original format is uploaded to the bucket,  this will get the video and convert it to another resolution after that save that on a different bucket.
 
 
 - Introduction
@@ -39,19 +42,24 @@ We will use this service to trigger a event/function when a video in the origina
 - Go - https://go.dev/doc/install
 - AWS CLI - https://aws.amazon.com/cli/
 
-We need to create and account on AWS in order to follow this tutorial,  
+We need to create an account in AWS in order to follow this tutorial,  
 Our services, API will use golang, so we need that on our machine.
 We use docker to create our images,  that images will be upload to ECR,  and run on ECS and Lambda services.
 Besides we will create most of the AWS resources using the web dashboard,  we must install the AWS cli to upload the docker image.
 
 # Create user on AWS IAM 
 
-We need to create a user on our AWS account, this user will have an access key and a secret key that we will need later to connect to the AWS services that we will create,  also we should limit the permissions and acces to this user to only the services that they need, this is very important for security reasons and for prevent any unwanted action on our account.
+We need to create an user for this tutorial in AWS, this user will have an ACCESS KEY and a SECRET KEY that we will need later to connect to the AWS services that required our project,  also we should limit the permissions and acces to this user to the specifics services that we need, this is very important for security reasons and for prevent any unwanted action on our account.
 
 On the search box of AWS dashboard search for IAM and click on the first option that appears. 
-On Access management sidebar click on user section,  after that click on Create User button on main dashboard section.
 
-On name put a name "aws-tutorail" or anything you want is not important at this point, after click on Next.
+
+On IAM section go to.
+
+**Sidebar -> Access management -> Users -> Add user**
+
+
+On name put a name "aws-tutorial" or anything you want is not important at this point, after click on Next.
 
 We now need to add the permissions that this user will have, we are going to add manually this settings, so check that option on the dasboard.
 
@@ -60,7 +68,7 @@ We now need to add the permissions that this user will have, we are going to add
 We need to add the following permissions policies:
 
 #### AmazonS3FullAccess
-This is required for our API services to upload files on the bucket
+This is required for our API services to upload files on S3 bucket.
 
 #### AmazonEC2ContainerRegistryFullAccess
 This is required to upload our docker images to the ECR service
@@ -76,18 +84,17 @@ Go to
 
 **Security credentials -> Create access key**
 
-On use cases,  select other ( AWS list other options and alternatives that we do not care at this moment ), click on Next,  you can put a description if you 
+On use cases,  "SELECT OTHER"( AWS list other options and alternatives that we do not care at this moment ), click on Next,  you can put a description if you 
 want,  after that click on Create access key.
 
-After that you see the access key and private key on the dashboard,  copy that on some secure place of your own, this is because is the only and last time that AWS shows your private key.
+After that you see the access key and private key on the dashboard,  copy that on some secure place of your own, this is because is the last time that AWS shows your private key.
 
 
 # Create S3 buckets
 
-Our application needs two buckets, one for the original file uploads and another for the convert video files,  so go to the aws dashboard and search for S3,  click on the first option that appears.
+Our project needs two buckets, one for the original video upload and another for the convert video files, for that  go to the AWS dashboard and search for S3,  click on the first option that appears.
 
-
-Click on create bucket, a new form configuration appears, most of the options should work fine on default values,  but we need to change the following:
+Click on create bucket, a new form configuration appears, most of the options should work fine on default values,  but before we need to change the following:
 
 AWS Region: You can selecte wherever you want, in this tutorial we are going to use us-east-2 Oregon region.
 
