@@ -35,7 +35,7 @@ func convertFile(inputFile string, outputFile string) error {
 	out, err := exec.Command("ffmpeg", "-i", inputFile, "-vf", "scale=640:480", outputFile).Output()
 
 	if err != nil {
-		fmt.Printf("%s", err)
+		fmt.Printf("FFMPEG ERROR:  %s", err)
 		return err
 	}
 
@@ -85,11 +85,23 @@ func handlerTriggerS3Bucket(ctx context.Context, s3Event events.S3Event) error {
 			return err
 		}
 
+		headOutput, err := svc.HeadObject(&s3.HeadObjectInput{
+			Bucket: &bucket,
+			Key:    &key,
+		})
+		if err != nil {
+			log.Printf("error getting head of object %s/%s: %s", bucket, key, err)
+			return err
+		}
+		log.Printf("successfully retrieved %s/%s of type %s", bucket, key, *headOutput.ContentType)
+
 		var buf bytes.Buffer
 		if _, err := io.Copy(&buf, obj.Body); err != nil {
 			fmt.Fprintln(os.Stderr, "Error reading file:", err)
 			return err
 		}
+
+		fmt.Println("File size (bytes):", buf.Len())
 
 		inputFile := "/tmp/input-" + key
 		outputFile := "/tmp/output-" + key
@@ -138,4 +150,16 @@ func main() {
 	}
 
 	lambda.Start(handlerTriggerS3Bucket)
+
+	// // Test video convert
+	// inputFile := "/tmp/input-video.mp4"
+	// outputFile := "/tmp/output-video.mp4"
+
+	// err = convertFile(inputFile, outputFile)
+	// if err != nil {
+	// 	fmt.Fprintln(os.Stderr, err)
+	// 	return
+	// }
+
+	// fmt.Println("Exit convertFile")
 }
