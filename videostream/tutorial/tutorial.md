@@ -750,6 +750,14 @@ tar, xz: required to extract the file.
 
 After installed that dependencies, we download the ffmpeg bin file from the official site, extract the file and create a symbolic link to the /usr/bin/ffmpeg path,  this is required in order to call the ffmpeg from our go code.
 
+Add .env file with the definition of the required environemnt variables
+```
+AWS_S3_BUCKET=your-output-bucket
+AWS_ACCESS_KEY=your-access-key
+AWS_SECRET__KEY=your-secret-key
+AWS_REGION=your-region
+```
+
 
 
 
