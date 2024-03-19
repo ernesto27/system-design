@@ -87,63 +87,62 @@ Go to
 On use cases,  "SELECT OTHER"( AWS list other options and alternatives that we do not care at this moment ), click on Next,  you can put a description if you 
 want,  after that click on Create access key.
 
-After that you see the access key and private key on the dashboard,  copy that on some secure place of your own, this is because is the last time that AWS shows your private key.
+After that you see the access key and private key on the dashboard,  copy that on some secure place of your own, this is because is the last time that AWS shows your private key, we need those values when we create our API and lambda services.
 
 
 # Create S3 buckets
 
-Our project needs two buckets, one for the original video upload and another for the convert video files, for that  go to the AWS dashboard and search for S3,  click on the first option that appears.
+Our project needs two buckets, one for the original video upload and another for the compress video files, for that go to the AWS dashboard and search for S3,  click on the first option that appears.
 
-Click on create bucket, a new form configuration appears, most of the options should work fine on default values,  but before we need to change the following:
+Click on create bucket, a new form configuration appears, most of the options should work fine on default values, but we need to change the following options:
 
-AWS Region: You can selecte wherever you want, in this tutorial we are going to use us-east-2 Oregon region.
+**AWS Region:** You can select any region you want, in this tutorial we are going to use "us-east-2 Oregon" region.
 
-Bucket name: this must be a unique name, for this tutorial choose something that has the input name on it,  for example "tutorial-input", this semantic helps later when we have to create a trigger on a lambda function.
+**Bucket name:** this must be a unique name, for this tutorial choose something that has the input name on it, for example "bucket-input", this semantic helps later when we create a trigger in the lambda server configuration.
 
-We mantain the select option for block all public access,  we are going to use the bucket only for our application,  so we do not need to make it public.
+We mantain the select option for "block all public access",  we are going to access the bucket only by ours services, so we do not need to make it public.
 
 After that click on create bucket.
 
 ![user permisions](./02-bucket.png)
 
-For the output bucket, repeat the same steps as before, only remember to change the name of the bucket to something like "tutorial-output".
+For the second bucket who is the recipe for the compress videos, repeat the same steps as before, only remember to change the name for something like "bucket-output".
 
 
 # Create API service
 
-For this tutorial we use golang to create our API,  we will create two endpoints, one for obtain a file from a client and save it on the input bucket, and anothe for show the current version of the application.
+For this tutorial we use golang to develop our API, we will create two endpoints, one that is in charge to received a file from a client and later save it on the bucket-input and another to show the API version text.
 
-Start by creating a new project folder on your machine, name it ecs-tutorial,  inside that folder the following command.
+First a new project folder on your machine, name it ecs-tutorial,  inside that folder run the following command.
 
 ```bash
 go mod init ecs-tutorial
 ```
 
+
 ### Install dependencies
 
 ```bash
-go get github.com/aws/aws-sdk-go
-```
-This is the AWS sdk that allow us to connect to different services,  in this case we are going to connect to S3 storage service
-
-```bash
-go get github.com/joho/godotenv
-```
-This library is util for use and .env file on our project,  we are going to use it for store our AWS credentials, version, etc.
-
-```bash
+go get github.com/aws/aws-sdk-go@v1.50.35
+go get github.com/joho/godotenv@v1.5.1
 go get github.com/go-chi/chi
 ```
-This is a lightweight router HTTP, we are going to use it for create our API endpoints.
 
-Create a .env file with this content.
+**aws-sdk:** This is the AWS sdk that allow us to connect to different AWS services, in this case we are going to connect to S3 storage.
+
+**godotenv:** This library allow us to use environment file (.env), we are going to use it for store our AWS credentials, version, port etc.
+
+**chi:** This is a lightweight router HTTP, we are going to use it for create our API endpoints.
+
+
+Start creating a .env file with this content.
 
 ```
 AWS_S3_BUCKET=your-bucket-name
 AWS_ACCESS_KEY=your-access-key
 AWS_SECRET__KEY=your-secret-key
 AWS_REGION=your-region
-PORT=8080
+PORT=80
 ```
 Replaces the values with your own, the bucket the we use in this service is the "input" bucket that we created before.
 
@@ -184,35 +183,14 @@ func main() {
 
 ```
 
-On main we first obtain the environment variables defined on .env, if that fails panic and finish program, 
-after create a chi router,  we use the middleware logger for log request info, data on the console,  
-lastly create two endpoints, one for the root path that show the version of the application, and another for the upload file,
-the funcion uploadFileHandler is return a hardcoded string "upload" for now, later we will add the logic to save the file on the S3 bucket.
-
-Run server
-
-```bash
-go run main.go
-```
-
-Test using curl
-
-```bash
-curl http://localhost:8080/upload
-```
+In the main function we first obtain the environment variables defined in the .env file, if that fails panic and stop the process, 
+after create a chi router object,  we use the middleware logger for log server request info,  that is helpful it on the terminal, lastly create two endpoints, one for the root path that show the version of the application, and another for the upload file,
+at the moment funcion uploadFileHandler is return a hardcoded string "upload", later we will add the logic to save the file on the S3 bucket.
 
 
 # Create ECR container image repository
-On the AWS dashboard search for ECR and click on the first option that appears on the results, 
-select private access for the image and choose any name,  for other options use the default values and click on Create Repository
 
-![ecr](./ecr.png)
-
-We need to install the AWS cli on our machine,  this is necessary to authenticate to our AWS account and upload the image on the registry.
-So follow instructions on this page besides your SO.
-
-https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html 
-
+### Create docker image
 
 Before upload the image,  we must create a docker image of our application, for that matter create a Dockerfile file on the ecs folder.
 
@@ -247,9 +225,9 @@ ENTRYPOINT ["/ecs-api"]
 ```
 
 We use the multi build docker buildkit feature in this definition, 
-first we create a image call build-stage,  in this setup we use the official golang 1.21 version,  copy the go.mod and go.sum files and all the files .go files that we have in our project, finally create the binary of our application using go build command.
+first we create a image call build-stage,  in this setup we use the official golang 1.21 version, next copy the go.mod and go.sum files and all the files .go that we have in our project, finally create the binary of our application using the go build command.
 
-The second image is the release image, we use the distroless base image,  this is a minimal image that only contains the necessary to run our application, this has the advantege that is more secure and lightweight than the offical,  also copy the binary create on the previous step, the .env file,  and expose the port 80 ( this is the value the we have to define on the .env file ),  the ENTRYPOINT value is the command that executes our binary.
+The second image is the release image, we use a distroless base image,  this is a minimal image that only contains the necessary components to run our application, this has the advantege to be more secure and lightweight, next copy the binary create on the previous step, the .env file, and expose the port 80 ( this is the value the we have to define on the .env file ),  the ENTRYPOINT value is the command that executes our binary.
 
 
 
@@ -273,83 +251,89 @@ curl localhost:8080
 
 That sould return the version of the API server.
 
-#### Upload image to image registry
-Go to the details of the repository that we created before, click on option "View push commands",  this show the commands that we need to execute on our machine to authenticate and upload the image to the registry.
 
-This is the commands that we need to execute on our machine, for example something like this  .
+### Create ECR repository
+
+On the AWS dashboard search for ECR and click on the first option that appears on the results, 
+select private access for the image and choose any name,  for other options use the default values and click on Create Repository
+
+![ecr](./ecr.png)
+
+We need to install the AWS cli on our machine,  this is necessary to authenticate to our AWS account and upload the image on the registry.
+So follow instructions on this page according to your OS.
+
+https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html 
+
+
+
+#### Upload image to image registry
+Go to the details of the repository that we created before, click on button "View push commands", this shows the commands that we need to execute on our machine to authenticate and upload our image in the registry.
+
+You should see something like this.
 
 ```bash
 aws ecr get-login-password --region us-west-2 | docker login --username AWS --password-stdin 99999.dkr.ecr.us-west-2.amazonaws.com
 
 docker build -t ecs-api .
 
-docker tag ecs-api 99999.dkr.ecr.us-west-2.amazonaws.com/aws-tutorial:v0.0.1  
+docker tag ecs-api yourawsuri:v0.0.1  
 
-docker push 99999.dkr.ecr.us-west-2.amazonaws.com/aws-tutorial:v0.0.1
+docker push yourawsuri:v0.0.1
 ```
 
-After a successful push,  we can see the image list on the ECR aws dashboard, we see the URI of the image when, we need this value when we create a ECS service next,  so copy that value on some place.
+After a successful push,  we should see the image in the ECR aws dashboard,  copy the value of the image URI , we need this when we create a ECS service, so copy that value on some place.
 
 
 # ECS - Create Elastic Container Service
-ECS, or Amazon Elastic Container Service, is a fully managed container orchestration service provided by AWS. It allows developers to easily run, stop, and manage containers on a cluster. This service abstracts away the complexity of managing the underlying infrastructure, such as provisioning and scaling EC2 instances.
+> ECS, or Amazon Elastic Container Service, is a fully managed container orchestration service provided by AWS. It allows developers to easily run, stop, and manage containers on a cluster. This service abstracts away the complexity of managing the underlying infrastructure, such as provisioning and scaling EC2 instances.
 
-Go to the ECS section on AWS dashboard using the search box, click on Create Cluster.
-Select any name you want, fot example something like "aws-tutorial",
+Go to the ECS section on AWS dashboard using the search box, click on Create Cluster,  select any name you want, for example something like "ecs-tutorial",
 in the Infrastructure section select the option AWS Fargate, this is a serveless feature that allow us not worry about the overhead of the maintance of the machines,  mantain the other options with the default values and click on "Create".
 
 ![cluster](./cluster.png)
 
 ### Create task definition
 
-We need to create a Task definition, this allow us to create a configuration for our  Docker containers, such as CPU, memory requirements, networking configuration, image URI, etc.
+We need to create a Task definition, this allow us to create a configuration for our Docker containers, such as CPU, memory, networking , image URI, etc.
 
-Before create that, we must created a "Task execution role",  for that matter go to 
-IAM -> Access management -> Roles
+Before that we must generate a  "Task execution role",  for that matter go to 
 
-Select AWS service as en entity type, in the use case select "Elasctic Container Service" -> Elastic Container Service Task click on Next.
+**IAM -> Access management -> Roles**
+
+Select AWS service as en entity type, in the use case select **"Elasctic Container Service" -> Elastic Container Service Task** click on Next.
 
 In the permissions policies search box,  type or copy "AmazonECSTaskExecutionRolePolicy",  select that policy and click on Next.
-This is permission is required to access to other AWS services required by ECS.
+This permission is required by our ECS cluster to create and have access to other AWS services.
 
 ![role](./role-permission.png)
 
 Enter a role name and click on Create role, remember that value , because we will need that on next section.
 
 
-On the ECS dashboard, click on "Task Definitions" sidebar, after go to "Create new Task Definition".
-This is a very long form, with more of the options we will stick with the default values, but we need to change the following:
+On the ECS dashboard, click on **Task Definitions** sidebar, after go to **Create new Task Definition**, 
+This is a very long form, for most of the options we use the default value, but we need to change the following:
 
-Task definition family:
-Put a name for the task definition, for example "aws-tutorial-task"
+**Task definition family:** Put a name for the task definition, for example "aws-tutorial-task"
 
+**Infrastructure requirements:** On Launch type select AWS Fargate Serverless,
 
-Infrastructure requirements:
-On Launch type select AWS Fargate Serverless,
+**Operating system/Architecture:** Select Linux/x86_64, this is the architecture of our docker image.
 
-Operating system/Architecture:
-Select Linux/x86_64, this is the architecture of our docker image.
+**Task size:** Because this is a tutorial we are going to use the minimum values,  so put 1GB for memory and 0.5 vCPU, change this values if you need more resources for your application.
 
-**Task size**:
+**Task execution role:** Select the role that we created before,  this is required for pulls them image for ECR, save logs to CloudWatch and other actions that required ECS to work properly.
 
-Because this is a tutorial we are going to use the minimum values,  so put 1GB for memory and 0.5 vCPU, change this values if you need more resources for your application.
+### Container details
 
-**Task execution role**:
+**Image URI:** Select the URI of the image the we upload to ECR before.
 
-Select the role that we created before,  this is required for pulls a image for ECR, save logs to CloudWatch and other actions that required ECS in order to works.
+**Port mappings:** Check this specific values.
 
-**Container details**:
+**port:** 80
 
-Image URI:
-Select the URI of the image the we upload to ECR before.
+**Protocol:** TCP
 
-Port mappings:
-Check this specific values.
-port: 80
-
-Protocol: TCP
-
-App protocol: HTTP
+**App protocol:** HTTP
 
 Leaves the other containers configurations with the default values.
 
@@ -365,40 +349,30 @@ On ECS dashboard, select the cluster the we created before,  go on service tabs 
 
 Environment configuration:
 
-**Application type**:
+**Application type**: Choose Service option, this is a best fit for our type of API long running application.
 
-Choose Service option, this is a best fit for our type of API long running application.
-
-**Task definition**:
-
-On Family select the Task definition that we created in the previous step,
+**Task definition**: On Family select the Task definition that we created in the previous step,
 revisiion should selecte the last version of our task, 
 
-**Service Name**:
+**Service Name**: Put a name for the service, for example "aws-tutorial-service"
 
-Put a name for the service, for example "aws-tutorial-service"
-
-**Service type**;
-
-Choose replica ,this allow us to run multiple copies of our application,  and ECS will manage the load balancing and scaling for us.
+**Service type**; Choose replica ,this allow us to run multiple copies of our application,  and ECS will manage the load balancing and scaling for us.
 
 
-#### Networking
+### Networking
 On this section leave the VPC with the default values
 
-**Security group**:
+**Security group**: Our services run on HTTP port 80, for that reasons we must create a new config with and onbound rule.
 
-Our services run on HTTP port 80, for that reasons we must create a new config with and onbound rule.
-
-Make sure that public IP on turned on, this is because we are not goind to use a Load Balancer in this tutorial,  so we need to access our service using the public IP of the machine.
+Make sure that public IP on turned on, this is because we are not going to use a Load Balancer in this tutorial,  so we need to access our service using the public IP of the service.
 
 ![security-group](./security-group.png)
 
 Leave other options with default values and click on "Create"
 
-On the cluster section, click on the Task tab service and go to the task attached to the service.
+Wait a moment and go to the cluster section, click on the Task tab service and go to the task attached to the service.
 
-On the task detail, look up for the PublicIP , test using curl
+On the task detail, look up for the Public IP , you can test using curl
 
 ```bash
 curl http://yourip/
@@ -408,7 +382,7 @@ That should return the api version response of our API service.
 
 # Update API service 
 
-In order to uplaod a file to a S3 bucket we need to update our handler uploadFileHandler with this code.
+In order to upload a file to a S3 bucket we need to update our handler uploadFileHandler with the following code.
 
 ```go
 
@@ -510,40 +484,44 @@ func uploadToS3(name string, fileContent io.ReadSeeker) error {
 ```
 
 
-On the handler code, we first set a size limit for the file that client size of 10 MB,  after we check if the value form-data exists on the request and response a message if error exists.
+On the handler code, we first set a size limit of 10MB for the file the the client send,  after we check if the value form-data exists on the request and response a specific message if error exists.
 
-Next we copy the value of file content on a variable on type Buffer bytes, check erros and if everything is ok call a function call 
+Next we copy the value of file content on a variable on type Buffer bytes, check for errors and if everything is ok call a function named
 uploadToS3,  this function recieve two parameters.
 
-name: this is the filename of the file the the client upload.
-fileContent:  this is a file object content that we are going to upload to S3, we need to convert the bytes to a Reader type in order to implement the io.ReadSeeker interface required by the AWS sdk.
+**name:** this is the name of the file the the client upload.
 
-We create a new AWS session using the AWS_ACCESS_KEY  and the AWS_SECRET_KEY, next create a context with a timeout of 60 that we use when we call the PutObjectWithContext method,  this receives a bucket name, file content and the name of file, after that we check if the operation has and error and returns and error if that happened.
+**fileContent:**  this is a file object content that we are going to upload to S3, we need to convert the bytes to a Reader type in order to implement the io.ReadSeeker interface required by the AWS sdk.
+
+We create a new AWS session using the AWS_ACCESS_KEY and the AWS_SECRET_KEY environment variables, next create a context with a timeout of 60 that we use when we call the PutObjectWithContext method,  this receives a bucket name, file content and the name of file, after that we check if the operation fails and returns and error if that happened.
 
 #### Upload new image to ECR
 
 ```bash
 docker build -t ecs-api .
-docker tag ecs-api 99999.dkr.ecr.us-west-2.amazonaws.com/aws-tutorial:v0.0.2
-docker push 99999.dkr.ecr.us-west-2.amazonaws.com/aws-tutorial:v0.0.2
+docker tag ecs-api youtawsuri:v0.0.2
+docker push youtawsuri:v0.0.2
 ```
 
-We must create a new task definition with the new image version, go to Task Definition -> Create New Revision,  search the container config and change the value of the Image URI with the new image version.
+Back in the ECS dashboard, we e must create a new task definition with the new image version, go to **Task Definition -> Create New Revision**, search the container config and change the value of the Image URI with the new image version.
 
 ![update-task](./update-task.png)
 
-After that, go to cluster -> service -> update service.
+After that, go to **cluster -> service -> update service**.
 
 on this section, make sure that the revision is the latest value of the task definition and click on Update, 
 after a few seconds we should see the new version deployed.
 
 ![update-service](./update-service.png)
 
-Check on the task detail the public IP and test using curl
+Check on the task detail the public IP and check using curl
 
 ```bash
 curl -X POST -F "file=@./yourimage.png" http://yourip/upload
 ```
+
+If this works correctly, you can check the file upload on the S3 input-bucket aws dasboard.
+
 
 
 # Create lambda container
