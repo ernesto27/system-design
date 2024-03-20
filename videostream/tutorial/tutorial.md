@@ -484,16 +484,18 @@ func uploadToS3(name string, fileContent io.ReadSeeker) error {
 ```
 
 
-On the handler code, we first set a size limit of 10MB for the file the the client send,  after we check if the value form-data exists on the request and response a specific message if error exists.
+On the handler code, we first set a file size limit of 10MB ,  after we check if the value "form-data" exists on the request and response a specific message if an error exists.
 
 Next we copy the value of file content on a variable on type Buffer bytes, check for errors and if everything is ok call a function named
 uploadToS3,  this function recieve two parameters.
 
-**name:** this is the name of the file the the client upload.
+**name:** this is the name of the file that the client upload.
 
-**fileContent:**  this is a file object content that we are going to upload to S3, we need to convert the bytes to a Reader type in order to implement the io.ReadSeeker interface required by the AWS sdk.
+**fileContent:**  this is a file object content that we are going to upload to S3, we need to convert the bytes to a Reader type in order to implement the io.ReadSeeker interface required by the AWS SDK.
 
-We create a new AWS session using the AWS_ACCESS_KEY and the AWS_SECRET_KEY environment variables, next create a context with a timeout of 60 that we use when we call the PutObjectWithContext method,  this receives a bucket name, file content and the name of file, after that we check if the operation fails and returns and error if that happened.
+We create a new AWS session using the AWS_ACCESS_KEY and the AWS_SECRET_KEY environment variables, next create a context with a timeout of 60 seconds that we use when we call the PutObjectWithContext method,  this receives a bucket name, file content and the name of file, after that we check if the operation fails and returns and error value or nil if everything is ok.
+
+Back in uploadFileHandler we check for the response for the uploadToS3 function, if an error exists we response a 500 status code and a message, otherwise we response a 200 status code and a message that the file was uploaded successfully.
 
 #### Upload new image to ECR
 
@@ -503,34 +505,35 @@ docker tag ecs-api youtawsuri:v0.0.2
 docker push youtawsuri:v0.0.2
 ```
 
-Back in the ECS dashboard, we e must create a new task definition with the new image version, go to **Task Definition -> Create New Revision**, search the container config and change the value of the Image URI with the new image version.
+#### Update ECS Task Definition
+
+Back in the ECS dashboard, we should create a new task definition with the new image version, for that matter go to **Task Definition -> Create New Revision**, search the container config and change the value of the Image URI with the new image version.
 
 ![update-task](./update-task.png)
 
-After that, go to **cluster -> service -> update service**.
+After that, go to **Cluster -> Service -> Update Service**.
 
-on this section, make sure that the revision is the latest value of the task definition and click on Update, 
+On this section, make sure that the revision value is the latest task definition we create before and click on Update, 
 after a few seconds we should see the new version deployed.
 
 ![update-service](./update-service.png)
 
-Check on the task detail the public IP and check using curl
+Check on the task detail the public IP and test using curl
 
 ```bash
 curl -X POST -F "file=@./yourimage.png" http://yourip/upload
 ```
 
-If this works correctly, you can check the file upload on the S3 input-bucket aws dasboard.
-
+If this works correctly, you can see the file upload on the S3 input-bucket aws dasboard.
 
 
 # Create lambda container
-We are going to create a container that will be running on lambda function on AWS, this code will be called when we upload a video file on the input aws bucket.
 
-Create a new folder call lambda on your machine and enter on that folder.
+We are going to create a container that will be running on a lambda function in AWS, this code will be called when we upload a video file on the input aws bucket.
+
+Create a new folder call lambda on your machine, go to that folder and run this command.
 
 Init project
-
 ```go
 go mod init lambda-tutorial
 ```
@@ -568,10 +571,10 @@ func main() {
 	lambda.Start(handler)
 }
 ```
-On main we call the Star method of the lambda sdk, this method requires a function call "handler" that will be executed when the lambda function is invoked, this set a status code 200 and a text response "Hello lambda", we use this mock example to test if it is working correctly using a container.
+On main function we call the Star method of the lambda sdk, this method requires a function argument call "handler" , it  will be executed when the lambda function is invoked, this function uses a method of the AWS sdk called APIGatewayProxyResponse to create a response using a status code of 200 and a text response "Hello lambda".
 
 
-Create a Dockerfile with this content
+Next, create a Dockerfile with the following content.
 
 ```Dockerfile
 FROM golang:1.22 as build
@@ -584,10 +587,10 @@ FROM public.ecr.aws/lambda/provided:al2023
 COPY --from=build /lambda/main ./main
 ENTRYPOINT [ "./main" ]
 ```
-We use a multi-stage approach,  first we define a build stage using a golang:1.22 image copy the required files, go.mod, go.sum, main.go and build the binary of our lambda function,  next we use the a AWS official lambda image, this is required in order to work in the context of a lambda function,  copy the binary from the build stage en set the entrypoint command.
+We use a multi-stage approach,  first we define a build stage using a golang:1.22 image,  copy the required files for the service go.mod, go.sum, main.go and build the binary of our lambda function,  in the release stage we use an AWS official lambda image, this is required to work in the context of a lambda function service, copy the binary from the build stage en set the entrypoint command executing the binary.
 
 
-Build image
+Build container image
 
 ```bash
 docker build -t lambda-tutorial .
@@ -613,7 +616,7 @@ The sould return this
 ```
 
 #### Upload image to ECR
-On the ECR aws dashboard,  create a new private repository called "lambda-tutorial" or something similar.
+On the ECR AWS dashboard, create a new private repository called "lambda-tutorial" or something similar.
 
 Build and upload the image to the registry, check view push commands on detail image.
 
@@ -625,11 +628,11 @@ docker tag lambda-tutorial:v0.0.1 yourURI/lambda-tutorial:v0.0.1
 
 # Create lambda service
 
-AWS Lambda is a serverless computing service that allows you to run code without provisioning or managing servers. It enables you to execute your code in response to various events, such as changes to data in S3 buckets, updates to DynamoDB tables, HTTP requests via API Gateway, or custom events generated by your applications.
+>AWS Lambda is a serverless computing service that allows you to run code without provisioning or managing servers. It enables you to execute your code in response to various events, such as changes to data in S3 buckets, updates to DynamoDB tables, HTTP requests via API Gateway, or custom events generated by your applications.
 
 ### Create policy
 
-IAM -> Access management -> Policies -> Create policy
+Go to **IAM -> Access management -> Policies -> Create policy**
 
 On policiy editor section select JSON and paste this code 
 
@@ -664,40 +667,36 @@ Click on next, put a name like "lambda-tutorial-policy" and press on Create poli
 
 ### Create role
 
-Go to IAM -> Access management -> Roles -> Create role,  select AWS service as entity type,  in the use case select Lambda and click on next.
-
-On the permissions section,  search the policy the we created before "lambda-tutorial-policy", select that and click on next.
-
-On role detail select a name for the role, for example "lambda-tutorial-role" and click on Create role.
+Go to **IAM -> Access management -> Roles -> Create role**,  select AWS service as entity type,  in the use case select Lambda and click on next,  on the permissions section search the policy the we created before "lambda-tutorial-policy"  select that and click on next,  in role detail select a name for the role, for example "lambda-tutorial-role" and click on Create role.
 
 
 ### Create lambda function
 
-On the AWS dashboard go to the lambda section,  make sure to select the same region that we use in the S3 bucket section ( in our case "us-west-2 - Oregon") , in order to get the trigger working correctly this is a must.
+On the AWS dashboard go to the lambda section,  make sure to select the same region that we use in the S3  section (in our case "us-west-2 - Oregon"), this is neccesary to make our trigger configuration works correctly.
 
 ![lambda](./lambda.png)
 
-Select container image, put a name,  and in the image URI you can put the value by hand or click on the browse images and browse for the image.
+Select container image, put any function name and in the image URI you can type the value by hand or click in the browse images to select the image ECR.
 
 On Change default execution role,  select Use an existing role and choose the execution role that we created before "lambda-tutorial-role".
 
-Wait a moment and the lambda function should be created, in order to check our container application , go to Test section and click on "Test" button,  this should return the response "Hello lambda" that we define on the lambda function.
+Click on create,  wait a moment and the lambda function should be created on AWS, in order to check our container application , go to Test section and click on "Test" button,  this should return the response "Hello lambda" that we define on the lambda function.
 
 ![lambda](./lambda-response.png)
 
 
-#### Add trigger s3 
+### Add trigger s3 
 
 We need to configure our lambda to triggers when a file is upload to a S3 bucket,  for that reason go to the lambda detail and click on Add Trigger,
 
-On Trigger configuration, select S3 as a trigger type, on the bucket select the S3 created on the first section of this tutorial, be sure to select the input purpose bucket, leave default values on the other options and click on Add.
+On Trigger configuration, select S3 as a trigger type, in the bucket select the S3 created on the first section of this tutorial, be sure to select the input bucket type, leave default values on the other options and click on Add.
 
 ![lambda-trigger](./lambda-trigger.png)
 
 
 ### Update dockerfile 
 
-We need to install the ffmepg on our container to convert the video file to another resolution, add this new code on Dockerfile
+We need to install the ffmepg in our container to compress the original video uploaded, update Dockerfile definition.
 
 ```Dockerfile
 FROM golang:1.22 as build
@@ -719,13 +718,16 @@ COPY --from=build /helloworld/main ./main
 ENTRYPOINT [ "./main" ]
 ```
 
-On the lambda image, we add a new RUN command,  in this we update some dependencies.
-wget: required to download ffmpeg bin file.
-tar, xz: required to extract the file.
+On the lambda image, we add a new RUN command,  that will install some dependencies.
 
-After installed that dependencies, we download the ffmpeg binary file using wget, extract the file and create a symbolic link to the /usr/bin/ffmpeg path,  this is required in order to call the ffmpeg from our golang code.
+**wget:** required to download ffmpeg bin file.
 
-Add .env file with the definition of the required environemnt variables
+**tar, xz:** required to extract the file.
+
+
+After installed those dependencies, we download the ffmpeg binary file using wget, extract the file and create a symbolic link to the /usr/bin/ffmpeg path,  this is required in order to call the ffmpeg from our golang code.
+
+Add a .env file with the definition of the required environment variables
 ```
 AWS_S3_BUCKET=your-output-bucket
 AWS_ACCESS_KEY=your-access-key
@@ -749,11 +751,12 @@ func convertFile(inputFile string, outputFile string) error {
 }
 ```
 
-In this function we received as parameters the path string of the input and output video files that we use in a ffmepg call,  this command compress the original video file that we upload to the input-bucket,  this is a very basic command that we use for this tutorial, ffmpeg has a lot of options and configurations for different resolutions and formats,  you can check the documentation for more information.
+In this function we received as parameters the path string of the input and output video files that we use in a ffmepg call,  this command compress the original video file that we upload ins the input-bucket,  this is a very basic command that we use for this tutorial, ffmpeg has a lot of options and configurations for different resolutions and formats,  you can check this link for more information.
+Finally check for an error command and return that value of nil is everything is ok.
 
 https://img.ly/blog/ultimate-guide-to-ffmpeg/#video-properties
 
-Finally check for an error command and return that value of nil is everything is ok.
+
 
 ```go
 func handlerTriggerS3Bucket(ctx context.Context, s3Event events.S3Event) error {
@@ -860,16 +863,16 @@ func main() {
 }
 
 ```
-handlerTriggerS3Bucket is the handler that will be called when a new file is updated on the input-bucket,  firts we created some helper variables accesing the values that we define in the .env file,  make sure that the value of AWS_S3_BUCKET is the correct output-bucket.
+handlerTriggerS3Bucket is the handler that will be called when a new file is upload in the input-bucket, first we created some helper variables that access to the values defined in the .env file, important thing, make sure that the value of AWS_S3_BUCKET is the correct output-bucket, to prevent a infinit loop in our services.
 
-After create a new session using the SDK, this is the same code as the ECS container the did on the previous section, 
+After create a new session using the AWS sdk, this is the same code as the ECS container the we did in the previous section, 
 next we obtain the value of the record/file using the events.S3EventRecord type, call the GetObject method in order to retreived the object from S3.
 
-Call HeadObject method to get metadata of the object, this is only for debug purposes, we can see that value later in the CloudWatch logs.
+Next call HeadObject method to get metadata of the object, this is only for debug purposes, we will see that value later in the CloudWatch logs.
 
 We need to create a buffer variable to copy the value of the object S3 object, if no error happens on that call, we create and save a new file on the /tmp folder,   next call the converFile function created previously that runs the ffmpeg command,  if no error ocurred we read the output file that also is created in the /tmp folder and uploads the file video compress to the output-bucket.
 
-On main we update the function trigger that is called on the lambda.Start method.
+On main function we update the function trigger that is called on the lambda.Start method.
 
 Build and upload the image to the registry,  check the commands on the AWS dasboard ECR.
 
@@ -885,7 +888,7 @@ Go to the AWS lambda and look up for the update image button
 
 ![lambda-update-image](./lambda-update-image.png)
 
-On Container image setting -> Browse images,  look for the lambda image and select the lastest version, in this case the v0.0.2, click on Save, wait for a few seconds and we should see a success message.
+On Container **Image setting -> Browse images**,  look for the lambda image and select the lastest version, in this case the v0.0.2, click on Save, wait for a few seconds and we should see a success message.
 
 Before test, we must to update the configuration of our lambda function,  go to Configuration -> General configuration -> Edit.
 
@@ -931,6 +934,8 @@ You also should see a new compress video file on your output-bucket,  you can do
 
 In this tutorial we learned how to use different AWS services to create a scalable and serverless application, we
 create a API service using ECS,  a lambda function that compress a video files,  and a S3 bucket that store the original and compress video files.
+
+Make sure to delete all the resources that we created in this tutorial.
 
 
 
