@@ -623,6 +623,7 @@ Build and upload the image to the registry, check view push commands on detail i
 ```bash
 docker build -t lambda-tutorial:v0.0.1 .
 docker tag lambda-tutorial:v0.0.1 yourURI/lambda-tutorial:v0.0.1
+docker push lambda-tutorial:v0.0.1 yourURI/lambda-tutorial:v0.0.1
 ```
 
 
@@ -660,34 +661,34 @@ On policiy editor section select JSON and paste this code
 }
 ```
 
-This definition allow the lambda function to access to the Watch logs and S3  AWS services requires by our lambda application.
+This definition allow the lambda function to access to the Watch logs and S3  AWS services require by our lambda application.
 
 Click on next, put a name like "lambda-tutorial-policy" and press on Create policy button.
 
 
 ### Create role
 
-Go to **IAM -> Access management -> Roles -> Create role**,  select AWS service as entity type,  in the use case select Lambda and click on next,  on the permissions section search the policy the we created before "lambda-tutorial-policy"  select that and click on next,  in role detail select a name for the role, for example "lambda-tutorial-role" and click on Create role.
+Go to **IAM -> Access management -> Roles -> Create role**,  select AWS service as entity type,  in the use case select Lambda and click on next,  on the permissions section search the policy that we created before "lambda-tutorial-policy"  select it and click on next,  in role detail select a name for the role, for example "lambda-tutorial-role" finally click on Create role.
 
 
 ### Create lambda function
 
-On the AWS dashboard go to the lambda section,  make sure to select the same region that we use in the S3  section (in our case "us-west-2 - Oregon"), this is neccesary to make our trigger configuration works correctly.
+On the AWS dashboard go to the lambda section,  make sure to select the same region that we used in the S3 bucked setup (in our case "us-west-2 - Oregon"), this is neccesary to make our trigger configuration works properly.
 
 ![lambda](./lambda.png)
 
-Select container image, put any function name and in the image URI you can type the value by hand or click in the browse images to select the image ECR.
+Select container image, put any function name, in the image URI you can type the value by hand or click in the "browse images" to select the version image ECR.
 
 On Change default execution role,  select Use an existing role and choose the execution role that we created before "lambda-tutorial-role".
 
-Click on create,  wait a moment and the lambda function should be created on AWS, in order to check our container application , go to Test section and click on "Test" button,  this should return the response "Hello lambda" that we define on the lambda function.
+Click on create,  wait a moment until AWS finish the creation of the lambda ( you should see a message ), in order to check our container application , go to Test section and click on "Test" button,  this should return the response "Hello lambda" that we define on the lambda function handler.
 
 ![lambda](./lambda-response.png)
 
 
 ### Add trigger s3 
 
-We need to configure our lambda to triggers when a file is upload to a S3 bucket,  for that reason go to the lambda detail and click on Add Trigger,
+We need to configure our lambda to execute when a file is upload to a S3 bucket,  for that reason go to the lambda detail and click on Add Trigger,
 
 On Trigger configuration, select S3 as a trigger type, in the bucket select the S3 created on the first section of this tutorial, be sure to select the input bucket type, leave default values on the other options and click on Add.
 
@@ -696,7 +697,7 @@ On Trigger configuration, select S3 as a trigger type, in the bucket select the 
 
 ### Update dockerfile 
 
-We need to install the ffmepg in our container to compress the original video uploaded, update Dockerfile definition.
+We need to install the ffmepg in our image configuration , this is require to compress the video uploaded in the input-bucket, for that matter update Dockerfile with this content.
 
 ```Dockerfile
 FROM golang:1.22 as build
@@ -720,7 +721,7 @@ ENTRYPOINT [ "./main" ]
 
 On the lambda image, we add a new RUN command,  that will install some dependencies.
 
-**wget:** required to download ffmpeg bin file.
+**wget:** required to download ffmpeg binaray file.
 
 **tar, xz:** required to extract the file.
 
@@ -751,7 +752,7 @@ func convertFile(inputFile string, outputFile string) error {
 }
 ```
 
-In this function we received as parameters the path string of the input and output video files that we use in a ffmepg call,  this command compress the original video file that we upload ins the input-bucket,  this is a very basic command that we use for this tutorial, ffmpeg has a lot of options and configurations for different resolutions and formats,  you can check this link for more information.
+In this function we received as parameters the path string of the input and output video files that we use in a ffmepg call,  this command compress the original video and save on the outputFile path,  this is a very basic command that we use for this tutorial, ffmpeg has a lot of options and configurations for different resolutions and formats,  you can check this link for more information.
 Finally check for an error command and return that value of nil is everything is ok.
 
 https://img.ly/blog/ultimate-guide-to-ffmpeg/#video-properties
@@ -863,14 +864,14 @@ func main() {
 }
 
 ```
-handlerTriggerS3Bucket is the handler that will be called when a new file is upload in the input-bucket, first we created some helper variables that access to the values defined in the .env file, important thing, make sure that the value of AWS_S3_BUCKET is the correct output-bucket, to prevent a infinit loop in our services.
+handlerTriggerS3Bucket is the function that will be called when a new file is upload in the input-bucket, first we created some helper variables that access to the values defined in the .env file, important thing, make sure that the value of AWS_S3_BUCKET is the correct output-bucket, to prevent a infinity loop lambda call in our AWS services.
 
 After create a new session using the AWS sdk, this is the same code as the ECS container the we did in the previous section, 
 next we obtain the value of the record/file using the events.S3EventRecord type, call the GetObject method in order to retreived the object from S3.
 
 Next call HeadObject method to get metadata of the object, this is only for debug purposes, we will see that value later in the CloudWatch logs.
 
-We need to create a buffer variable to copy the value of the object S3 object, if no error happens on that call, we create and save a new file on the /tmp folder,   next call the converFile function created previously that runs the ffmpeg command,  if no error ocurred we read the output file that also is created in the /tmp folder and uploads the file video compress to the output-bucket.
+We need to create a buffer variable to copy the value of the object S3 object, if no error happens on that call, we create and save a new file on the /tmp folder,   next call the converFile function created previously that runs the ffmpeg command,  if no error ocurred we read the output file that is created also in the /tmp folder and uploads the video compress in the output-bucket.
 
 On main function we update the function trigger that is called on the lambda.Start method.
 
@@ -888,36 +889,37 @@ Go to the AWS lambda and look up for the update image button
 
 ![lambda-update-image](./lambda-update-image.png)
 
-On Container **Image setting -> Browse images**,  look for the lambda image and select the lastest version, in this case the v0.0.2, click on Save, wait for a few seconds and we should see a success message.
+On Container **Image setting -> Browse images**,  look for the lambda image and select the latest version, in this case v0.0.2, click on "Save", wait for a few seconds and we should see a success message.
 
-Before test, we must to update the configuration of our lambda function,  go to Configuration -> General configuration -> Edit.
+Before test, we must to update the configuration of our lambda function,  go to **Configuration -> General configuration -> Edit**.
 
 
 ![lambda-config](./lambda-config.png)
 
-Change the memory value to 256 MB and the timeout to 1 minute, this is required because the ffmpeg command is a complex operation and requires more resources than the default values, also depending of the operation and size of the video file you should change this values accordingly.
+Change the memory value to 256 MB and the timeout to 1 minute, this is required because the ffmpeg command is a complex operation and requires more resources than the default values, keep in mind that depending of the operation and size of the video file you should change this values accordingly.
 
 Click on Save and wait a few seconds for the changes to take effect.
 
 #### Test 
 
 We are going to use a video sample from this page
+
 https://file-examples.com/index.php/sample-video-files/sample-mp4-files/
 
-Select the 640x360, size 3MB, that should work fine with our configuration, if you want to use another video take in account that you probably should make changes on the memory and timeout values of the lambda function.
+Select the 640x360 - size 3MB file , that should work fine with our configuration.
 
 We can test using our API ECS service using curl 
 ```bash
 curl -X POST -F "file=@./yourvideo.mp4" http://yourip/upload
 ```
 
-Or you can use the S3 dasboard and upload directly on the input-bucket
+You can also use the S3 dasboard and upload directly in the input-bucket
 
-S3 -> your-bucket -> Upload
+**S3 -> your-bucket -> Upload**
 
 ![bucket-upload](./bucket-upload.png)
 
-After upload the video, the lambda function should be triggered and compress , upload the video to the output-bucket,  you can check the CloudWatch logs for more information about the process.
+After upload the video, the lambda function should be triggered, compress and upload the video in the output-bucket,  you can check the CloudWatch logs for more information about the process.
 
 Go to 
 
