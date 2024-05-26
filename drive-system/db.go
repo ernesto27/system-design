@@ -15,7 +15,7 @@ type Mysql struct {
 type File struct {
 	ID   int
 	Name string
-	Size string
+	Size int64
 	Hash string
 }
 
