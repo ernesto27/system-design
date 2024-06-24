@@ -32,7 +32,8 @@ CREATE TABLE guest (
     guest_id INT PRIMARY KEY,
     first_name VARCHAR(255),
     last_name VARCHAR(255),
-    email VARCHAR(255)
+    email VARCHAR(255),
+    reservation_token VARCHAR(100)
 );
 
 
@@ -85,10 +86,10 @@ VALUES (1, '2022-01-01', 100.00),
        (3, '2022-01-02', 220.00);
 
 -- Inserts for guest table
-INSERT INTO guest (guest_id, first_name, last_name, email)
-VALUES (1, 'John', 'Doe', 'john.doe@example.com'),
-       (2, 'Jane', 'Smith', 'jane.smith@example.com'),
-       (3, 'Mike', 'Johnson', 'mike.johnson@example.com');
+INSERT INTO guest (guest_id, first_name, last_name, email, reservation_token)
+VALUES (1, 'John', 'Doe', 'john.doe@example.com', '1234'),
+       (2, 'Jane', 'Smith', 'jane.smith@example.com', ''),
+       (3, 'Mike', 'Johnson', 'mike.johnson@example.com', '');
 
 -- Inserts for room_table_inventory table
 INSERT INTO room_table_inventory (hotel_id, room_id, date, total_inventory, total_reserved)

@@ -1,4 +1,7 @@
- docker run --name hote-system -p 3307:3306 -e MYSQL_ROOT_PASSWORD=1111 -d mysql:8.0
+ docker run --name hotel-system -p 3307:3306 -e MYSQL_ROOT_PASSWORD=1111 -d mysql:8.0
 
 
 goose mysql "root:1111@tcp(localhost:3307)/hotel-system" up
+
+
+curl -X POST -H "Content-Type: application/json" -d '{"reserve-token":"12345", "room":"101", "start":"2022-01-01T14:00:00Z", "end":"2022-01-01T15:00:00Z"}' http://localhost:8080/reservation
