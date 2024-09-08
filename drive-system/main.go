@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"strings"
 
 	"github.com/go-chi/chi"
 	"github.com/go-chi/chi/middleware"
@@ -15,7 +16,6 @@ import (
 )
 
 func uploadHandler(w http.ResponseWriter, r *http.Request) {
-
 	file, fileHeader, err := r.FormFile("file")
 	if err != nil {
 		fmt.Println(err)
@@ -58,6 +58,7 @@ func uploadHandler(w http.ResponseWriter, r *http.Request) {
 	})
 	if err != nil {
 		w.Write([]byte(err.Error()))
+		return
 	}
 
 	w.Write([]byte("file ok"))
@@ -90,6 +91,7 @@ func main() {
 
 	r := chi.NewRouter()
 	r.Use(middleware.Logger)
+	r.Use(ValidateUserToken)
 
 	r.Get("/", func(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte("welcome"))
@@ -118,4 +120,25 @@ func generateRandomToken(n int) (string, error) {
 	hasher := sha256.New()
 	hasher.Write(bytes)
 	return hex.EncodeToString(hasher.Sum(nil)), nil
+}
+
+func ValidateUserToken(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		authHeader := r.Header.Get("Authorization")
+		splitToken := strings.Split(authHeader, "Bearer ")
+		if len(splitToken) != 2 {
+			http.Error(w, "Unauthorized", http.StatusUnauthorized)
+			return
+		}
+		token := splitToken[1]
+
+		_, err := db.ValidateToken(token)
+		if err != nil {
+			fmt.Println(err)
+			http.Error(w, "Unauthorized", http.StatusUnauthorized)
+			return
+		}
+
+		next.ServeHTTP(w, r.WithContext(r.Context()))
+	})
 }

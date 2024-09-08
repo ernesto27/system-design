@@ -12,6 +12,11 @@ type Mysql struct {
 	Db *sql.DB
 }
 
+type User struct {
+	ID    int
+	Email string
+}
+
 type File struct {
 	ID   int
 	Name string
@@ -42,4 +47,18 @@ func (mysql *Mysql) CreateFile(file File) error {
 	}
 
 	return nil
+}
+
+func (mysql *Mysql) ValidateToken(token string) (User, error) {
+	row := mysql.Db.QueryRow(`
+		SELECT id, email
+		FROM users WHERE token=?`, token)
+
+	user := User{}
+	err := row.Scan(&user.ID, &user.Email)
+	if err != nil {
+		return user, err
+	}
+
+	return user, err
 }

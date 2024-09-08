@@ -57,7 +57,7 @@ func (myS3 *MyS3) Upload(buf *bytes.Buffer, fileHeader *multipart.FileHeader, ha
 	_, err := myS3.client.PutObjectWithContext(ctx, &s3.PutObjectInput{
 		Bucket:             aws.String(myS3.Bucket),
 		Body:               bytes.NewReader(buf.Bytes()),
-		Key:                aws.String(hash + "." + ext),
+		Key:                aws.String(hash + ext),
 		ContentDisposition: aws.String("attachment"),
 	})
 	if err != nil {
