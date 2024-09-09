@@ -370,7 +370,62 @@ Si ingresamos a esta URL en el puerto 8000,  deberiamos ver un mensaje de 503 Se
 
 
 # PARTE 3 
-## Crear cluster ECS
+## Crear ECS
+
+#### Crear execution role
+Ir a IAM -> Access management -> Roles -> Crear rol
+
+- Tipo de entidad de confianza: AWS service
+- Caso de uso: Elastic Container Service -> Siguiente
+- Nombre: ecs-task-execution-role 
+
+Click en crear rol
+
+Una vez terminado este paso ir a detalle del rol ir al detalle del rol y agregar una politica de permisos.
+
+Políticas de permisos -> Agregar permisos
+
+Agregar lo siguiente:
+
+- AmazonECSTaskExecutionRolePolicy
+- CloudWatchLogsFullAccess
+
+
+
+### Crear task definition
+
+Antes de crear el cluster ECS debemos crear un task-defintion,  esto lo podemos ver como un template en el cual definimos el contenedor, tipo de recursos, logs y configuraciones que van a estar asociadas a un servicio en ECS.
+
+Para esto tenemos que ir a ECS -> Definiciones de tareas -> Crear una nueva definicion de tareas
+
+#### Servicio users
+
+- **Familia de definición de tareas:**  service-users-td
+- **Requisitos de infraestructura:** AWS fargate
+- **Sistema operativo/arquitectura:** x86_64
+- **CPU:** .25 vCPU
+- **Memoria:** .5 GB
+- **Rol de ejecución de tareas:** Seleccionar el rol creado anteriormente "ecs-task-execution-role"
+
+Contenedor:
+
+- **Nombre:** container-users
+- **URI de image:**  URI de la imagen en ECR con su tag correspondiente, por ejemplo 666.dkr.ecr.us-west-2.amazonaws.com/service-users:v0.0.1
+- **Contenedor escencial:** si 
+- **Utilizar la recopilación de registros de CloudWatch:** habilitar opcion
+
+Dejar las demas opciones por default y hacer click Crear.
+
+
+![Image](images/task-definition-create.png)
+
+#### Servicio products
+
+Hacer los mismos pasos anteriores para el servicio products, pero cambiando lo siguiente.
+
+- **Nombre:** container-products
+- **URI de image:**  URI de la imagen en ECR con su tag correspondiente, por ejemplo 666.dkr.ecr.us-west-2.amazonaws.com/service-products:v0.0.1
+
 
 
 
