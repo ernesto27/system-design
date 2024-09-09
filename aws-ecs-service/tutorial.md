@@ -280,7 +280,74 @@ Crear un nuevo repositorio privado en ECR con el nombre service-products y reali
 En este proyecto vamos a utilizar un load balancer para distribuir el trafico entre los servicios users y products que postierormente vamos a crear en ECS, pero antes de eso debemos configurar otros servicios requeridos.
 
 
-### Crear security groups
+#### Crear security groups
+
+El primer security group que vamos a crear va a estar asociado al load balancer y es el que va a permitir el trafico de entrada tanto al puerto 8000 como al 8001.
+
+Para esto tenemos que ir a  EC2 -> Red y seguridad -> Security groups -> Crear security group
+
+Como nombre ponemos el valor "load-balancer-sg" y una descripcion "security group para accesso externo al load balancer" , dejamos el valor de VPC por default
+
+Como regla de entrada agregamos estas dos configuraciones.
+
+- Tipo: TCP personalizado 
+- Protocolo: TCP
+- Intervalo de puertos: 8000
+- Origen:  Anywhere - Esto va a permitir el trafico de cualquier IP al puerto 8000
+
+--- 
+---
+---
+
+- Tipo: TCP personalizado 
+- Protocolo: TCP
+- Intervalo de puertos: 8001
+- Origen:  Anywhere - Esto va a permitir el trafico de cualquier IP al puerto 8000
+
+
+En reglas de salida dejamos el valor default, el cual permite el trafico de salida a cualquier origen y hacemos click en Crear security group.
+
+El segundo security group que vamos a crear va a estar asociado a los servicios de ECS, este debe estar asociado al segundo security group creado anteriormente,  para que todo el trafico de entrada provenga desde el load balancer.
+
+Como nombre ponemos el valor "container-sg" y una descripcion "security group para la comunicacion entre el load balancer y los contenedores" , dejamos el valor de VPC por default
+
+- Tipo: Todos los TCP
+- Protocolo: TCP
+- Intervalo de puertos: 0-65535
+- Origen:  Personalizada
+- Origen valor: Buscar el nombre del security group creado anteriormente "load-balancer-sg" y seleccionarlo.
+
+Dejar las reglas de salida por default y click en Crear security group.
+
+
+#### Crear target group
+
+Ir a seccion EC2 -> Equilibrio de carga -> Grupos de destino -> Crear grupo de destino
+
+Elegir un tipo de destino: Direcciones IP
+Nombre del grupo de destino: service-users-tg
+Protocolo: HTTP - 8000
+Tipo de direccion IP: IPv4
+VPC: default
+Version del protocolo: HTTP1
+
+Dejar los demas valores por defaul,  click en siguiente.
+
+En seccion especificar direcciones IP y definir puertos,  click en eliminar IP definida por default,  estos valores
+se van a crear dinamicamente cuando creemos el servicio en ECS.
+
+
+Hacer el mismo paso anterior para el servicio products,  pero cambiando el nombre del grupo de destino a "service-products-tg" y el puerto a 8001.
+
+
+#### Crear load balancer
+
+
+
+
+
+
+
 
 
 
