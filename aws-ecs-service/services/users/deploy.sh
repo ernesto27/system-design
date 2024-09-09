@@ -13,7 +13,7 @@ aws ecr get-login-password --region $REGION | docker login --username AWS --pass
 
 docker build -t $REGISTRY_NAME .
 
-docker tag $IMAGE_NAME $REGISTRY_URI/$REGISTRY_NAME
+docker tag $REGISTRY_NAME $REGISTRY_URI/$REGISTRY_NAME
 
 docker push $REGISTRY_URI/$REGISTRY_NAME
 

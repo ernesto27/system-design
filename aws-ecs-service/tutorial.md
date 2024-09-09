@@ -342,6 +342,36 @@ Hacer el mismo paso anterior para el servicio products,  pero cambiando el nombr
 
 #### Crear load balancer
 
+Ir a seccion EC2 -> Equilibrio de carga -> Balanceadores de carga -> Crear balanceador de carga
+
+Seleccionamos el tipo  "Balanceador de carga de aplicaciones" el cual nos va a permitir balancear el trafico hacia los servicios en ECS y configurar reglas de enrutamiento mas avanzadas.
+
+Click en crear y definir estos valores.
+
+- **Nombre del balanceador de carga:**  load-balancer-ecs
+- Esquema: Expuesto a Internet 
+- Tipo de dirección IP del equilibrador de carga: IPv4
+- VPC: default
+- Mapeos: us-west-1a, us-west-1b
+- Grupos de seguridad: seleccionar el security group creado anteriormente "load-balancer-sg"
+- Agentes de escucha y redireccionamiento: 
+	- Protocolor: HTTP
+	- Puerto: 8080
+	- Accion predeterminada: service-user-sg
+- Nuevo agentes de escucha
+	- Protocolor: HTTP
+	- Puerto: 8081
+	- Accion predeterminada: service-products-sg
+
+
+La creacion del load balancer tarda unos minutos , una vez terminado el proceso, podemos acceder al DNS del load balancer generado por AWS.
+
+Si ingresamos a esta URL en el puerto 8000,  deberiamos ver un mensaje de 503 Service Temporarily Unavailable, nuestro proximo paso es configurar el cluster ECS para hacer uso de este servicio.
+
+
+# PARTE 3 
+## Crear cluster ECS
+
 
 
 
