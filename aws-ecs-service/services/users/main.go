@@ -42,7 +42,7 @@ func main() {
 	})
 
 	r.Get("/service-products", func(w http.ResponseWriter, r *http.Request) {
-		resp, err := http.Get(os.Getenv("PRODUCTS_SERVICE_URL") + "/products")
+		resp, err := http.Get(os.Getenv("SERVICE_PRODUCTS") + "/products")
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
