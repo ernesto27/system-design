@@ -15,6 +15,7 @@ TODO
 - Crear cluster ECS 
 - Crear security groups para ECS 
 - Crear servicios ECS , asociarlo a load balancer
+- Servicio task job cron
 - Crear RDS servicio mysql, connect and add mysql tablas para testing
 - Actualizar docker images , connect to mysql, deploy ECR
 - Actualizar servicios
@@ -319,6 +320,8 @@ Como nombre ponemos el valor "container-sg" y una descripcion "security group pa
 
 Dejar las reglas de salida por default y click en Crear security group.
 
+TODO AGREGAR SECURITY GROUP CONTAINER 3000
+
 
 #### Crear target group
 
@@ -425,6 +428,105 @@ Hacer los mismos pasos anteriores para el servicio products, pero cambiando lo s
 
 - **Nombre:** container-products
 - **URI de image:**  URI de la imagen en ECR con su tag correspondiente, por ejemplo 666.dkr.ecr.us-west-2.amazonaws.com/service-products:v0.0.1
+
+
+### Crear cluster ECS 
+
+El cluster se encarga de agrupar los servicios y tareas que vamos a ejecutar en ECS,  
+Para esto debemos ir a ECS -> Clusters -> Crear cluster
+
+- **Nombre del clúster:** ecs-cluster
+- **Infraestructura:** Fargate
+
+Dejar las demas opciones por default y click en Crear.
+
+
+### Crear servicios ECS
+
+Ir a detalle del cluster creado anteriormente y click en Crear
+
+#### Servicio users
+
+Entorno
+- **Opciones informáticas:**  Tipo de lanzamiento
+- **Tipo de lanzamiento:** Fargate
+- **Version de la plataforma:** Latest
+
+Configuración de implementación
+
+- **Tipo de aplicación:** Servicio
+- **Definición de tareas:**  Seleccionar task definition "service-users-td"
+- **Revision**: Mas reciente
+- **Nombre del servicio:** service-users-ecs
+- **Tipo de servicio:**: Replica
+- **Tareas deseadas:** 1
+
+Conexión de servicio - este servicio nos va a permitir conectar los servicios usando un DNS interno para tener baja latencia de conexion.
+
+- **Configuración de conexión de servicio**: Cliente y servidor
+- **Espacion de nombres**: ecs-tutorial
+- **Agregar mapeos de puertos y aplicaciones**
+	- **Alias de puerto:** Selccionar contenedor
+	- **Deteccion:** users
+	- **DNS:** users
+	- **Puerto:** 3000
+
+Este definicion nos va a permitir que los servicios que esten el cluster se puedan comunicar a este servicio mediante esta URL http://users:3000
+
+
+Redes
+
+- **VPC:** default
+- **Subredes:** Seleccionar us-west-1a, us-west-1b
+- **Grupo de seguridad:** Seleccionar los siguientes security groups
+	- container-lb-sg
+	- container-3000 
+- **IP publica:** Activado
+
+
+Balanceo de carga
+
+- **Tipo de balanceador de carga:** Balanceador de carga de aplicaciones
+- **Contenedor**: default
+- **Balanceador de carga:** Usar un balanceador de carga existente, seleccionar el load balancer creado anteriormente
+- **Agente de escucha:** Utilizar un agente de escucha existente, seleccionar el valor 8000:HTTP
+- **Grupo de destino:** Utilizar grupo existente,  seleccionar el target group creado anteriormente "service-users-tg"
+
+
+Escalado automático de servicios
+
+- **Cantidad minima de tareas:** 1
+- **Cantidad maxima de tareas:** 3
+- **Tipo de politica de escalado:** Seguimiento de destino
+	- **Nombre de la politica:** cpu
+	- **Métrica de servicio de ECS**: EcsServiceAverageCPUUtilization
+	- **Valor de destino:** 70
+
+Con esta configuracion el servicio va a ejecutar la accion de escalamiento cuando el uso de CPU sea mayor al 70% ( scale out) y va a reducir la cantidad de tareas cuando el uso de CPU sea menor al 70% (scale in).
+
+Click en Crear
+
+### Servicio products
+
+La creacion del servicio products es similar al servicio users,  pero con las siguientes modificaciones.
+
+Configuración de implementación
+- **Nombre del servicio:** service-products-ecs
+- **Definición de tareas:**  Seleccionar task definition "service-products-td"
+
+Conexión de servicio
+- **Deteccion:** products
+- **DNS:** products
+
+Balanceo de carga
+- **Grupo de destino:** Utilizar grupo existente,  seleccionar el target group creado anteriormente "service-products-tg"
+- **Agente de escucha:** Utilizar un agente de escucha existente, seleccionar el valor 8001:HTTP
+- **Grupo de destino:** Utilizar grupo existente,  seleccionar el target group creado anteriormente "service-products-tg"
+
+
+
+
+
 
 
 
