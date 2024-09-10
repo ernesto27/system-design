@@ -2,7 +2,9 @@ package main
 
 import (
 	"encoding/json"
+	"fmt"
 	"io"
+	"math"
 	"net/http"
 	"os"
 
@@ -10,6 +12,18 @@ import (
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/joho/godotenv"
 )
+
+func isPrime(n int) bool {
+	if n <= 1 {
+		return false
+	}
+	for i := 2; i <= int(math.Sqrt(float64(n))); i++ {
+		if n%i == 0 {
+			return false
+		}
+	}
+	return true
+}
 
 func main() {
 
@@ -38,7 +52,6 @@ func main() {
 
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(users)
-
 	})
 
 	r.Get("/service-products", func(w http.ResponseWriter, r *http.Request) {
@@ -56,6 +69,17 @@ func main() {
 		}
 
 		w.Write(body)
+	})
+
+	r.Get("/stress-test", func(w http.ResponseWriter, r *http.Request) {
+		limit := 1000000
+		for i := 2; i <= limit; i++ {
+			if isPrime(i) {
+				fmt.Printf("%d is a prime number\n", i)
+			}
+		}
+
+		w.Write([]byte("Stress test completed"))
 	})
 
 	http.ListenAndServe(":3000", r)
