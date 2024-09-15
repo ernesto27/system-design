@@ -690,9 +690,90 @@ Para aplicar el nuevo cambio en las tareas,  debemos actualizar el servicio en p
 Ir a ECS -> Clusters -> ecs-cluster -> service-users -> Actualizar 
 
 Seleccionar la ultima version de la definicion de tareas y click en Actualizar servicio.
-Realizar el mismo procecos para el servicio products.
+Realizar el mismo proceso para el servicio products.
 
-[TODO] IMAGEN
+![Image] (images/service-update.png)
+
+
+Verificar que la conexion entre servicios este funcionando correctamente
+
+
+```sh
+curl http://[YOURLOADBALANCERDNS]:8000/service-products
+# Response 
+[{"id":1,"name":"Laptop","price":1000},{"id":2,"name":"Mouse","price":20},{"id":3,"name":"Keyboard","price":50}]
+
+curl http://[YOURLOADBALANCERDNS]:8001/service-users
+# Response
+[{"id":1,"name":"John Doe","email":"jhon@gmail.com"}, {"id":2,"name":"Jane Doe","email":"jane@gmail.com"}]
+```
+
+
+### Pruebas de stress tests, autoscaling
+
+
+Actualmente los servicios estan configurados para escalar de acuerdo al uso de CPU y memoria, para poder probar esto debemos actualizar subir una nueva version de la imagen y posterior vamos a realizar pruebas de stress utilizando una herramienta llamada vegeta.
+
+
+En el archivo services/users/main.go agregar lo siguiente
+
+```go
+
+func isPrime(n int) bool {
+	if n <= 1 {
+		return false
+	}
+	for i := 2; i <= int(math.Sqrt(float64(n))); i++ {
+		if n%i == 0 {
+			return false
+		}
+	}
+	return true
+}
+
+r.Get("/stress-test", func(w http.ResponseWriter, r *http.Request) {
+	limit := 1000000
+	for i := 2; i <= limit; i++ {
+		if isPrime(i) {
+			fmt.Printf("%d is a prime number\n", i)
+		}
+	}
+
+	w.Write([]byte("Stress test completed"))
+})
+
+```
+
+Este codigo agrega un nuevo endpoint llamado /stress-test en el cual vamos a crear un loop que va a calcular los numeros primos hasta el numero 1000000, esta funcion va a consumir mucho CPU el cual va a disparar el autoscaling del servicio.
+
+Hacer deploy, y actualizar la definicion de tareas y servicios en ECS.
+
+
+Instalar herramienta vegeta siguiendo las instrucciones de este link.
+
+https://github.com/tsenart/vegeta
+
+Ejecutar el siguiente comando, el cual va a realizar un ataque al servicio users por 120 segundo y va a mostrar los resultados en la terminal.
+
+```sh
+echo "GET http:/[YOURLOADBALANCERDNS]:8000/stress-test" | vegeta attack -duration=120s | tee results.bin | vegeta report
+```
+
+Si todo sale como lo esperado,  deberiamos ver en el dashboard de ECS que la cantidad de instancias del servicio users se incremento a 2,  esto se puede ver en la seccion ECS -> Clusters -> ecs-cluster -> service-users.
+
+![Image](images/ecs-autoscaling-es.png)
+
+Despues de unos minutos de terminado el stress-test, el servicio va a realizar un scale in y va a volver a la cantidad de tareas original, que en nuestro caso esta definido en 1 instancia.
+
+Se puede ver el estado de la alarma que genere el autoscaling en la seccion CloudWatch -> Alarmas -> Todas las alarmas
+
+
+
+
+
+
+
+
 
 
 

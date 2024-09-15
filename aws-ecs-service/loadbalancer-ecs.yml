@@ -34,6 +34,7 @@ Resources:
       Port: 8001
       Protocol: HTTP
 
+
   ECSServiceUser:
     Type: AWS::ECS::Service
     DependsOn: LoadBalancer
@@ -42,6 +43,7 @@ Resources:
       DesiredCount: 1
       TaskDefinition: arn:aws:ecs:us-west-2:383660184915:task-definition/service-test:5
       LaunchType: FARGATE
+      ServiceName: service-users
       LoadBalancers:
         - ContainerName: go
           ContainerPort: 3000
@@ -54,6 +56,7 @@ Resources:
             - subnet-e79c0691
           SecurityGroups:
             - sg-087fdbcd86b7a9ac1
+            - sg-0cc443d07056c0ae3
       ServiceConnectConfiguration:
         Enabled: true
         Namespace: ecs-tutorial
@@ -63,7 +66,6 @@ Resources:
               - Port: 3000
                 DnsName: users
 
-
   ECSServiceProducts:
     Type: AWS::ECS::Service
     DependsOn: LoadBalancer
@@ -72,6 +74,7 @@ Resources:
       DesiredCount: 1
       TaskDefinition: arn:aws:ecs:us-west-2:383660184915:task-definition/service-products-td:2
       LaunchType: FARGATE
+      ServiceName: service-products
       LoadBalancers:
         - ContainerName: products
           ContainerPort: 3000
@@ -84,6 +87,7 @@ Resources:
             - subnet-e79c0691
           SecurityGroups:
             - sg-087fdbcd86b7a9ac1
+            - sg-0cc443d07056c0ae3
       ServiceConnectConfiguration:
         Enabled: true
         Namespace: ecs-tutorial
@@ -92,3 +96,26 @@ Resources:
             ClientAliases:
               - Port: 3000
                 DnsName: products
+
+  ECSServiceUserScalableTarget:
+    Type: AWS::ApplicationAutoScaling::ScalableTarget
+    DependsOn: ECSServiceUser
+    Properties:
+      MaxCapacity: 3
+      MinCapacity: 1
+      ResourceId: !Sub "service/ecs-tutorial/service-users"
+      RoleARN: arn:aws:iam::383660184915:role/aws-service-role/ecs.application-autoscaling.amazonaws.com/AWSServiceRoleForApplicationAutoScaling_ECSService
+      ScalableDimension: ecs:service:DesiredCount
+      ServiceNamespace: ecs
+
+  ECSServiceUserScalingPolicy:
+    Type: AWS::ApplicationAutoScaling::ScalingPolicy
+    Properties:
+      PolicyName: ECSServiceUserCPUScalingPolicy
+      PolicyType: TargetTrackingScaling
+      ScalingTargetId: !Ref ECSServiceUserScalableTarget
+      TargetTrackingScalingPolicyConfiguration:
+        PredefinedMetricSpecification:
+          PredefinedMetricType: ECSServiceAverageCPUUtilization
+        TargetValue: 70
+
