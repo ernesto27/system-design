@@ -25,6 +25,13 @@ TODO
 - Eliminacion de servicios.
 
 
+# Parte 1 
+
+- Explicaion de proyecto
+- Creacion ERC repositorio
+- Creacion de imagenes, deploy
+
+
 En este tutorial vamos a crear un proyecto en el cual vamos a utilizar microservicios,  los cuales van a estar ejecutandose en AWS.
 Vamos a estar utilizando los siguentes servicios de AWS.
 
@@ -766,6 +773,67 @@ Si todo sale como lo esperado,  deberiamos ver en el dashboard de ECS que la can
 Despues de unos minutos de terminado el stress-test, el servicio va a realizar un scale in y va a volver a la cantidad de tareas original, que en nuestro caso esta definido en 1 instancia.
 
 Se puede ver el estado de la alarma que genere el autoscaling en la seccion CloudWatch -> Alarmas -> Todas las alarmas
+
+
+# PARTE 4
+
+- Configuracion dominio,  https, load balancer setup
+- Agregar WAF firewall
+
+Al momento tenemos creado un load balancer al cual podemos acceder via un DNS usando http de esta manera.
+
+http://[YOURLOADBALANCERDNS]:8000
+
+
+En esta parte del tutorial el objetivo es asociar un nombre de dominio a nuestro load balancer y configurar un certificado SSL para poder acceder a los servicios de manera segura.
+
+En mi caso voy a usar un dominio creado en NameCheap,  pero pueden usar cualquier otro proveedor de dominios que tengan en el cual puedan agregar registro DNS.
+
+### Crear certfiicado SSL 
+
+Para poder crear un certificado SSL en AWS necesitamos ir a la seccion de ACM (Amazon Certificate Manager) y click en Solicitar.
+
+En nombres de dominio vamos a agregar dos valores
+
+- yourdomain.com
+- *.yourdomain.com
+
+El * nos permite poder validar cualquier subdominio que se cree en el dominio principal.
+Por ejemplo: api.yourdomain.com, users.yourdomain.com, etc.
+
+![Image](images/acm-create.png)
+
+Dejar las demas opciones por default (Validación de DNS) y click en solicitar.
+
+Ir a detalle de certificado y copiar los siguintes valores.
+
+Nombre CNAME y valor CNAME 
+
+Ir a la configuracion DNS del registro y agregar un nuevo registro CNAME con el nombre y valor copiado anteriormente.
+
+- Host: _AAAA1111
+- Value: _AAAA1111.acm-validations.aws.
+
+En el caso de usar NameCheap tener en cuenta que el valor del host copiado desde ACM no debe tener el dominio.
+
+Por ejemplo.
+
+_AAAA1111.mydomain.com.
+
+Debe quedar de la siguiente manera
+
+_AAAA1111
+
+> Nota: Tener en cuenta que en otros proveedores de DNS si puede ser necesario agregar al registro CNAME el mismo valor que nos da ACM.
+
+
+Este proceso de validacion via DNS puede tardar unos 5 minutos aproximadamente,  en la seccion de ACM se va a ver el estado del certificado como "Emitido".
+
+
+### Configurar dominio
+
+
+
 
 
 
