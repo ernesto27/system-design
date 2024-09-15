@@ -1,0 +1,94 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: AWS CloudFormation template to create an Application Load Balancer
+
+Resources:
+  LoadBalancer:
+    Type: AWS::ElasticLoadBalancingV2::LoadBalancer
+    Properties:
+      Name: load-balancer-ecs
+      Scheme: internet-facing
+      IpAddressType: ipv4
+      SecurityGroups:
+        - sg-02524e40ef9f37c9d 
+      Subnets:
+        - subnet-504d0f34
+        - subnet-e79c0691
+
+  ListenerHTTP8080:
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    Properties:
+      DefaultActions:
+        - Type: forward
+          TargetGroupArn: arn:aws:elasticloadbalancing:us-west-2:383660184915:targetgroup/service-user-tg/dc42c1914c4ea33a
+      LoadBalancerArn: !Ref LoadBalancer
+      Port: 8000
+      Protocol: HTTP
+
+  ListenerHTTP8081:
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    Properties:
+      DefaultActions:
+        - Type: forward
+          TargetGroupArn: arn:aws:elasticloadbalancing:us-west-2:383660184915:targetgroup/service-products-tg/1b9885fa0ecb4606
+      LoadBalancerArn: !Ref LoadBalancer
+      Port: 8001
+      Protocol: HTTP
+
+  ECSServiceUser:
+    Type: AWS::ECS::Service
+    DependsOn: LoadBalancer
+    Properties:
+      Cluster: arn:aws:ecs:us-west-2:383660184915:cluster/ecs-tutorial
+      DesiredCount: 1
+      TaskDefinition: arn:aws:ecs:us-west-2:383660184915:task-definition/service-test:5
+      LaunchType: FARGATE
+      LoadBalancers:
+        - ContainerName: go
+          ContainerPort: 3000
+          TargetGroupArn: arn:aws:elasticloadbalancing:us-west-2:383660184915:targetgroup/service-user-tg/dc42c1914c4ea33a
+      NetworkConfiguration:
+        AwsvpcConfiguration:
+          AssignPublicIp: ENABLED
+          Subnets:
+            - subnet-504d0f34
+            - subnet-e79c0691
+          SecurityGroups:
+            - sg-087fdbcd86b7a9ac1
+      ServiceConnectConfiguration:
+        Enabled: true
+        Namespace: ecs-tutorial
+        Services:
+          - PortName: go-3000-tcp
+            ClientAliases:
+              - Port: 3000
+                DnsName: users
+
+
+  ECSServiceProducts:
+    Type: AWS::ECS::Service
+    DependsOn: LoadBalancer
+    Properties:
+      Cluster: arn:aws:ecs:us-west-2:383660184915:cluster/ecs-tutorial
+      DesiredCount: 1
+      TaskDefinition: arn:aws:ecs:us-west-2:383660184915:task-definition/service-products-td:2
+      LaunchType: FARGATE
+      LoadBalancers:
+        - ContainerName: products
+          ContainerPort: 3000
+          TargetGroupArn: arn:aws:elasticloadbalancing:us-west-2:383660184915:targetgroup/service-products-tg/1b9885fa0ecb4606
+      NetworkConfiguration:
+        AwsvpcConfiguration:
+          AssignPublicIp: ENABLED
+          Subnets:
+            - subnet-504d0f34
+            - subnet-e79c0691
+          SecurityGroups:
+            - sg-087fdbcd86b7a9ac1
+      ServiceConnectConfiguration:
+        Enabled: true
+        Namespace: ecs-tutorial
+        Services:
+          - PortName: products-3000-tcp
+            ClientAliases:
+              - Port: 3000
+                DnsName: products
