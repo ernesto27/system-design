@@ -23,6 +23,8 @@ TODO
 - configuracion dominio, https, load balancer setup
 - WAF firewall
 - Eliminacion de servicios.
+- CLI AWS deploy servicios
+- CD - CI pipeline
 
 
 # Parte 1 
@@ -44,11 +46,16 @@ Los servicios se van a conectar a una base de datos mysql y ademas se van a cone
 
 TODO DIAGRAMA
 
+![IMAGE](images/ecs-lb-tutorial.drawio.png)
+
 Docker image -  service users
 Docker image -  service productus
 
 Vamos a crear dos servicios para el proyecto,  en general el numero de este va a ser mayor, 
 pero en pos de mantener simple el tutorial vamos a limitarnos al momento a solo dos servicios.
+
+![IMAGE] (images/diagram.png)
+
 
 ## Crear micro-servicio users container
 
@@ -832,8 +839,147 @@ Este proceso de validacion via DNS puede tardar unos 5 minutos aproximadamente, 
 
 ### Configurar dominio
 
+En este tutorial vamos a utilizar el servicio de DNS namecheap, de todas maneras el proceso es muy similar en otros proveedores.
+
+Ir a detalle de dominio - Advanced DNS 
+
+Debemos agregar dos registro de CNAME con estos valores
+
+**Host:** @ 
+
+**Value:** [YOURLOADBALANCERDNS]
+
+--- 
+
+**Host:** www
+
+**Value:** [YOURLOADBALANCERDNS]
+
+![Image](images/dns-cname.png)
 
 
+Una vez realizado estos pasos podemos acceder a nuestro servicio usando nuestro dominio, tener en cuenta que el proceso de propagacion de DNS puede tardar unos minutos.
+
+http://[YOURDOMAIN]:8000
+
+
+### Configuracion load balancer SSL
+
+Previo a la configuracion del load balancer,  debemos modificar el security group del load balancer para permitir el trafico HTTPS.
+
+Ir a EC2 -> Red y seguridad -> Security groups -> click en load-balancer-sg -> Editar reglas de entrada
+
+Agregar regla 
+
+- Tipo: HTTPS
+- Protocolo: TCP
+- Intervalo de puertos: 443
+- Origen:  Anywhere - 0.0.0.0/0
+
+Click en Guardar reglas
+
+![Image](images/sg-https.png)
+
+
+Para poder utilizar HTTPS en nuestro dominio debemos agregar una configuracion en nuestro load balancer.  
+para esto debemos ir a la seccion de EC2 -> Load Balancers -> load-balancer-ecs -> Agente de escucha y reglas -> Agregar agente de escucha
+
+Configuracion agente de escucha:
+- Protocolo: HTTPS
+- Puerto: 443
+
+Acciones Predeterminadas
+
+- Renviar a grupos de destino
+- Grupo de destino: service-users-tg
+
+
+![Image](images/lb-ssl.png)
+
+
+**Configuracion de agente de escucha seguro**
+
+Certificado de servidor SSL/TLS predeterminado
+
+- Origen del certificado: de ACM
+- Certificado de ACM: Seleccionar certificado creado anteriormente en ACM
+
+Dejar los demas valores por default y click en Agregar
+
+Despues de terminada esta configuracon podemos ingresar a nuestro dominio de esta manera
+
+https://[YOURDOMAIN]
+
+### Configuracion subdominios servicios
+
+Para poder acceder a los servicios creados en ECS,  vamos a configurar subdominios para cada servicio.
+
+Por ejemplo:
+
+users: https://users.[YOURDOMAIN]
+
+products: https://products.[YOURDOMAIN]
+
+Como primer paso debemos ir a la configuracion de DNS de nuestro dominio y agregar dos registros CNAME con los siguientes valores.
+
+- Host: users
+- Value: [YOURLOADBALANCERDNS]
+
+---
+
+- Host: products
+- Value: [YOURLOADBALANCERDNS]
+
+Posteriormente debemos modificar la configuracion del load balancer en AWS
+
+Ir a la seccion de EC2 -> Load Balancers -> load-balancer-ecs -> Agente de escucha y reglas
+
+Seleccionar el agente de escucha HTTPS -> Administrar reglas -> Agregar una regla
+
+![Image](images/lb-rules.png)
+
+Nombre y etiquetas  
+
+- Nombre: users-rules
+
+Agregar condicion
+
+Encabezado de Host
+
+- users.[YOURDOMAIN]	
+
+Tipos de accion 
+
+Reenviar a grupos de destino
+
+- Prioridad 1
+- Grupos de destino: service-users-tg
+
+
+
+Crear los mismo pasos para el servicio products, modificando el valor del host en la condicion a products.[YOURDOMAIN] y el grupo de destino a service-products-tg.
+
+
+### WAF firewall
+
+Si bien tenemos nuestro servicio y load balancer funcionando, es importante tener en cuenta la seguridad de los servicios que estamos exponiendo al publico, para esto vamos a configurar un WAF (Web Application Firewall) el cual nos va a permitir proteger nuestros servicios de ataques comunes como ser SQL injection, XSS, etc.
+
+En la seccion de load balancer de AWS ir Integraciones -> AWS Web Application Firewall
+
+Click en Asociar WAF
+
+Dejar las opciones por default, el cual utiliza 3 reglas de proteccion predefinidas,  el comportamiento por default va a ser bloquear el trafico que no cumpla con estas reglas,  click en Asociar.
+
+![Image](images/waf.png)
+
+
+Conclusiones:
+
+En este tutorial hemos creado un proyecto en el cual hemos utilizado varios servicios de AWS para un proyecto de microservicios, hemos creado dos servicios users y products, los cuales se comunican entre si y se exponen al publico a traves de un load balancer,  hemos configurado un dominio y certificado SSL para acceder a los servicios de manera segura,  ademas hemos configurado un WAF para proteger nuestros servicios de ataques comunes.
+
+Finalmente y muy importante en caso de que no vayan a utilizar los servicios creados en este tutorial,  es elminar todos los recursos creados en AWS para evitar costos no deseados.
+
+Espero que este tutorial les haya sido de utilidad,  cualquier duda o consulta pueden contactarme a traves de mi correo personal.
 
 
 
