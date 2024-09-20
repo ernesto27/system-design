@@ -29,46 +29,43 @@ TODO
 
 # Parte 1 
 
-- Explicaion de proyecto
-- Creacion ERC repositorio
-- Creacion de imagenes, deploy
+En este tutorial vamos a crear un proyecto utilizando microservicios, el cual va a estar compuesto por dos servicios (users, products) desarrollados con Golang,  estos van a estar desplegados y ejecutados en ECS (Elastic Container Service) con un Load balancer como punto de acceso para lso clientes.
 
+Estos son los servicios AWS que vamos a utilizar.
 
-En este tutorial vamos a crear un proyecto en el cual vamos a utilizar microservicios,  los cuales van a estar ejecutandose en AWS.
-Vamos a estar utilizando los siguentes servicios de AWS.
+- ECR (Elastic Container Registry) - Repositorio privado de imagenes docker
+- ECS (Elastic Container Service) - Servicio de orquestacion de contenedores
+- Load Balancer - Balanceador de carga para distribuir el trafico entre los servicios
+- RDS - Servicio de base de datos relacional (opcional)
+- WAF - Firewall de aplicaciones web (opcional)
 
-ECS 
-Load Balancer
-RDS
-ERC
-
-Los servicios se van a conectar a una base de datos mysql y ademas se van a conectar entre si intercambiando mensajes.
-
-TODO DIAGRAMA
 
 ![IMAGE](images/ecs-lb-tutorial.drawio.png)
 
-Docker image -  service users
-Docker image -  service productus
-
-Vamos a crear dos servicios para el proyecto,  en general el numero de este va a ser mayor, 
-pero en pos de mantener simple el tutorial vamos a limitarnos al momento a solo dos servicios.
-
-![IMAGE] (images/diagram.png)
+En general la cantidad de servicios que tienen un proyecto puede ser muyo mayor, pero para mantener el tutorial simple vamos a utilizar solo dos servicios.
 
 
-## Crear micro-servicio users container
+- Parte 1 - Creacion de servicios users y products,  deploy en ECR y ECS
+- Parte 2 - Creacion de load balancer, target groups, configuracion de ECS
+- Parte 3 - Creacion de servicios ECS, actualizacion de servicios, pruebas de stress tests, autoscaling
+- Parte 4 - Configuracion dominio,  https, load balancer setup, WAF firewall
+- Parte 5 - Creacion de Bases de datos RDS, conexion desde servicios
 
+
+
+
+## Crear micro-servicio users 
 
 Para crear el servicio users,  se debe crear una carpeta llamado users y agregar una definicion de Dockerfile
 
-$ mkdir -p docker/users
-
-En la carpeta docker/users agregar los siguientes archivos
+```sh
+$ mkdir -p services/users
+```
+En la carpeta services/users agregar los siguientes archivos necesario para crear un proyecto en Golang.
 
 go.mod
 
-```
+```go
 module service-users
 
 go 1.22.3
@@ -81,8 +78,8 @@ require (
 
 En este archivo definimos la version de go que vamos a utilizar para compilar el servicio y las dependecias a utilizar
 en este caso serian las siguiente:
-go-chi: es un router http el cual nos facilita la creacion de endpoints, middlewares, etc.
-godotenv: es una libreria que nos permite definir variables de entorno en un archivo .env.
+- **go-chi:** router http el cual nos facilita la creacion de endpoints, middlewares, etc.
+- **godotenv:** libreria que nos permite definir variables de entorno en un archivo .env.
 
 main.go
 
@@ -113,10 +110,10 @@ func main() {
 	http.ListenAndServe(":3000", r)
 }
 ```
-En la funcion main hacemos una llamada a godotenv.Load() para cargar las variables de entorno definidas en el archivo .env
+En la funcion main hacemos una llamada a godotenv.Load() para cargar las variables de entorno definidas en un archivo .env
 en caso de encontrar un error al cargar el archivo se termina la ejecucion del programa.
 
-Despues iniciamos un router de go-chi y definimos un endpoint en la raiz del servidor el cual va a mostrar la version de la API correspondiente al valor definido en el archivo .env.
+Despues iniciamos un router de go-chi y definimos un endpoint en la raiz del servidor el cual va a mostrar la version de la API.
 
 
 .env
@@ -130,7 +127,7 @@ valores de conexion a una base de datos.
 
 Dockerfile
 
-```
+```Dockerfile
 # syntax=docker/dockerfile:1
 
 # Build the application from source
@@ -158,65 +155,76 @@ EXPOSE 3000
 ENTRYPOINT ["/service"]
 ```
 
-En este archivo Dockerfile vamos utilizar un concepto llamado multi-stage build,  el cual nos permite utilizar una imagen base para compilar el servicio ( golang 1.22) copiar los archivos necesarios, descargar dependencias y finalmete compilar el servicio en un binario llamado service.
-La segunda imagen (gcr.io/distroless/base-debian11) es la que se va a utilizar en ECS para ejecutar la API,  esta imagen es una imagen minimalista que solo contiene lo necesario para ejecutar el binario, el cual tenemos que copiar desde el output obtenido del build previo, ademas necesitamos copiar el .env, exponenmos el puerto 3000 e iniciamos el binario ./service.
+En este archivo Dockerfile vamos utilizar un concepto llamado multi-stage build,  el cual nos permite utilizar una imagen base para compilar el servicio ( golang 1.22) copiar los archivos necesarios, descargar dependencias y finalmente crear un binario.
+
+La segunda imagen (gcr.io/distroless/base-debian11) es la que se va a utilizar en ECS para ejecutar la API,  esta es una imagen minimalista que solo contiene lo necesario para ejecutar el binario, el cual tenemos que copiar desde el output obtenido del build previo, ademas necesitamos copiar el .env y exporner el puerto 3000 , finalmente definimos como proceso de entrada el binario ./service.
 
 
 Para probar esto debemos ejecutar los siguentes comandos en una terminal
 ```sh
 docker build  -f Dockerfile-go -t service-users:v0.0.1 .
-docker run -p 3000:3000 service-users:v0.0.1
+docker run --rm -p 3000:3000 service-users:v0.0.1
+```
+
+En otra terminal probar la conexion.
+
+```sh
+curl http://localhost:3000
 ```
 
 
 ## Crear usuario IAM credenciales
 
-Para poder subir nuestra imagen a ECR necesitamos un usuario en AWS con los permisos correspondientes, para esto debemos realizar los siguiente.
+Para poder subir nuestra imagen a ECR necesitamos un usuario en AWS con los permisos correspondientes.
 
 Ir al dashboard de nuestra cuenta de AWS e ir a la siguiente seccion.
 
-IAM -> Administracion de usuarios -> Usuarios -> Agregar usuario
+**IAM -> Administracion de usuarios -> Usuarios -> Agregar usuario**
 
-Como nombre poner lo siguiente "ecs-lb-tutorial" click en siguiente.
-En seccion Establecer permisos -> Opciones de permisos seleccionar Adjuntar politicas directamente -> Crear politica
-En politicas de permisos buscar por "AmazonEC2ContainerRegistryFullAccess" seleccinar la politica y click en siguiente y 
-finalizar la creacion del usuario.
+
+- **Nombre:** ecs-lb-tutorial.
+- **Opciones de permisos:** Adjuntar politicas directamente.
+- **Políticas de permisos:** Agregar "AmazonEC2ContainerRegistryFullAccess"
+- **Crear usuario**
 
 ### Crear access key
 
-Necesitamos un access and private key para poder comunicarnos a los servicios de AWS usando la cli, para esto debemos ir al detalle del usuario creado anteriormente,  Administracion de usuarios -> Usuarios.
+Necesitamos un Access and Private key para poder comunicarnos a los servicios de AWS usando la terminal (CLI), para esto debemos ir al detalle del usuario creado anteriormente
+
+**Administracion de usuarios -> Usuarios.**
 
 Ir a tab Credenciales de seguridad -> Crear clave de acceso 
-En casos de usos seleccionar Otros, click en Siguiente -> Crear clave de acceso
-Copiar en un lugar seguro la clave de acceso y el secret key, ya que no se va a poder ver nuevamente.
+en casos de usos seleccionar Otros, click en Siguiente -> Crear clave de acceso,  copiar en un lugar seguro la clave de acceso y el secret key, ya que no se va poder acceder al secret posteriormente.
 
 
-# Crear ECR repositorio
+## Crear ECR repositorio
 
-La region que vamos a utilizar es Viriginia,  es importante que todos los servicios que requieran una seleccion de region esten creados en el mismo lugar.
+La region que vamos a utilizar es Virginia, tener en cuenta que todos los servicios que vamos a utilizar en AWS tienen que estar en la misma region para que puedan conectarse entre si.
 
 Para poder subir nuestras imagenes a AWS necesitamos un repositorio en ECR, para esto debemos ir a la consola de AWS y buscar por ECR.
-Ir a seccion -> Private registry -> Repositorios -> Crear repositorio
 
-Como nombre poner "service-users",  modificar mutablidad a "Inmutable", esto lo que va a generar es que no se puedan subir imagenes con el mismo tag, para evitar problemas de diferentes versiones del servicio con el mismo tag,  obliga a que cada nuevo deploy este asociado a un tag diferente.
+**Ir a seccion -> Private registry -> Repositorios -> Crear repositorio**
+
+- **Nombre del repositorio:** service-users
+- **Etiquetas de imagen:**: Inmutable,  esto es para evitar que se suban imagenes con el mismo tag y que cada nuevo deploy tenga un nuevo tag.
 
 Dejamos las demas opciones en default y click en Crear repositorio.
 
-TODO PONER IMAGEN
+![IMAGE](images/ecr-es.png)
 
 #### Instalacion CLI aws
-Necesitamos tener instalado en nuestra maquina la herramienta CLI de aws,  sigue las instrucciones de acuerdo a tu sistema operativo en el siguient link.
+Necesitamos tener instalado en nuestra maquina la herramienta CLI de AWS,  sigue las instrucciones de acuerdo a tu sistema operativo en el siguient link.
 
 https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html 
 
-Una vez instalado la CLI de aws,  debemos configurar las credenciales de acceso que creamos anteriormente para esto ejecutamos el siguiente comando en una terminal.
+Una vez instalado la CLI de aws,  debemos utilizar las credenciales de acceso que creamos anteriormente para configurar el CLI,  para esto ejecutamos el siguiente comando en una terminal.
 
 ```sh
 aws configure
 ```
 En la terminal debemos utilizar las credenciales (access key, private key) creadas en el paso anterior y como region default seleccionar "us-east-1" (Virginia).
 
-#### Uplaod imagen a ECR
+### Upload imagen a ECR
 
 El la carpeta docker/users agregar un archivo llamado deploy.sh con el sigueinte contenido.
 
@@ -999,6 +1007,9 @@ Click en Crear security group
 ### RDS
 Ir al dashboard de AWS -> RDS -> Bases de datos -> Crear base de datos
 
+![Image](images/rds-es.png)
+
+
 Elegir un método de creación de base de datos: Creacion estandar
 
 Opciones del motor
@@ -1018,18 +1029,19 @@ Configuracion de la instancia
 
 - Unchecked: Mostrar las clases de instancia que admiten las escrituras optimizadas de Amazon RDS
 - Check en incluir clases de generacion anterior ( esto nos va a permitir seleccionar una clase de instancia con menos recursos)
-- Clase de instancia: db.t3.micro
+- Clase de instancia: db.t4.micro
 
 Alamacenamiento: Dejar valores default
 
 Conectividad:
-- Recurso de computacion: No se conecte a un grupo de EC2
+- Recurso de computacion: No se conecta a un grupo de EC2
+- Tipo de red: IPv4
 - Acceso publico: Si
 - Grupo de seguridad firewall: Elegir existente, seleccionar el security group creado anteriormente "rds-sg"
 
 Autenticación de bases de datos: Auteenticacion de contraseña
 
-Dejar las demas configuraciones por default,  click en crear base de datos.
+Dejar las demas configuraciones por default ,  click en crear base de datos.
 
 
 
