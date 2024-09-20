@@ -1025,6 +1025,11 @@ Alamacenamiento: Dejar valores default
 Conectividad:
 - Recurso de computacion: No se conecte a un grupo de EC2
 - Acceso publico: Si
+- Grupo de seguridad firewall: Elegir existente, seleccionar el security group creado anteriormente "rds-sg"
+
+Autenticación de bases de datos: Auteenticacion de contraseña
+
+Dejar las demas configuraciones por default,  click en crear base de datos.
 
 
 
