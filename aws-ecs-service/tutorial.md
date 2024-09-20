@@ -972,6 +972,64 @@ Dejar las opciones por default, el cual utiliza 3 reglas de proteccion predefini
 
 ![Image](images/waf.png)
 
+# PARTE 5
+En esta seccion vamos a configurar nuestros servicios para que se puedan conectar a una base de datos mysql,  para esto vamos a utilizar un servicio de AWS llamado RDS 
+
+Este es un servicio que proporciona una base de datos relacional completamente administrada en la nube. Permite a los desarrolladores configurar, operar y escalar fácilmente una base de datos relacional en la nube sin tener que preocuparse por la infraestructura. RDS admite varios motores de bases de datos, como MySQL, PostgreSQL, Oracle, SQL Server y Amazon Aurora, backups automatizados,  configuracion en multiples zonas de disponibilidad, etc.
+
+Para este tutorial vamos a utilizar Mysql.
+
+Previo a la creacion de la base de datos debemos agregar un security group que permita la conexion la base de datos desde otros servicios.
+
+### Grupo de seguridad
+Ir a EC2 -> Red y seguridad -> Security groups -> Crear security group
+
+Nombre: rds-sg
+Descripcion: security group para la conexion a la base de datos
+VPC: default
+
+Reglas de entrada -> Agregar regla
+
+- Tipo: MySQL/Aurora
+- Origen: Anywhere IPV4
+
+Click en Crear security group
+
+
+### RDS
+Ir al dashboard de AWS -> RDS -> Bases de datos -> Crear base de datos
+
+Elegir un método de creación de base de datos: Creacion estandar
+
+Opciones del motor
+- Tipo de motor: mysql
+- Version del motor: mysql 8.0.55
+
+Plantillas: Desarrollo y pruebas
+
+Configuracion:
+- Identificador de la base de datos: ecs-tutorial
+- Nombre de usuario: admin
+- Administracion de credenciales: Autoadministrado
+- Contraseña: [YOURPASSWORD]
+- Confirmar contraseña: [YOURPASSWORD]
+
+Configuracion de la instancia
+
+- Unchecked: Mostrar las clases de instancia que admiten las escrituras optimizadas de Amazon RDS
+- Check en incluir clases de generacion anterior ( esto nos va a permitir seleccionar una clase de instancia con menos recursos)
+- Clase de instancia: db.t3.micro
+
+Alamacenamiento: Dejar valores default
+
+Conectividad:
+- Recurso de computacion: No se conecte a un grupo de EC2
+- Acceso publico: Si
+
+
+
+TODO IMAGEN
+
 
 Conclusiones:
 
