@@ -4,7 +4,14 @@
 
 En esta parte del tutorial vamos a ver el proceso de creación de un load balancer con todos los servicios asociados, como security groups, target groups, etc.
 
-#### Crear security groups
+Glosario.
+
+- Creación de security groups
+- Creación de target groups
+- Creación de load balancer
+
+
+#### Creación de security groups
 
 > Un security group es un firewall que controla el trafico de entrada y salida el cual se puede asociar a un instancia de AWS.
 
