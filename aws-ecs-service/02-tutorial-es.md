@@ -11,7 +11,7 @@ Glosario.
 - Creación de load balancer
 
 
-#### Creación de security groups
+## Creación de security groups
 
 > Un security group es un firewall que controla el trafico de entrada y salida el cual se puede asociar a un instancia de AWS.
 
@@ -67,7 +67,7 @@ Regla de entrada
 - **Origen:**  Anywhere - Esto va a permitir el trafico de cualquier IP al puerto 3000
 
 
-### Crear target group
+## Creación de target group
 
 > Un target group es un conjunto de instancias o direcciones IP que reciben tráfico desde un load balancer. Permite definir reglas de enrutamiento y monitorear la salud de los targets asociados.
 
@@ -90,7 +90,7 @@ se van a crear dinamicamente cuando creemos el servicio en ECS.
 Hacer el mismo paso anterior para el servicio products cambiando el nombre del grupo de destino a "service-products-tg" y el puerto a 8001.
 
 
-#### Crear load balancer
+### Creación de load balancer
 
 > Un Load Balancer es un servicio que sirve como puerta de entrada a nuestra aplicación, distribuyendo el tráfico entre los diferentes servicios que tengamos en otros servicios como podría ser ECS, EC2 o lambda.
 
@@ -120,6 +120,6 @@ Click en crear y definir estos valores.
 
 La creación del load balancer tarda unos minutos , una vez terminado el proceso, podemos acceder al DNS del load balancer generado por AWS.
 
-Si ingresamos a esta URL en el puerto 8000, deberíamos ver un mensaje de **503 Service Temporarily Unavailable**, nuestro proximo paso es configurar el cluster ECS para hacer uso de este servicio.
+Si ingresamos a esta URL en el puerto 8000, deberíamos ver un mensaje de **503 Service Temporarily Unavailable**, nuestro próximo paso es configurar el cluster ECS para hacer uso de este servicio.
 
 Eso lo vamos a ver en 3 parte de este tutorial.

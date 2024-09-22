@@ -11,7 +11,7 @@ Estos son los servicios de AWS que vamos a utilizar.
 - WAF - Firewall de aplicaciones web.
 
 
-### DIAGRAMA
+## DIAGRAMA
 
 ![IMAGE](images/ecs-lb-tutorial.drawio.png)
 
@@ -176,6 +176,8 @@ en casos de usos seleccionar Otros, click en Siguiente -> Crear clave de acceso,
 
 ## Crear ECR repositorio
 
+> Amazon Elastic Container Registry (ECR) es un servicio de AWS que permite almacenar, gestionar y desplegar imágenes de contenedores  de manera segura y escalable.
+
 La región que vamos a utilizar es Virginia, teniendo en cuenta que todos los servicios que vamos a utilizar en AWS tienen que estar en la misma región para que puedan conectarse entre sí.
 
 Para poder subir nuestras imágenes a AWS necesitamos un repositorio en ECR, para esto debemos ir a la consola de AWS y buscar por ECR.
@@ -190,7 +192,7 @@ Dejamos las demas opciones en default y click en Crear repositorio.
 
 ![IMAGE](images/ecr-es.png)
 
-#### Instalacion CLI aws
+### Instalación CLI aws
 Necesitamos tener instalado en nuestra máquina la herramienta CLI de AWS,  sigue las instrucciones de acuerdo a tu sistema operativo en el siguiente link.
 
 https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html 
@@ -203,7 +205,7 @@ aws configure
 ```
 Debemos utilizar las credenciales (access key, private key) creadas en el paso anterior y como región default seleccionar "us-east-1" (Virginia).
 
-### Subir imagen a ECR
+## Subir imagen a ECR
 
 En la carpeta docker/users agregar un archivo llamado deploy.sh con el siguiente contenido.
 
@@ -277,6 +279,7 @@ De igual manera que en el servicio users, para products debemos crear un nuevo r
 
 Si todo salio correctamente deberíamos poder ver las imágenes en el dashboard de ECR.
 
+.
 
 
 Link a parte 2

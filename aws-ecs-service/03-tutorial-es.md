@@ -12,7 +12,7 @@ Glosario
 
 
 
-### Creación execution role
+## Creación execution role
 
 **Ir a IAM -> Access management -> Roles -> Crear rol**
 
@@ -34,7 +34,7 @@ Agregar lo siguiente:
 - CloudWatchLogsFullAccess
 
 
-### Creación de task definition
+## Creación de task definition
 
 > Un task definition es una configuración que describe cómo se deben ejecutar los contenedores dentro de un servicio, es una plantilla que especifica varios parámetros y configuraciones ( imagen, CPU, memoria, variables de entorno, etc) que se utilizan para ejecutar un contenedor.
 
@@ -42,7 +42,7 @@ Agregar lo siguiente:
 
 **Ir a ECS -> Definiciones de tareas -> Crear una nueva definición de tareas**
 
-#### Servicio users
+### Servicio users
 
 - **Familia de definición de tareas:**  service-users-td
 - **Requisitos de infraestructura:** AWS fargate
@@ -63,7 +63,7 @@ Dejar las demas opciones por default y hacer click Crear.
 
 ![Image](images/task-definition-create.png)
 
-#### Servicio products
+### Servicio products
 
 Hacer los mismos pasos anteriores para el servicio products, pero cambiando lo siguiente.
 
@@ -71,7 +71,7 @@ Hacer los mismos pasos anteriores para el servicio products, pero cambiando lo s
 - **URI de image:**  URI de la imagen en ECR con su tag correspondiente, por ejemplo 666.dkr.ecr.us-west-2.amazonaws.com/service-products:v0.0.1
 
 
-### Creación cluster ECS 
+## Creación cluster ECS 
 
 > Un clúster ECS es un orquestador de contenedores gestionados por AWS, que permite ejecutar y escalar aplicaciones en contenedores usando servicios como Fargate o EC2.
 
@@ -85,11 +85,11 @@ Dejar las demás opciones por default y click en Crear.
 ![Image](images/ecs-cluster-es.png)
 
 
-### Crear servicios ECS
+## Crear servicios ECS
 
 **Ir a detalle del cluster creado anteriormente y click en Crear**
 
-#### Servicio users
+### Servicio users
 
 > Un servicio ECS  permite ejecutar y gestionar contenedores Docker en un clúster, facilitando la implementación, escalado y administración. Utiliza definiciones de tareas para especificar los contenedores y sus configuraciones y permite la integración con un Load balancer.
 
@@ -161,7 +161,7 @@ Click en Crear
 
 ![Image](images/ecs-service-es.png)
 
-#### Servicio products
+### Servicio products
 
 La creación del servicio products es similar al servicio users,  pero con las siguientes modificaciones.
 
@@ -184,7 +184,7 @@ Users: http://[YOURLOADBALANCERDND]:8000
 
 Products: http://[YOURLOADBALANCERDND]:8001
 
-#### Actualizar servicios.
+### Actualizar servicios.
 
 Para poder verificar que los servicios se puedan conectar entre si usando "service connect", debemos actualizar el codigo de ambos servicios
 
@@ -380,7 +380,7 @@ curl http://[YOURLOADBALANCERDNS]:8001/service-users
 ```
 
 
-### Pruebas de stress tests, autoscaling
+## Pruebas de stress tests, autoscaling
 
 Como vimos en el paso previo los servicios están configurados para escalar de acuerdo al uso de CPU y memoria, para poder probar esto debemos subir una nueva version de la imagen y posteriormente vamos a realizar pruebas de stress en nuestro servicios users para asegurarnos de que el escalamiento este funcionando correctamente.
 
