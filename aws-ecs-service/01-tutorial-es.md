@@ -277,5 +277,7 @@ De igual manera que en el servicio users, para products debemos crear un nuevo r
 
 Si todo salio correctamente deberíamos poder ver las imágenes en el dashboard de ECR.
 
+
+
 Link a parte 2
 
