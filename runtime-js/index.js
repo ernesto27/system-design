@@ -25,5 +25,9 @@
 //   console.log('Listening on 127.0.0.1:3000');
 // });
 
+const os = require('os');
+
+console.log('Platform:', os.platform());
+console.log('Arch:', os.arch());
 
 

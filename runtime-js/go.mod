@@ -1,4 +1,4 @@
-module gonode
+module runtimejs
 
 go 1.23.1
 

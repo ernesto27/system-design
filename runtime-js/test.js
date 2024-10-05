@@ -1,14 +1,14 @@
 // console.log("Start");
 
-// readFile("main.go", (err, data) => {
-//     if (err) {
-//         console.log("Error reading file:", err);
-//     } else {
-//         console.log("File content length:", data.length);;
-//     }
-//     console.log("Callback executed");
+readFile("main.go", (err, data) => {
+    if (err) {
+        console.log("Error reading file:", err);
+    } else {
+        console.log("File content length:", data.length);;
+    }
+    console.log("Callback executed");
 
-// });
+});
 
 // setTimeout(() => {
 //     console.log("SET TIMEOUT CALLBACK");
@@ -46,3 +46,7 @@ writeFile('fromgo.txt', 'Hello, World!', options, (err) => {
   });
 
 console.log("End");
+
+
+console.log(platform());
+console.log(arch());
