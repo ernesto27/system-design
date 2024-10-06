@@ -10,9 +10,9 @@ readFile("main.go", (err, data) => {
 
 });
 
-// setTimeout(() => {
-//     console.log("SET TIMEOUT CALLBACK");
-// }, 2000);
+setTimeout(() => {
+    console.log("SET TIMEOUT CALLBACK");
+}, 2000);
 
 // setInterval(() => {
 //     console.log("SET INTERVAL CALLBACK");
@@ -31,22 +31,36 @@ readFile("main.go", (err, data) => {
 //     }
 // });
 
-const options = {
-    encoding: 'utf8',
-    mode: 0o777,
-    flag: 'w'
-};
+// const options = {
+//     encoding: 'utf8',
+//     mode: 0o777,
+//     flag: 'w'
+// };
 
-writeFile('fromgo.txt', 'Hello, World!', options, (err) => {
-    if (err) {
-      console.error('Error writing to file:', err);
-    } else {
-      console.log('File written successfully');
-    }
-  });
+// writeFile('fromgo.txt', 'Hello, World!', options, (err) => {
+//     if (err) {
+//       console.error('Error writing to file:', err);
+//     } else {
+//       console.log('File written successfully');
+//     }
+//   });
 
-console.log("End");
+// console.log("End");
 
 
-console.log(platform());
-console.log(arch());
+// console.log(platform());
+// console.log(arch());
+
+
+const server = createServer((req, res) => {
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    // res.end('This is a test\n');
+    res.json({
+        
+    });
+});
+
+server.listen(6000, '127.0.0.1', () => {
+    console.log('Listening on 127.0.0.1:3000');
+});
+

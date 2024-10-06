@@ -25,9 +25,21 @@
 //   console.log('Listening on 127.0.0.1:3000');
 // });
 
-const os = require('os');
+// const os = require('os');
 
-console.log('Platform:', os.platform());
-console.log('Arch:', os.arch());
+// console.log('Platform:', os.platform());
+// console.log('Arch:', os.arch());
+
+
+const http = require('http');
+const server = http.createServer((req, res) => {
+  res.writeHead(500, { 'Content-Type': 'text/plain' });
+  res.end('Hello World!\n');
+});
+// starts a simple http server locally on port 3000
+server.listen(3000, '127.0.0.1', () => {
+  console.log('Listening on 127.0.0.1:3000');
+});
+
 
 

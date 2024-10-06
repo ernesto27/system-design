@@ -43,6 +43,7 @@ func NewRuntimeJS(fileName string) (*RuntimeJS, error) {
 	packages := []Package{
 		&File{runtime: runtimeJS},
 		&OS{runtime: runtimeJS},
+		&Http{runtime: runtimeJS},
 	}
 
 	for _, pkg := range packages {
