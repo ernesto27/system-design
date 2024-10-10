@@ -44,6 +44,7 @@ func NewRuntimeJS(fileName string) (*RuntimeJS, error) {
 		&File{runtime: runtimeJS},
 		&OS{runtime: runtimeJS},
 		&Http{runtime: runtimeJS},
+		&Env{runtime: runtimeJS},
 	}
 
 	for _, pkg := range packages {

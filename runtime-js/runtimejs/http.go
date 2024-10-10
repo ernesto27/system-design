@@ -26,6 +26,9 @@ func (h *Http) SetGlobals() {
 			jsReq := h.runtime.vm.NewObject()
 			jsRes := h.runtime.vm.NewObject()
 
+			jsReq.Set("method", r.Method)
+			jsReq.Set("url", r.URL.Path)
+
 			jsRes.Set("writeHead", func(call goja.FunctionCall) goja.Value {
 				statusCode := int(call.Argument(0).ToInteger())
 				headers := call.Argument(1).Export()
@@ -72,6 +75,7 @@ func (h *Http) SetGlobals() {
 			// Call the JavaScript callback with request and response objects
 			_, err := fn(goja.Undefined(), h.runtime.vm.ToValue(jsReq), h.runtime.vm.ToValue(jsRes))
 			if err != nil {
+				fmt.Println("Error calling callback:", err)
 				http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 			}
 		})

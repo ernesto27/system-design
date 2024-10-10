@@ -1,6 +1,7 @@
 // console.log("Start");
 
 readFile("main.go", (err, data) => {
+    data.method;
     if (err) {
         console.log("Error reading file:", err);
     } else {
@@ -52,12 +53,22 @@ setTimeout(() => {
 // console.log(arch());
 
 
+
+console.log(process.env.USER);
+console.log(process.env.GOPATH);
+
+console.log(__dirname);
+// console.log(__filename);
+
 const server = createServer((req, res) => {
-    res.writeHead(200, { 'Content-Type': 'application/json' });
-    // res.end('This is a test\n');
-    res.json({
+    // res.writeHead(200, { 'Content-Type': 'application/json' });
+    // // res.end('This is a test\n');
+    // res.json({
+    //     "name": "ernesto",
+    //     "age": 20
         
-    });
+    // });
+    res.end(req.method)
 });
 
 server.listen(6000, '127.0.0.1', () => {
