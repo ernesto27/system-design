@@ -38,6 +38,10 @@ console.log(__dirname);
 console.log(__filename);
 
 
+const myModule = require('./module');
+console.log(myModule.myFunction());
+
+
 const http = require('http');
 const server = http.createServer((req, res) => {
   //res.writeHead(500, { 'Content-Type': 'text/plain' });

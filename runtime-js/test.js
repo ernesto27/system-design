@@ -1,19 +1,19 @@
 // console.log("Start");
 
-readFile("main.go", (err, data) => {
-    data.method;
-    if (err) {
-        console.log("Error reading file:", err);
-    } else {
-        console.log("File content length:", data.length);;
-    }
-    console.log("Callback executed");
+// readFile("main.go", (err, data) => {
+//     data.method;
+//     if (err) {
+//         console.log("Error reading file:", err);
+//     } else {
+//         console.log("File content length:", data.length);;
+//     }
+//     console.log("Callback executed");
 
-});
+// });
 
-setTimeout(() => {
-    console.log("SET TIMEOUT CALLBACK");
-}, 2000);
+// setTimeout(() => {
+//     console.log("SET TIMEOUT CALLBACK");
+// }, 2000);
 
 // setInterval(() => {
 //     console.log("SET INTERVAL CALLBACK");
@@ -57,21 +57,32 @@ setTimeout(() => {
 console.log(process.env.USER);
 console.log(process.env.GOPATH);
 
-console.log(__dirname);
+// console.log(__dirname);
 // console.log(__filename);
 
-const server = createServer((req, res) => {
-    // res.writeHead(200, { 'Content-Type': 'application/json' });
-    // // res.end('This is a test\n');
-    // res.json({
-    //     "name": "ernesto",
-    //     "age": 20
-        
-    // });
-    res.end(req.method)
-});
 
-server.listen(6000, '127.0.0.1', () => {
-    console.log('Listening on 127.0.0.1:3000');
-});
+const myModule = require("./module.js");
+const myModulea = require("./module.js");
+const myModuleaa = require("./module.js");
+console.log(myModule.myFunction());
+console.log(myModule.myFunction2());
+
+const myModule2 = require("./module2.js");
+console.log(myModule2.moduleTwoFunction());
+
+
+// const server = createServer((req, res) => {
+//     // res.writeHead(200, { 'Content-Type': 'application/json' });
+//     // // res.end('This is a test\n');
+//     // res.json({
+//     //     "name": "ernesto",
+//     //     "age": 20
+        
+//     // });
+//     res.end(req.method)
+// });
+
+// server.listen(6000, '127.0.0.1', () => {
+//     console.log('Listening on 127.0.0.1:3000');
+// });
 
