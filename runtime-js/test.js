@@ -53,6 +53,17 @@
 // console.log(arch());
 
 
+let count = 0;
+let intervalId = setInterval(() => {
+    count++;
+    if (count >= 3) {
+        clearInterval(intervalId);
+    }
+}, 100);
+
+
+console.log({ "name": "ernesto", "age": 20 }, {"uuid": 322});
+
 
 console.log(process.env.USER);
 console.log(process.env.GOPATH);
@@ -61,14 +72,14 @@ console.log(process.env.GOPATH);
 // console.log(__filename);
 
 
-const myModule = require("./module.js");
-const myModulea = require("./module.js");
-const myModuleaa = require("./module.js");
-console.log(myModule.myFunction());
-console.log(myModule.myFunction2());
+// const myModule = require("./module.js");
+// const myModulea = require("./module.js");
+// const myModuleaa = require("./module.js");
+// console.log(myModule.myFunction());
+// console.log(myModule.myFunction2());
 
-const myModule2 = require("./module2.js");
-console.log(myModule2.moduleTwoFunction());
+// const myModule2 = require("./module2.js");
+// console.log(myModule2.moduleTwoFunction());
 
 
 // const server = createServer((req, res) => {

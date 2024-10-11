@@ -1,8 +1,10 @@
 package runtimejs
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
+	"reflect"
 	"time"
 
 	"github.com/dop251/goja"
@@ -64,7 +66,16 @@ func (runtimeJS *RuntimeJS) setGlobals() {
 	console := runtimeJS.vm.NewObject()
 	console.Set("log", func(call goja.FunctionCall) goja.Value {
 		for _, arg := range call.Arguments {
-			fmt.Print(arg.String(), " ")
+			if arg.ExportType() != nil && arg.ExportType().Kind() == reflect.Map {
+				jsonArg, err := json.Marshal(arg)
+				if err != nil {
+					fmt.Println("Error marshalling argument to JSON:", err)
+					return goja.Undefined()
+				}
+				fmt.Print(string(jsonArg), " ")
+			} else {
+				fmt.Print(arg.String(), " ")
+			}
 		}
 		fmt.Println()
 		return goja.Undefined()
@@ -137,13 +148,6 @@ func (runtimeJS *RuntimeJS) setGlobals() {
 			}
 		}()
 		return goja.Undefined()
-	})
-
-	runtimeJS.vm.Set("eventLoop", runtimeJS.vm.NewObject())
-	runtimeJS.vm.Get("eventLoop").(*goja.Object).Set("done", func() {
-		go func() {
-			runtimeJS.done <- struct{}{}
-		}()
 	})
 }
 

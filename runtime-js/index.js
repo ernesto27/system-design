@@ -31,6 +31,8 @@
 // console.log('Arch:', os.arch());
 
 
+console.log({ "name": "ernesto", "age": 20 }, {"uuid": 322});
+
 console.log(process.env.USER);
 console.log(process.env.UAAA);
 
