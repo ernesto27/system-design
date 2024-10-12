@@ -5,15 +5,25 @@ import (
 	"fmt"
 	"os"
 	"reflect"
+	"sync"
 	"time"
 
 	"github.com/dop251/goja"
 )
 
 type RuntimeJS struct {
-	vm    *goja.Runtime
-	queue chan func()
-	done  chan struct{}
+	vm             *goja.Runtime
+	jsFileName     string
+	queue          chan func()
+	done           chan struct{}
+	intervals      map[string]*intervalData
+	doneInterval   chan struct{}
+	intervalsMutex sync.Mutex
+}
+
+type intervalData struct {
+	ticker *time.Ticker
+	done   chan struct{}
 }
 
 type Options struct {
@@ -36,9 +46,12 @@ func NewRuntimeJS(fileName string) (*RuntimeJS, error) {
 	vm := goja.New()
 
 	runtimeJS := &RuntimeJS{
-		vm:    vm,
-		queue: make(chan func(), 100),
-		done:  make(chan struct{}),
+		vm:           vm,
+		queue:        make(chan func(), 100),
+		done:         make(chan struct{}),
+		intervals:    make(map[string]*intervalData),
+		doneInterval: make(chan struct{}),
+		jsFileName:   fileName,
 	}
 
 	runtimeJS.setGlobals()
@@ -102,6 +115,8 @@ func (runtimeJS *RuntimeJS) setGlobals() {
 		return goja.Undefined()
 	})
 
+	runtimeJS.intervals = make(map[string]*intervalData)
+
 	runtimeJS.vm.Set("setInterval", func(call goja.FunctionCall) goja.Value {
 		callback := call.Argument(0)
 		interval := call.Argument(1).ToInteger()
@@ -111,17 +126,52 @@ func (runtimeJS *RuntimeJS) setGlobals() {
 			panic(runtimeJS.vm.ToValue("TypeError: callback must be a function"))
 		}
 
-		go func() {
-			ticker := time.NewTicker(time.Duration(interval) * time.Millisecond)
-			defer ticker.Stop()
+		ticker := time.NewTicker(time.Duration(interval) * time.Millisecond)
+		done := make(chan struct{})
+		intervalID := fmt.Sprintf("interval_%p", ticker)
+		runtimeJS.intervalsMutex.Lock()
+		runtimeJS.intervals[intervalID] = &intervalData{ticker: ticker, done: done}
+		runtimeJS.intervalsMutex.Unlock()
+		fmt.Println(runtimeJS.intervals)
+		fmt.Println(intervalID)
 
-			for range ticker.C {
-				_, err := fn(goja.Undefined())
-				if err != nil {
-					fmt.Println("Error executing callback:", err)
+		go func() {
+			defer func() {
+				if r := recover(); r != nil {
+					fmt.Printf("Recovered from panic in interval %s: %v\n", intervalID, r)
+				}
+			}()
+
+			for {
+				select {
+				case <-ticker.C:
+					_, err := fn(goja.Undefined())
+					if err != nil {
+						fmt.Printf("Error executing callback for interval %s: %v\n", intervalID, err)
+					}
+				case <-done:
+					return
 				}
 			}
 		}()
+
+		return runtimeJS.vm.ToValue(intervalID)
+	})
+
+	runtimeJS.vm.Set("clearInterval", func(call goja.FunctionCall) goja.Value {
+		intervalID := call.Argument(0).String()
+
+		runtimeJS.intervalsMutex.Lock()
+		defer runtimeJS.intervalsMutex.Unlock()
+
+		if data, ok := runtimeJS.intervals[intervalID]; ok {
+			data.ticker.Stop()
+			close(data.done)
+			delete(runtimeJS.intervals, intervalID)
+			fmt.Printf("Interval %s cleared\n", intervalID)
+		} else {
+			fmt.Printf("Interval %s not found or already cleared\n", intervalID)
+		}
 
 		return goja.Undefined()
 	})

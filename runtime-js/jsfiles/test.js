@@ -56,30 +56,57 @@
 let count = 0;
 let intervalId = setInterval(() => {
     count++;
+    console.log(count);
     if (count >= 3) {
+        console.log("clearing interval 1");
         clearInterval(intervalId);
     }
-}, 100);
+}, 1000);
+
+let count2 = 0;
+let intervalId2 = setInterval(() => {
+    count2++;
+    console.log(count2);
+    if (count2 >= 10) {
+        console.log("clearing interval 2");
+        clearInterval(intervalId2);
+    }
+}, 2000);
 
 
-console.log({ "name": "ernesto", "age": 20 }, {"uuid": 322});
+// let count3   = 0;
+// let intervalId3 = setInterval(() => {
+//     count3++;
+//     console.log(count3);
+//     if (count3 >= 3) {
+//         console.log("clearing interval 3");
+//         clearInterval(intervalId3);
+//     }
+// }, 500);
 
 
-console.log(process.env.USER);
-console.log(process.env.GOPATH);
+// let count4 = 0;
+// let intervalId4 = setInterval(() => {
+//     count4++;
+//     console.log(count4);
+// }, 1000);
+
+// console.log({ "name": "ernesto", "age": 20 }, {"uuid": 322});
+// console.log(process.env.USER);
+// console.log(process.env.GOPATH);
 
 // console.log(__dirname);
 // console.log(__filename);
 
 
-// const myModule = require("./module.js");
-// const myModulea = require("./module.js");
-// const myModuleaa = require("./module.js");
-// console.log(myModule.myFunction());
-// console.log(myModule.myFunction2());
+const myModule = require("./module.js");
+const myModulea = require("./module.js");
+const myModuleaa = require("./module.js");
+console.log(myModule.myFunction());
+console.log(myModule.myFunction2());
 
-// const myModule2 = require("./module2.js");
-// console.log(myModule2.moduleTwoFunction());
+const myModule2 = require("./module2.js");
+console.log(myModule2.moduleTwoFunction());
 
 
 // const server = createServer((req, res) => {

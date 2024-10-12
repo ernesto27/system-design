@@ -53,8 +53,8 @@ func (r *Require) SetGlobals() {
 
 func (r *Require) readModuleFile(moduleName string) (string, error) {
 	if strings.HasPrefix(moduleName, "./") || strings.HasPrefix(moduleName, "../") {
-		baseDir := filepath.Dir(moduleName)
-		content, err := os.ReadFile(baseDir + "/" + moduleName)
+		fileDir := filepath.Dir(r.runtime.jsFileName)
+		content, err := os.ReadFile(fileDir + "/" + filepath.Clean(moduleName))
 		if err != nil {
 			return "", err
 		}
