@@ -53,25 +53,25 @@
 // console.log(arch());
 
 
-let count = 0;
-let intervalId = setInterval(() => {
-    count++;
-    console.log(count);
-    if (count >= 3) {
-        console.log("clearing interval 1");
-        clearInterval(intervalId);
-    }
-}, 1000);
+// let count = 0;
+// let intervalId = setInterval(() => {
+//     count++;
+//     console.log(count);
+//     if (count >= 3) {
+//         console.log("clearing interval 1");
+//         clearInterval(intervalId);
+//     }
+// }, 1000);
 
-let count2 = 0;
-let intervalId2 = setInterval(() => {
-    count2++;
-    console.log(count2);
-    if (count2 >= 10) {
-        console.log("clearing interval 2");
-        clearInterval(intervalId2);
-    }
-}, 2000);
+// let count2 = 0;
+// let intervalId2 = setInterval(() => {
+//     count2++;
+//     console.log(count2);
+//     if (count2 >= 10) {
+//         console.log("clearing interval 2");
+//         clearInterval(intervalId2);
+//     }
+// }, 2000);
 
 
 // let count3   = 0;
@@ -99,14 +99,14 @@ let intervalId2 = setInterval(() => {
 // console.log(__filename);
 
 
-const myModule = require("./module.js");
-const myModulea = require("./module.js");
-const myModuleaa = require("./module.js");
-console.log(myModule.myFunction());
-console.log(myModule.myFunction2());
+// const myModule = require("./module.js");
+// const myModulea = require("./module.js");
+// const myModuleaa = require("./module.js");
+// console.log(myModule.myFunction());
+// console.log(myModule.myFunction2());
 
-const myModule2 = require("./module2.js");
-console.log(myModule2.moduleTwoFunction());
+// const myModule2 = require("./module2.js");
+// console.log(myModule2.moduleTwoFunction());
 
 
 // const server = createServer((req, res) => {
@@ -124,3 +124,9 @@ console.log(myModule2.moduleTwoFunction());
 //     console.log('Listening on 127.0.0.1:3000');
 // });
 
+
+
+fetch('https://dummyjson.com/test')
+    .then(response => response.json())
+    .then(data => console.log(data))
+    .catch(error => console.error('Fetch error:', error));

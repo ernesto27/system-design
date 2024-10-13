@@ -62,12 +62,19 @@
 // });
 
 
-let count = 0;
-let intervalId = setInterval(() => {
-    count++;
-    console.log(count);
-    if (count >= 3) {
-        clearInterval(intervalId);
-    }
-}, 100);
+// let count = 0;
+// let intervalId = setInterval(() => {
+//     count++;
+//     console.log(count);
+//     if (count >= 3) {
+//         clearInterval(intervalId);
+//     }
+// }, 100);
 
+
+
+
+fetch('https://dummyjson.com/test')
+    // .then(response => response.json())
+    .then(data => console.log(data))
+    .catch(error => console.error('Fetch error:', error));
