@@ -124,9 +124,11 @@
 //     console.log('Listening on 127.0.0.1:3000');
 // });
 
+// throw new Error("test dfdfd");
+
 
 
 fetch('https://dummyjson.com/test')
     .then(response => response.json())
-    .then(data => console.log(data))
+    // .then(data => console.log(data))
     .catch(error => console.error('Fetch error:', error));

@@ -101,15 +101,17 @@ func TestSetInterval(t *testing.T) {
 	}
 
 	// Wait for the interval to execute multiple times
-	time.Sleep(350 * time.Millisecond)
+	time.Sleep(1000 * time.Millisecond)
 
 	// Check the count
 	count := runtime.vm.Get("count")
 
 	countValue := count.ToInteger()
 
-	if countValue != 3 {
-		t.Errorf("setInterval did not execute as expected. Got count: %v, want: 3", countValue)
+	var want int64 = 3
+
+	if countValue != want {
+		t.Errorf("setInterval did not execute as expected. Got count: %v, want: %d", countValue, want)
 	}
 }
 

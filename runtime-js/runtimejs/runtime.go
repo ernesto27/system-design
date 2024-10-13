@@ -3,6 +3,8 @@ package runtimejs
 import (
 	"encoding/json"
 	"fmt"
+	"io"
+	"net/http"
 	"os"
 	"reflect"
 	"sync"
@@ -199,6 +201,26 @@ func (runtimeJS *RuntimeJS) setGlobals() {
 		}()
 		return goja.Undefined()
 	})
+
+	runtimeJS.vm.Set("fetch", func(call goja.FunctionCall) goja.Value {
+		url := call.Argument(0).String()
+		fmt.Println(url)
+
+		resp, err := http.Get(url)
+		if err != nil {
+			return runtimeJS.vm.ToValue(err.Error())
+		}
+
+		defer resp.Body.Close()
+
+		body, err := io.ReadAll(resp.Body)
+		if err != nil {
+			return runtimeJS.vm.ToValue(err.Error())
+		}
+
+		return runtimeJS.promise(body)
+
+	})
 }
 
 func (el *RuntimeJS) RunEventLoop() {
@@ -214,4 +236,18 @@ func (el *RuntimeJS) RunEventLoop() {
 			//fmt.Println("Timeout: no tasks in queue")
 		}
 	}
+}
+
+func (r *RuntimeJS) promise(body []byte) goja.Value {
+	return r.vm.ToValue(map[string]interface{}{
+		"then": r.vm.ToValue(func(call goja.FunctionCall) goja.Value {
+			fmt.Println("then called")
+			fmt.Println(string(body))
+			return r.promise(body)
+		}),
+		"catch": r.vm.ToValue(func(call goja.FunctionCall) goja.Value {
+			fmt.Println("catch called")
+			return goja.Undefined()
+		}),
+	})
 }
