@@ -74,7 +74,9 @@
 
 
 
-fetch('https://dummyjson.com/test')
+fetch('https://dummyjson.cdom/test')
     // .then(response => response.json())
     .then(data => console.log(data))
-    .catch(error => console.error('Fetch error:', error));
+    .catch(() => {
+        console.log('Fetch error:');
+    });

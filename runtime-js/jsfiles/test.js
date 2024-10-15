@@ -129,6 +129,24 @@
 
 
 fetch('https://dummyjson.com/test')
-    .then(response => response.json())
+    .then((response) => {
+        console.log(response);
+        console.log("testff");
+    })
     // .then(data => console.log(data))
-    .catch(error => console.error('Fetch error:', error));
+    .catch(error => console.log('Fetch error:', error));
+
+
+fetch('https://dummyjson.com/test', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ key: 'value' }),
+  })
+    .then((response) => {
+        console.log(response);
+        console.log("testff");
+    })
+    // .then(data => console.log(data))
+    .catch(error => console.log('Fetch error:', error));

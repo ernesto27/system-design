@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 	"reflect"
+	"strings"
 	"sync"
 	"time"
 
@@ -32,6 +33,12 @@ type Options struct {
 	Encoding string      `json:"encoding"`
 	Mode     interface{} `json:"mode"`
 	Flag     string      `json:"flag"`
+}
+
+type FetchOptions struct {
+	Method  string
+	Headers map[string]string
+	Body    string
 }
 
 type Package interface {
@@ -204,11 +211,47 @@ func (runtimeJS *RuntimeJS) setGlobals() {
 
 	runtimeJS.vm.Set("fetch", func(call goja.FunctionCall) goja.Value {
 		url := call.Argument(0).String()
-		fmt.Println(url)
 
-		resp, err := http.Get(url)
+		fetchOptions := FetchOptions{
+			Method:  "GET",
+			Headers: make(map[string]string),
+		}
+		if !goja.IsUndefined(call.Argument(1)) {
+			optionsObj := call.Argument(1).Export()
+			if optionsMap, ok := optionsObj.(map[string]interface{}); ok {
+				if method, ok := optionsMap["method"].(string); ok {
+					fetchOptions.Method = method
+				}
+
+				if headers, ok := optionsMap["headers"].(map[string]interface{}); ok {
+					for key, value := range headers {
+						if strValue, ok := value.(string); ok {
+							fetchOptions.Headers[key] = strValue
+						}
+					}
+				}
+
+				if body, ok := optionsMap["body"].(string); ok {
+					fetchOptions.Body = body
+				}
+			}
+		}
+
+		fmt.Println(fetchOptions)
+
+		req, err := http.NewRequest(fetchOptions.Method, url, strings.NewReader(fetchOptions.Body))
 		if err != nil {
-			return runtimeJS.vm.ToValue(err.Error())
+			return runtimeJS.promise([]byte(err.Error()), true)
+		}
+
+		for key, value := range fetchOptions.Headers {
+			req.Header.Set(key, value)
+		}
+
+		client := &http.Client{}
+		resp, err := client.Do(req)
+		if err != nil {
+			return runtimeJS.promise([]byte(err.Error()), true)
 		}
 
 		defer resp.Body.Close()
@@ -218,7 +261,7 @@ func (runtimeJS *RuntimeJS) setGlobals() {
 			return runtimeJS.vm.ToValue(err.Error())
 		}
 
-		return runtimeJS.promise(body)
+		return runtimeJS.promise(body, false)
 
 	})
 }
@@ -238,15 +281,36 @@ func (el *RuntimeJS) RunEventLoop() {
 	}
 }
 
-func (r *RuntimeJS) promise(body []byte) goja.Value {
+func (r *RuntimeJS) promise(body []byte, catchError bool) goja.Value {
 	return r.vm.ToValue(map[string]interface{}{
 		"then": r.vm.ToValue(func(call goja.FunctionCall) goja.Value {
-			fmt.Println("then called")
-			fmt.Println(string(body))
-			return r.promise(body)
+			callback := call.Argument(0)
+
+			fn, ok := goja.AssertFunction(callback)
+			if !ok {
+				panic("TypeError: callback must be a function")
+			}
+
+			_, err := fn(goja.Undefined(), r.vm.ToValue(string(body)))
+			if err != nil {
+				fmt.Println("Error executing callback:", err)
+			}
+			return r.promise(body, catchError)
 		}),
 		"catch": r.vm.ToValue(func(call goja.FunctionCall) goja.Value {
-			fmt.Println("catch called")
+			if catchError {
+				callback := call.Argument(0)
+				fn, ok := goja.AssertFunction(callback)
+				if !ok {
+					panic("TypeError: callback must be a function")
+				}
+
+				_, err := fn(goja.Undefined(), r.vm.ToValue(string(body)))
+				fmt.Println("catch error", err)
+				if err != nil {
+					panic("Error executing catch callback:")
+				}
+			}
 			return goja.Undefined()
 		}),
 	})
