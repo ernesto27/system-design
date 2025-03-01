@@ -3,22 +3,37 @@ package handlers
 import (
 	"encoding/json"
 	"net/http"
+	"time"
 
 	"userservice/db"
 	"userservice/models"
 )
 
-func GetProfile(w http.ResponseWriter, r *http.Request) {
-	// For now, just return a mock response
-	// In a real application, you would extract the user ID from the JWT token
-	// and fetch the user's profile from the database
+type UserResponse struct {
+	ID        uint      `json:"id"`
+	Email     string    `json:"email"`
+	Name      string    `json:"name"`
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
+}
 
+func GetProfile(w http.ResponseWriter, r *http.Request) {
 	var user models.User
 	if err := db.DB.First(&user).Error; err != nil {
-		http.Error(w, "User not found", http.StatusNotFound)
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusNotFound)
+		json.NewEncoder(w).Encode(map[string]string{"error": "User not found"})
 		return
 	}
 
+	response := UserResponse{
+		ID:        user.ID,
+		Email:     user.Email,
+		Name:      user.Name,
+		CreatedAt: user.CreatedAt,
+		UpdatedAt: user.UpdatedAt,
+	}
+
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(user)
+	json.NewEncoder(w).Encode(response)
 }

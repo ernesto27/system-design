@@ -6,11 +6,15 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"regexp"
 
 	"userservice/db"
 	"userservice/models"
 	"userservice/utils"
 )
+
+// Email validation regular expression
+var emailRegex = regexp.MustCompile(`^[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}$`)
 
 func Register(w http.ResponseWriter, r *http.Request) {
 	// Debug: Print request body
@@ -40,6 +44,14 @@ func Register(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusBadRequest)
 		json.NewEncoder(w).Encode(map[string]string{"error": "Email and password are required"})
+		return
+	}
+
+	// Validate email format
+	if !emailRegex.MatchString(user.Email) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(w).Encode(map[string]string{"error": "Invalid email format"})
 		return
 	}
 
