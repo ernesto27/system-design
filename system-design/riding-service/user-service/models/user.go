@@ -16,20 +16,6 @@ type User struct {
 	UpdatedAt time.Time `json:"updated_at"`
 }
 
-// HashPassword hashes the password before saving
-func (u *User) HashPassword() error {
-	if len(u.Password) == 0 {
-		return nil // Skip if password is empty (e.g., when loading from DB)
-	}
-
-	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(u.Password), bcrypt.DefaultCost)
-	if err != nil {
-		return err
-	}
-	u.Password = string(hashedPassword)
-	return nil
-}
-
 // CheckPassword verifies the password against the hash
 func (u *User) CheckPassword(password string) error {
 	return bcrypt.CompareHashAndPassword([]byte(u.Password), []byte(password))

@@ -88,7 +88,7 @@ func TestLogin(t *testing.T) {
 		Password: "password123",
 		Name:     "Test User",
 	}
-	testUser.HashPassword()
+
 	db.DB.Create(&testUser)
 
 	tests := []struct {

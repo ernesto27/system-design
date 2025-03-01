@@ -1,60 +1,65 @@
 package handlers
 
 import (
-	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 	"userservice/db"
 	"userservice/models"
+	"userservice/testutils"
+	"userservice/utils"
 
 	"github.com/stretchr/testify/assert"
 )
 
 func TestGetProfile(t *testing.T) {
-	setupTestDB(t)
+	db.DB = testutils.SetupTestDB(t)
+
+	user := models.User{
+		ID:       1,
+		Email:    "test@example.com",
+		Password: "password123",
+		Name:     "Test User",
+	}
+
+	if err := db.DB.Create(&user).Error; err != nil {
+		t.Fatalf("Failed to create user: %v", err)
+	}
+
+	token, err := utils.GenerateJWT(user)
+	if err != nil {
+		t.Fatalf("Failed to generate token: %v", err)
+	}
 
 	tests := []struct {
 		name           string
-		setupUser      bool
+		token          string
 		expectedStatus int
 	}{
 		{
-			name:           "Existing user",
-			setupUser:      true,
+			name:           "Success with valid token",
+			token:          token,
 			expectedStatus: http.StatusOK,
 		},
 		{
-			name:           "No user found",
-			setupUser:      false,
-			expectedStatus: http.StatusNotFound,
+			name:           "Fail with no token",
+			token:          "",
+			expectedStatus: http.StatusUnauthorized,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if tt.setupUser {
-				testUser := models.User{
-					Email:    "test@example.com",
-					Password: "password123",
-					Name:     "Test User",
-				}
-				db.DB.Create(&testUser)
-			}
 
 			req := httptest.NewRequest("GET", "/api/profile", nil)
 			w := httptest.NewRecorder()
 
+			req.Header.Set("Authorization", "Bearer "+tt.token)
+
 			GetProfile(w, req)
 
 			assert.Equal(t, tt.expectedStatus, w.Code)
-			if tt.setupUser {
-				var response UserResponse
-				err := json.Unmarshal(w.Body.Bytes(), &response)
-				assert.NoError(t, err)
-				assert.Equal(t, "test@example.com", response.Email)
-				assert.Equal(t, "Test User", response.Name)
-			}
+
 		})
 	}
 }

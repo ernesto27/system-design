@@ -6,6 +6,10 @@ docker run --name riding-service-postgres \
   -p 5432:5432 \
   -d postgres:15
 
+
+test docker 
+docker compose up -d -f docker-compose.test.yml
+
 ## Core Components
 
 ### 1. Architecture Overview

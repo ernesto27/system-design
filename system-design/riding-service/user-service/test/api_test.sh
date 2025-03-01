@@ -1,8 +1,8 @@
 #!/bin/bash
 
 BASE_URL="http://localhost:8080"
-TEST_EMAIL="test@example.com"
-TEST_PASSWORD="password123"
+TEST_EMAIL="test2@example.com"
+TEST_PASSWORD="password1234"
 
 # Function to check if jq is installed
 check_jq() {
