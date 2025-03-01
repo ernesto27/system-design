@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"log"
 
-	"userservice/config"
+	"github.com/ernesto/riding-service/shared/config"
 
 	_ "github.com/lib/pq"
 	"github.com/pressly/goose/v3"

@@ -1,8 +1,6 @@
 module userservice
 
-go 1.23
-
-toolchain go1.23.6
+go 1.24
 
 require (
 	github.com/caarlos0/env/v10 v10.0.0
@@ -11,9 +9,9 @@ require (
 	github.com/lib/pq v1.10.9
 	github.com/pressly/goose/v3 v3.18.0
 	github.com/stretchr/testify v1.8.4
+	github.com/ernesto/riding-service/shared v0.0.0
 	golang.org/x/crypto v0.17.0
 	gorm.io/driver/postgres v1.5.11
-	gorm.io/driver/sqlite v1.5.4
 	gorm.io/gorm v1.25.12
 )
 
@@ -26,7 +24,6 @@ require (
 	github.com/jinzhu/inflection v1.0.0 // indirect
 	github.com/jinzhu/now v1.1.5 // indirect
 	github.com/kr/text v0.2.0 // indirect
-	github.com/mattn/go-sqlite3 v1.14.17 // indirect
 	github.com/mfridman/interpolate v0.0.2 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/rogpeppe/go-internal v1.14.1 // indirect
@@ -38,3 +35,5 @@ require (
 	golang.org/x/tools v0.26.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
+
+replace github.com/ernesto/riding-service/shared => ../shared

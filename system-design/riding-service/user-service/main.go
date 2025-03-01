@@ -4,13 +4,14 @@ import (
 	"log"
 	"net/http"
 
-	"userservice/config"
+	"github.com/gorilla/mux"
+
 	"userservice/db"
 	"userservice/handlers"
 	"userservice/middleware"
 	"userservice/utils"
 
-	"github.com/gorilla/mux"
+	"github.com/ernesto/riding-service/shared/config"
 )
 
 func main() {

@@ -2,8 +2,9 @@ package utils
 
 import (
 	"time"
-	"userservice/config"
 	"userservice/models"
+
+	"github.com/ernesto/riding-service/shared/config"
 
 	"github.com/dgrijalva/jwt-go"
 )
