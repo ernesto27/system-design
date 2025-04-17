@@ -6,6 +6,7 @@ import (
 	"server/controllers"
 	"server/internal"
 	"server/models"
+	"server/response"
 	"time"
 
 	"github.com/go-chi/chi"
@@ -13,6 +14,33 @@ import (
 	"github.com/go-chi/httprate"
 	"github.com/rs/cors"
 )
+
+// AuthMiddleware creates a middleware that validates JWT tokens
+func AuthMiddleware(jwtService *internal.JWTService) func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			// Get token from header
+			tokenString := r.Header.Get("Authorization")
+			if tokenString == "" {
+				response.NewWithoutData().WithMessage("Missing authorization token").Unauthorized(w)
+				return
+			}
+			if len(tokenString) > 7 && tokenString[:7] == "Bearer " {
+				tokenString = tokenString[7:]
+			}
+
+			userID, role, err := jwtService.ValidateToken(tokenString)
+			if err != nil {
+				response.NewWithoutData().WithMessage("Invalid token").Unauthorized(w)
+				return
+			}
+
+			ctx := r.Context()
+			ctx = internal.SetUserContext(ctx, userID, role)
+			next.ServeHTTP(w, r.WithContext(ctx))
+		})
+	}
+}
 
 func GetRouter(
 	dbInstance *sql.DB,
@@ -25,6 +53,12 @@ func GetRouter(
 			DB: dbInstance,
 		},
 		JWTService: *jwtService,
+	}
+
+	projectController := controllers.Project{
+		ProjectService: models.ProjectService{
+			DB: dbInstance,
+		},
 	}
 
 	c := cors.New(cors.Options{
@@ -47,6 +81,14 @@ func GetRouter(
 
 	r.Post(apiVersion+"/login", func(w http.ResponseWriter, r *http.Request) {
 		userController.Login(w, r)
+	})
+
+	r.Group(func(r chi.Router) {
+		r.Use(AuthMiddleware(jwtService))
+
+		r.Post(apiVersion+"/projects", func(w http.ResponseWriter, r *http.Request) {
+			projectController.Create(w, r)
+		})
 	})
 
 	return r

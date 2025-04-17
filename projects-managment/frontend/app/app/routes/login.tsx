@@ -51,15 +51,13 @@ export default function Login() {
         const data = await response.json();
 
         if (!response.ok) {
-          // Handle backend errors (e.g., invalid credentials)
           setErrors({ api: data.error || `Login failed: ${response.statusText}` });
         } else {
-          // Login successful
-          console.log("Login successful, token:", data.token);
-          // TODO: Store the token securely (e.g., localStorage, context, state management)
-          localStorage.setItem('authToken', data.token); // Example: storing in localStorage
-          // TODO: Redirect to a protected route or dashboard
-          navigate("/dashboard"); // Example: redirect to dashboard
+
+          console.log("Login successful, token:", data.data.accessClientToken);
+          localStorage.setItem('authToken', data.data.accessClientToken); 
+
+          //navigate("/dashboard"); // Example: redirect to dashboard
         }
       } catch (error) {
         // Handle network errors or unexpected issues
