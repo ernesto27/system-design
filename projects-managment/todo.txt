@@ -1,0 +1,56 @@
+Projects managment
+
+Requirements.
+
+User login, 
+email, contraseña.
+
+Projects: 
+List of projects
+Detail, edit project. 
+Delete project.
+
+
+
+Models - entities 
+
+- Users 
+- Roles
+- Projects
+
+## Users 
+id int 
+name string
+email string
+password string
+created_at datetime
+updated_at datetime
+role_id int
+
+### Roles
+id int
+name string
+
+### users-roles 
+id int
+user_id int
+role_id int
+
+### Projects
+id int
+name string
+description string
+created_at datetime
+updated_at datetime
+status_id int
+
+### status projects 
+id int
+name string
+
+### employess 
+id int
+name string
+email  
+
+    
