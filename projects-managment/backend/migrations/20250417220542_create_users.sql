@@ -57,9 +57,11 @@ CREATE TABLE projects (
     name VARCHAR(255) NOT NULL,
     description TEXT,
     status_id INT NOT NULL,
+    created_user_id INT NOT NULL,
     created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP NOT NULL,
     updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP NOT NULL,
-    FOREIGN KEY (status_id) REFERENCES project_statuses(id)
+    FOREIGN KEY (status_id) REFERENCES project_statuses(id),
+    FOREIGN KEY (created_user_id) REFERENCES users(id)
 );
 
 -- +goose StatementEnd

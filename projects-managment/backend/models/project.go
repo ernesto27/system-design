@@ -15,7 +15,7 @@ type Project struct {
 	Status      string    `json:"status"`
 	CreatedAt   time.Time `json:"created_at"`
 	UpdatedAt   time.Time `json:"updated_at"`
-	CreatedBy   int       `json:"created_by"` // User ID who created the project
+	CreatedBy   int       `json:"created_by"`
 }
 
 // ProjectService handles database operations for projects
@@ -42,9 +42,21 @@ func (ps *ProjectService) CreateProject(project Project) (Project, error) {
 
 	var id int
 	err := ps.DB.QueryRow(`
-		INSERT INTO projects (name, description, status_id, created_by, created_at, updated_at)
-		VALUES ($1, $2, $3, $4, $5, $6) RETURNING id
-	`, project.Name, project.Description, 1, project.CreatedBy, now, now).Scan(&id)
+		INSERT INTO projects (
+			name, 
+			description, 
+			status_id, 
+			created_user_id,
+			created_at, 
+			updated_at
+		)
+		VALUES ($1, $2, $3, $4, $5, $6) RETURNING id`,
+		project.Name,
+		project.Description,
+		1,
+		project.CreatedBy,
+		now,
+		now).Scan(&id)
 
 	if err != nil {
 		return project, err

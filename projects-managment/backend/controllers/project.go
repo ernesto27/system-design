@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"server/internal"
 	"server/models"
 	"server/response"
 )
@@ -25,14 +26,21 @@ func (p *Project) Create(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Validate request
 	if projectReq.Name == "" || projectReq.Description == "" {
 		fmt.Println(MessageFieldsEmpty)
 		response.NewWithoutData().WithMessage(MessageFieldsEmpty).BadRequest(w)
 		return
 	}
 
-	// Call service to create project
+	userID, ok := internal.GetUserIDFromContext(r.Context())
+	if !ok {
+		fmt.Println("User ID not found in context")
+		response.NewWithoutData().WithMessage("Unauthorized").Unauthorized(w)
+		return
+	}
+
+	projectReq.CreatedBy = userID
+
 	project, err := p.ProjectService.CreateProject(projectReq)
 
 	if err != nil {
@@ -41,6 +49,5 @@ func (p *Project) Create(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Return successful response
 	response.New(project).Success(w)
 }
