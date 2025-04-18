@@ -1,5 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router';
+import type { ProjectStatus } from '../types'; // Import from types.ts
+import { fetchProjectStatuses, createProject } from '../api'; // Import from api.ts
 
 // Admin navigation items
 const sidebarNavItems = [
@@ -10,20 +12,46 @@ const sidebarNavItems = [
   { name: 'Settings', href: '/admin/settings', icon: 'M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z' },
 ];
 
-// API base URL
-const API_BASE_URL = 'http://localhost:8080/api/v1';
-
 export default function CreateProject() {
   const [projectName, setProjectName] = useState('');
   const [description, setDescription] = useState('');
-  const [status, setStatus] = useState('pending'); // Default status
+  const [statusId, setStatusId] = useState<number | string>(''); // Use ID for status
+  const [projectStatuses, setProjectStatuses] = useState<ProjectStatus[]>([]);
+  const [statusesLoading, setStatusesLoading] = useState(true);
+  const [statusesError, setStatusesError] = useState<string | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [errors, setErrors] = useState<{ projectName?: string; description?: string; api?: string }>({});
+  const [errors, setErrors] = useState<{ projectName?: string; description?: string; statusId?: string; api?: string }>({});
   const [isLoading, setIsLoading] = useState(false);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
+
+  // Fetch project statuses on component mount
+  useEffect(() => {
+    const loadStatuses = async () => {
+      try {
+        setStatusesLoading(true);
+        const data = await fetchProjectStatuses(); // Use imported function
+        setProjectStatuses(data);
+        if (data.length > 0) {
+          setStatusId(data[0].id); // Set default status
+        }
+        setStatusesError(null);
+      } catch (error) {
+        console.error("Failed to fetch statuses:", error);
+        setStatusesError(error instanceof Error ? error.message : "Could not load statuses.");
+      } finally {
+        setStatusesLoading(false);
+      }
+    };
+
+    loadStatuses();
+  }, []);
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    const newErrors: { projectName?: string; description?: string; api?: string } = {};
+    const newErrors: { projectName?: string; description?: string; statusId?: string; api?: string } = {};
+    
+    // Clear previous success message
+    setSuccessMessage(null);
 
     // Validation logic
     if (!projectName.trim()) {
@@ -38,47 +66,40 @@ export default function CreateProject() {
       newErrors.description = "Description must be at least 10 characters.";
     }
 
+    if (!statusId) {
+        newErrors.statusId = "Project status is required.";
+    }
+
     setErrors(newErrors);
 
     if (Object.keys(newErrors).length === 0) {
       setIsLoading(true);
-      
+      setErrors({}); // Clear previous API errors
+
       try {
-        const token = localStorage.getItem('authToken') || sessionStorage.getItem('authToken');
+        // Use the createProject function from the api service
+        const projectData = {
+          name: projectName,
+          description,
+          project_status_id: Number(statusId)
+        };
+        const createdProject = await createProject(projectData); // Use imported function
+
+        console.log('Project created:', createdProject);
         
-        if (!token) {
-          throw new Error("No authentication token found");
-        }
-        
-        // Make the API call to create the project
-        const response = await fetch(`${API_BASE_URL}/projects`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`
-          },
-          body: JSON.stringify({
-            name: projectName,
-            description,
-            status
-          })
-        });
-        
-        if (!response.ok) {
-          const errorData = await response.json();
-          throw new Error(errorData.message || "Failed to create project");
-        }
-        
-        const data = await response.json();
-        console.log('Project created:', data);
-        
-        // Show success message
-        alert('Project created successfully!');
-        
+        // Set success message instead of alert
+        setSuccessMessage(`Project was created successfully!`);
+
         // Reset form
         setProjectName('');
         setDescription('');
-        setStatus('pending');
+        setStatusId(projectStatuses.length > 0 ? projectStatuses[0].id : '');
+
+        // Auto-hide success message after 5 seconds
+        setTimeout(() => {
+          setSuccessMessage(null);
+        }, 5000);
+
       } catch (error) {
         console.error("Project creation failed:", error);
         setErrors({ 
@@ -89,9 +110,6 @@ export default function CreateProject() {
       }
     }
   };
-
-  // Define available statuses (could be fetched from API later)
-  const projectStatuses = ['pending', 'in_progress', 'completed', 'cancelled'];
 
   return (
     <div className="min-h-screen bg-gray-100 dark:bg-gray-900 flex flex-col">
@@ -281,16 +299,32 @@ export default function CreateProject() {
                     <select
                       id="project-status"
                       name="status"
-                      value={status}
-                      onChange={(e) => setStatus(e.target.value)}
-                      className="appearance-none rounded-lg relative block w-full px-4 py-3 border border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white bg-white dark:bg-gray-700 focus:outline-none focus:ring-indigo-500 dark:focus:ring-indigo-600 focus:border-indigo-500 dark:focus:border-indigo-600 focus:z-10 text-base"
+                      value={statusId}
+                      onChange={(e) => setStatusId(e.target.value)}
+                      disabled={statusesLoading || !!statusesError}
+                      className={`appearance-none rounded-lg relative block w-full px-4 py-3 border ${errors.statusId ? "border-red-500 dark:border-red-500" : "border-gray-300 dark:border-gray-600"} text-gray-900 dark:text-white bg-white dark:bg-gray-700 focus:outline-none focus:ring-indigo-500 dark:focus:ring-indigo-600 focus:border-indigo-500 dark:focus:border-indigo-600 focus:z-10 text-base disabled:opacity-50 disabled:cursor-not-allowed`}
+                      aria-invalid={errors.statusId ? "true" : "false"}
+                      aria-describedby={errors.statusId ? "statusId-error" : undefined}
                     >
-                      {projectStatuses.map((s) => (
-                        <option key={s} value={s} className="text-gray-900 dark:text-white bg-white dark:bg-gray-800">
-                          {s.charAt(0).toUpperCase() + s.slice(1).replace('_', ' ')}
+                      {statusesLoading && <option value="">Loading statuses...</option>}
+                      {statusesError && <option value="">Error loading statuses</option>}
+                      {!statusesLoading && !statusesError && projectStatuses.length === 0 && <option value="">No statuses available</option>}
+                      {!statusesLoading && !statusesError && projectStatuses.map((status) => (
+                        <option key={status.id} value={status.id} className="text-gray-900 dark:text-white bg-white dark:bg-gray-800">
+                          {status.name}
                         </option>
                       ))}
                     </select>
+                    {errors.statusId && (
+                      <p id="statusId-error" className="mt-2 text-sm text-red-600 dark:text-red-400">
+                        {errors.statusId}
+                      </p>
+                    )}
+                     {statusesError && (
+                      <p className="mt-2 text-sm text-red-600 dark:text-red-400">
+                        {statusesError}
+                      </p>
+                    )}
                   </div>
                 </div>
 
@@ -300,10 +334,42 @@ export default function CreateProject() {
                   </p>
                 )}
 
+                {/* Success Message */}
+                {successMessage && (
+                  <div className="mb-4 rounded-lg bg-green-50 dark:bg-green-900 p-4 shadow-md transition-all duration-300 ease-in-out">
+                    <div className="flex items-center">
+                      <div className="flex-shrink-0">
+                        <svg className="h-5 w-5 text-green-600 dark:text-green-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                          <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                        </svg>
+                      </div>
+                      <div className="ml-3">
+                        <p className="text-sm font-medium text-green-800 dark:text-green-200">
+                          {successMessage}
+                        </p>
+                      </div>
+                      <div className="ml-auto pl-3">
+                        <div className="-mx-1.5 -my-1.5">
+                          <button
+                            type="button"
+                            onClick={() => setSuccessMessage(null)}
+                            className="inline-flex rounded-md p-1.5 text-green-700 dark:text-green-300 hover:bg-green-100 dark:hover:bg-green-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 dark:focus:ring-offset-green-800"
+                          >
+                            <span className="sr-only">Dismiss</span>
+                            <svg className="h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                              <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
+                            </svg>
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
                 <div className="pt-6">
                   <button
                     type="submit"
-                    disabled={isLoading}
+                    disabled={isLoading || statusesLoading}
                     className="group relative w-full flex justify-center py-4 px-6 border border-transparent text-lg font-medium rounded-lg text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 dark:focus:ring-offset-gray-800 transition-colors shadow-md disabled:opacity-50"
                   >
                     {isLoading ? "Creating Project..." : "Create Project"}

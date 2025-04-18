@@ -15,11 +15,9 @@ import (
 	"github.com/rs/cors"
 )
 
-// AuthMiddleware creates a middleware that validates JWT tokens
 func AuthMiddleware(jwtService *internal.JWTService) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			// Get token from header
 			tokenString := r.Header.Get("Authorization")
 			if tokenString == "" {
 				response.NewWithoutData().WithMessage("Missing authorization token").Unauthorized(w)
@@ -61,6 +59,18 @@ func GetRouter(
 		},
 	}
 
+	roleController := controllers.RoleController{
+		RoleService: models.RoleService{
+			DB: dbInstance,
+		},
+	}
+
+	projectStatusController := controllers.ProjectStatusController{
+		ProjectStatusService: models.ProjectStatusService{
+			DB: dbInstance,
+		},
+	}
+
 	c := cors.New(cors.Options{
 		AllowedOrigins:   []string{"*"},
 		AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
@@ -83,11 +93,19 @@ func GetRouter(
 		userController.Login(w, r)
 	})
 
+	r.Get(apiVersion+"/project-statuses", func(w http.ResponseWriter, r *http.Request) {
+		projectStatusController.GetAllProjectStatuses(w, r)
+	})
+
 	r.Group(func(r chi.Router) {
 		r.Use(AuthMiddleware(jwtService))
 
 		r.Post(apiVersion+"/projects", func(w http.ResponseWriter, r *http.Request) {
 			projectController.Create(w, r)
+		})
+
+		r.Get(apiVersion+"/roles", func(w http.ResponseWriter, r *http.Request) {
+			roleController.GetRoles(w, r)
 		})
 	})
 
