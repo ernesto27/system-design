@@ -51,3 +51,15 @@ func (p *Project) Create(w http.ResponseWriter, r *http.Request) {
 
 	response.New(project).Success(w)
 }
+
+// GetAll handles retrieving all projects
+func (p *Project) GetAll(w http.ResponseWriter, r *http.Request) {
+	projects, err := p.ProjectService.GetAllProjects()
+	if err != nil {
+		fmt.Println("Error fetching projects:", err)
+		response.NewWithoutData().InternalServerError(w)
+		return
+	}
+
+	response.New(projects).Success(w)
+}

@@ -2,6 +2,7 @@ package internal
 
 import (
 	"context"
+	"server/models"
 )
 
 type contextKey string
@@ -12,9 +13,8 @@ const (
 )
 
 // SetUserContext adds user ID and role to the request context
-func SetUserContext(ctx context.Context, userID int, role Role) context.Context {
+func SetUserContext(ctx context.Context, userID int) context.Context {
 	ctx = context.WithValue(ctx, userIDContextKey, userID)
-	ctx = context.WithValue(ctx, roleContextKey, role)
 	return ctx
 }
 
@@ -25,7 +25,7 @@ func GetUserIDFromContext(ctx context.Context) (int, bool) {
 }
 
 // GetRoleFromContext extracts the user role from the context
-func GetRoleFromContext(ctx context.Context) (Role, bool) {
-	role, ok := ctx.Value(roleContextKey).(Role)
+func GetRoleFromContext(ctx context.Context) (models.Role, bool) {
+	role, ok := ctx.Value(roleContextKey).(models.Role)
 	return role, ok
 }

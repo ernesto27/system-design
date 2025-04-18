@@ -27,14 +27,14 @@ func AuthMiddleware(jwtService *internal.JWTService) func(http.Handler) http.Han
 				tokenString = tokenString[7:]
 			}
 
-			userID, role, err := jwtService.ValidateToken(tokenString)
+			userID, _, err := jwtService.ValidateToken(tokenString)
 			if err != nil {
 				response.NewWithoutData().WithMessage("Invalid token").Unauthorized(w)
 				return
 			}
 
 			ctx := r.Context()
-			ctx = internal.SetUserContext(ctx, userID, role)
+			ctx = internal.SetUserContext(ctx, userID)
 			next.ServeHTTP(w, r.WithContext(ctx))
 		})
 	}
@@ -102,6 +102,10 @@ func GetRouter(
 
 		r.Post(apiVersion+"/projects", func(w http.ResponseWriter, r *http.Request) {
 			projectController.Create(w, r)
+		})
+
+		r.Get(apiVersion+"/projects", func(w http.ResponseWriter, r *http.Request) {
+			projectController.GetAll(w, r)
 		})
 
 		r.Get(apiVersion+"/roles", func(w http.ResponseWriter, r *http.Request) {

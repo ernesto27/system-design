@@ -58,6 +58,7 @@ CREATE TABLE projects (
     description TEXT,
     status_id INT NOT NULL,
     created_user_id INT NOT NULL,
+    time_estimation INT,
     created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP NOT NULL,
     updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP NOT NULL,
     FOREIGN KEY (status_id) REFERENCES project_statuses(id),
