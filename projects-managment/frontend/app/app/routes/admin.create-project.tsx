@@ -15,12 +15,13 @@ const sidebarNavItems = [
 export default function CreateProject() {
   const [projectName, setProjectName] = useState('');
   const [description, setDescription] = useState('');
+  const [timeEstimation, setTimeEstimation] = useState<number | string>('');
   const [statusId, setStatusId] = useState<number | string>(''); // Use ID for status
   const [projectStatuses, setProjectStatuses] = useState<ProjectStatus[]>([]);
   const [statusesLoading, setStatusesLoading] = useState(true);
   const [statusesError, setStatusesError] = useState<string | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [errors, setErrors] = useState<{ projectName?: string; description?: string; statusId?: string; api?: string }>({});
+  const [errors, setErrors] = useState<{ projectName?: string; description?: string; timeEstimation?: string; statusId?: string; api?: string }>({});
   const [isLoading, setIsLoading] = useState(false);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
@@ -48,7 +49,7 @@ export default function CreateProject() {
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    const newErrors: { projectName?: string; description?: string; statusId?: string; api?: string } = {};
+    const newErrors: { projectName?: string; description?: string; timeEstimation?: string; statusId?: string; api?: string } = {};
     
     // Clear previous success message
     setSuccessMessage(null);
@@ -66,6 +67,12 @@ export default function CreateProject() {
       newErrors.description = "Description must be at least 10 characters.";
     }
 
+    if (!timeEstimation) {
+      newErrors.timeEstimation = "Time estimation is required.";
+    } else if (Number(timeEstimation) <= 0) {
+      newErrors.timeEstimation = "Time estimation must be greater than 0.";
+    }
+
     if (!statusId) {
         newErrors.statusId = "Project status is required.";
     }
@@ -81,6 +88,7 @@ export default function CreateProject() {
         const projectData = {
           name: projectName,
           description,
+          time_estimation: Number(timeEstimation),
           project_status_id: Number(statusId)
         };
         const createdProject = await createProject(projectData); // Use imported function
@@ -93,6 +101,7 @@ export default function CreateProject() {
         // Reset form
         setProjectName('');
         setDescription('');
+        setTimeEstimation('');
         setStatusId(projectStatuses.length > 0 ? projectStatuses[0].id : '');
 
         // Auto-hide success message after 5 seconds
@@ -289,6 +298,28 @@ export default function CreateProject() {
                     {errors.description && (
                       <p id="description-error" className="mt-2 text-sm text-red-600 dark:text-red-400">
                         {errors.description}
+                      </p>
+                    )}
+                  </div>
+                  <div>
+                    <label htmlFor="time-estimation" className="block text-base font-medium text-gray-700 dark:text-gray-300 mb-3">
+                      Time Estimation (hours)
+                    </label>
+                    <input
+                      id="time-estimation"
+                      name="timeEstimation"
+                      type="number"
+                      min="1"
+                      value={timeEstimation}
+                      onChange={(e) => setTimeEstimation(e.target.value)}
+                      className={`appearance-none rounded-lg relative block w-full px-4 py-3 border ${errors.timeEstimation ? "border-red-500 dark:border-red-500" : "border-gray-300 dark:border-gray-600"} placeholder-gray-500 dark:placeholder-gray-400 text-gray-900 dark:text-white bg-white dark:bg-gray-700 focus:outline-none focus:ring-indigo-500 dark:focus:ring-indigo-600 focus:border-indigo-500 dark:focus:border-indigo-600 focus:z-10 text-base`}
+                      placeholder="Enter estimated hours to complete"
+                      aria-invalid={errors.timeEstimation ? "true" : "false"}
+                      aria-describedby={errors.timeEstimation ? "timeEstimation-error" : undefined}
+                    />
+                    {errors.timeEstimation && (
+                      <p id="timeEstimation-error" className="mt-2 text-sm text-red-600 dark:text-red-400">
+                        {errors.timeEstimation}
                       </p>
                     )}
                   </div>

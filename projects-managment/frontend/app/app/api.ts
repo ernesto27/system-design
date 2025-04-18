@@ -70,7 +70,12 @@ export const fetchProjectStatuses = async (): Promise<ProjectStatus[]> => {
 /**
  * Creates a new project.
  */
-export const createProject = async (projectData: { name: string; description: string; project_status_id: number }): Promise<Project> => {
+    export const createProject = async (projectData: { 
+  name: string; 
+  description: string; 
+  project_status_id: number;
+  time_estimation?: number;
+}): Promise<Project> => {
   const response = await fetchWithAuth(`${API_BASE_URL}/projects`, {
     method: 'POST',
     body: JSON.stringify(projectData),
