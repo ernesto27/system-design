@@ -102,47 +102,77 @@ func (ps *ProjectService) Create(project Project) (Project, error) {
 	return project, nil
 }
 
-// GetProject retrieves a project by ID
 func (ps *ProjectService) GetProject(id int) (Project, error) {
-	var project Project
-	var statusName string
-
-	err := ps.DB.QueryRow(`
+	rows, err := ps.DB.Query(`
 		SELECT 
 			p.id, 
 			p.name, 
 			p.description, 
-			ps.name, 
+			ps.name AS status_name, 
 			p.time_estimation,
 			p.created_at, 
 			p.updated_at,
-			p.created_user_id
+			p.created_user_id,
+			r.id AS role_id,
+			r.name AS role_name,
+			pr.percentage
 		FROM projects p
 		JOIN project_statuses ps ON p.status_id = ps.id
-		WHERE p.id = $1`, id).Scan(
-		&project.ID,
-		&project.Name,
-		&project.Description,
-		&statusName,
-		&project.TimeEstimation,
-		&project.CreatedAt,
-		&project.UpdatedAt,
-		&project.CreatedBy,
-	)
+		LEFT JOIN projects_roles pr ON p.id = pr.project_id
+		LEFT JOIN roles r ON pr.role_id = r.id
+		WHERE p.id = $1
+	`, id)
 
 	if err != nil {
-		if err == sql.ErrNoRows {
-			return project, ErrProjectNotFound
+		return Project{}, err
+	}
+	defer rows.Close()
+
+	var project *Project
+
+	for rows.Next() {
+		var (
+			projectID, timeEstimation, createdUserID int
+			projectName, projectDesc, statusName     string
+			createdAt, updatedAt                     time.Time
+			roleID                                   sql.NullInt64
+			roleName                                 sql.NullString
+			rolePercentage                           sql.NullInt64
+		)
+
+		err := rows.Scan(
+			&projectID,
+			&projectName,
+			&projectDesc,
+			&statusName,
+			&timeEstimation,
+			&createdAt,
+			&updatedAt,
+			&createdUserID,
+			&roleID,
+			&roleName,
+			&rolePercentage,
+		)
+
+		if err != nil {
+			return Project{}, err
 		}
-		return project, err
+
 	}
 
-	project.Status = statusName
-	return project, nil
+	if err = rows.Err(); err != nil {
+		return Project{}, err
+	}
+
+	if project == nil {
+		return Project{}, ErrProjectNotFound
+	}
+
+	return *project, nil
 }
 
-// GetAllProjects retrieves all projects
-func (ps *ProjectService) GetAllProjects() ([]Project, error) {
+func (ps *ProjectService) GetAllProjects(page, limit int) ([]Project, error) {
+	offset := (page - 1) * limit
 	rows, err := ps.DB.Query(`
 		SELECT 
 			p.id, 
@@ -156,7 +186,8 @@ func (ps *ProjectService) GetAllProjects() ([]Project, error) {
 		FROM projects p
 		JOIN project_statuses ps ON p.status_id = ps.id
 		ORDER BY p.id DESC
-	`)
+		LIMIT $1 OFFSET $2
+	`, limit, offset)
 
 	if err != nil {
 		return nil, err
@@ -184,6 +215,17 @@ func (ps *ProjectService) GetAllProjects() ([]Project, error) {
 		}
 
 		project.Status = statusName
+
+		roleService := RoleService{
+			DB: ps.DB,
+		}
+
+		roles, err := roleService.GetProjectRoles(project.ID)
+		if err != nil {
+			return projects, fmt.Errorf("error fetching roles for project %d: %w", project.ID, err)
+		}
+
+		project.Roles = roles
 		projects = append(projects, project)
 	}
 
@@ -192,6 +234,15 @@ func (ps *ProjectService) GetAllProjects() ([]Project, error) {
 	}
 
 	return projects, nil
+}
+
+func (ps *ProjectService) CountProjects() (int, error) {
+	var count int
+	err := ps.DB.QueryRow(`SELECT COUNT(*) FROM projects`).Scan(&count)
+	if err != nil {
+		return 0, fmt.Errorf("error counting projects: %w", err)
+	}
+	return count, nil
 }
 
 type ProjectRole struct {

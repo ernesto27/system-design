@@ -69,7 +69,7 @@ CREATE TABLE projects_roles (
     id SERIAL PRIMARY KEY,
     project_id INT NOT NULL,
     role_id INT NOT NULL,
-    percentage INT NOT NULL,p
+    percentage INT NOT NULL,
     FOREIGN KEY (project_id) REFERENCES projects(id),
     FOREIGN KEY (role_id) REFERENCES roles(id)
 );

@@ -3,10 +3,12 @@ package controllers
 import (
 	"encoding/json"
 	"fmt"
+
 	"net/http"
 	"server/internal"
 	"server/models"
 	"server/response"
+	"strconv"
 )
 
 type Project struct {
@@ -51,9 +53,22 @@ func (p *Project) Create(w http.ResponseWriter, r *http.Request) {
 	response.New(project).Success(w)
 }
 
-// GetAll handles retrieving all projects
+// GetAll handles retrieving projects with pagination
 func (p *Project) GetAll(w http.ResponseWriter, r *http.Request) {
-	projects, err := p.ProjectService.GetAllProjects()
+	pageStr := r.URL.Query().Get("page")
+	limitStr := r.URL.Query().Get("limit")
+
+	page, err := strconv.Atoi(pageStr)
+	if err != nil || page < 1 {
+		page = 1
+	}
+
+	limit, err := strconv.Atoi(limitStr)
+	if err != nil || limit <= 0 {
+		limit = 20
+	}
+
+	projects, err := p.ProjectService.GetAllProjects(page, limit)
 	if err != nil {
 		fmt.Println("Error fetching projects:", err)
 		response.NewWithoutData().InternalServerError(w)

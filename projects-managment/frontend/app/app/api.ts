@@ -96,5 +96,22 @@ export const createProject = async (project: Project): Promise<Project> => {
   return response.json();
 };
 
+/**
+ * Fetches all projects
+ */
+export const fetchProjects = async (): Promise<Project[]> => {
+  const response = await fetchWithAuth(`${API_BASE_URL}/projects`);
+  
+  const responseData = await response.json(); 
 
-// Add other API functions as needed (e.g., fetchProjects, loginUser, etc.)
+  if (responseData && Array.isArray(responseData.data)) {
+    return responseData.data as Project[];
+  } else if (Array.isArray(responseData)) {
+    return responseData as Project[];
+  } else {
+    console.error("Unexpected API response structure for projects:", responseData);
+    throw new Error("Received unexpected data format for projects.");
+  }
+};
+
+// Add other API functions as needed (e.g., loginUser, etc.)

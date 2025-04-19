@@ -13,10 +13,15 @@ export interface Role {
 }
 
 export interface Project {
+  id?: number;
   name: string;
   description: string;
   projectStatusId: number;
+  status?: string; 
   timeEstimation?: number;
-  Roles?: Role[];
+  createdAt?: string;
+  updatedAt?: string;
+  createdBy?: number;
+  roles?: Role[]; 
 }
 
