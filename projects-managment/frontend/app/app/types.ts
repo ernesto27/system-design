@@ -5,12 +5,18 @@ export interface ProjectStatus {
   name: string;
 }
 
-export interface Project {
+export interface Role {
   id: number;
   name: string;
+  percentage: number;
+  _uniqueId?: number; // Optional unique identifier for UI purposes
+}
+
+export interface Project {
+  name: string;
   description: string;
-  project_status_id: number;
-  created_at: string; 
-  updated_at: string;
+  projectStatusId: number;
+  timeEstimation?: number;
+  Roles?: Role[];
 }
 

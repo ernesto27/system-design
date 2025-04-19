@@ -12,8 +12,8 @@ type User struct {
 	Username  string `json:"username"`
 	Password  string `json:"password"`
 	Email     string `json:"email"`
-	CreatedAt string `json:"created_at"`
-	UpdatedAt string `json:"updated_at"`
+	CreatedAt string `json:"createdAt"`
+	UpdatedAt string `json:"updatedAt"`
 }
 
 type UserService struct {

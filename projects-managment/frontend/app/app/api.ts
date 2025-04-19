@@ -1,4 +1,4 @@
-import type { ProjectStatus, Project } from './types';
+import type { ProjectStatus, Project, Role } from './types';
 
 const API_BASE_URL = 'http://localhost:8080/api/v1';
 
@@ -68,19 +68,33 @@ export const fetchProjectStatuses = async (): Promise<ProjectStatus[]> => {
 };
 
 /**
+ * Fetches all available roles.
+ */
+export const fetchRoles = async (): Promise<Role[]> => {
+  const response = await fetchWithAuth(`${API_BASE_URL}/roles`);
+  
+  const responseData = await response.json(); 
+
+  if (responseData && Array.isArray(responseData.data)) {
+    return responseData.data as Role[];
+  } else if (Array.isArray(responseData)) {
+    return responseData as Role[];
+  } else {
+    console.error("Unexpected API response structure for roles:", responseData);
+    throw new Error("Received unexpected data format for roles.");
+  }
+};
+
+/**
  * Creates a new project.
  */
-    export const createProject = async (projectData: { 
-  name: string; 
-  description: string; 
-  project_status_id: number;
-  time_estimation?: number;
-}): Promise<Project> => {
+export const createProject = async (project: Project): Promise<Project> => {
   const response = await fetchWithAuth(`${API_BASE_URL}/projects`, {
     method: 'POST',
-    body: JSON.stringify(projectData),
+    body: JSON.stringify(project),
   });
   return response.json();
 };
+
 
 // Add other API functions as needed (e.g., fetchProjects, loginUser, etc.)

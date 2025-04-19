@@ -3,8 +3,9 @@ package models
 import "database/sql"
 
 type Role struct {
-	ID   uint   `json:"id"`
-	Name string `json:"name"`
+	ID         int    `json:"id"`
+	Name       string `json:"name"`
+	Percentage int    `json:"percentage"`
 }
 
 type RoleService struct {

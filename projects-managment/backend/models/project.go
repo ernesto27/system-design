@@ -3,28 +3,27 @@ package models
 
 import (
 	"database/sql"
+	"fmt"
 	"net/http"
 	"time"
 )
 
-// Project represents a project in the system
 type Project struct {
 	ID             int       `json:"id"`
 	Name           string    `json:"name"`
 	Description    string    `json:"description"`
 	Status         string    `json:"status"`
-	TimeEstimation int       `json:"time_estimation"`
-	CreatedAt      time.Time `json:"created_at"`
-	UpdatedAt      time.Time `json:"updated_at"`
-	CreatedBy      int       `json:"created_by"`
+	TimeEstimation int       `json:"timeEstimation"`
+	CreatedAt      time.Time `json:"createdAt"`
+	UpdatedAt      time.Time `json:"updatedAt"`
+	CreatedBy      int       `json:"createdBy"`
+	Roles          []Role    `json:"roles"`
 }
 
-// ProjectService handles database operations for projects
 type ProjectService struct {
 	DB *sql.DB
 }
 
-// ProjectError defines custom error types for project operations
 type ProjectError struct {
 	Code    int
 	Message string
@@ -38,11 +37,24 @@ var (
 	ErrProjectNotFound = &ProjectError{Code: http.StatusNotFound, Message: "project not found"}
 )
 
-func (ps *ProjectService) CreateProject(project Project) (Project, error) {
+func (ps *ProjectService) Create(project Project) (Project, error) {
 	now := time.Now()
 
+	// Begin transaction
+	tx, err := ps.DB.Begin()
+	if err != nil {
+		return project, fmt.Errorf("failed to begin transaction: %v", err)
+	}
+
+	// Defer a rollback in case anything fails
+	defer func() {
+		if err != nil {
+			tx.Rollback()
+		}
+	}()
+
 	var id int
-	err := ps.DB.QueryRow(`
+	err = tx.QueryRow(`
 		INSERT INTO projects (
 			name, 
 			description, 
@@ -65,7 +77,24 @@ func (ps *ProjectService) CreateProject(project Project) (Project, error) {
 		return project, err
 	}
 
-	// Set the returned ID
+	projectRole := ProjectRoleService{tx: tx}
+
+	for _, role := range project.Roles {
+		err = projectRole.Create(ProjectRole{
+			ProjectID:  id,
+			RoleID:     role.ID,
+			Percentage: role.Percentage,
+		})
+		if err != nil {
+			return project, err
+		}
+	}
+
+	// Commit the transaction
+	if err = tx.Commit(); err != nil {
+		return project, fmt.Errorf("failed to commit transaction: %v", err)
+	}
+
 	project.ID = id
 	project.CreatedAt = now
 	project.UpdatedAt = now
@@ -163,4 +192,34 @@ func (ps *ProjectService) GetAllProjects() ([]Project, error) {
 	}
 
 	return projects, nil
+}
+
+type ProjectRole struct {
+	ID         int `json:"id"`
+	ProjectID  int `json:"projectId"`
+	RoleID     int `json:"roleId"`
+	Percentage int `json:"percentage"`
+}
+
+type ProjectRoleService struct {
+	tx *sql.Tx
+}
+
+func (prs *ProjectRoleService) Create(projectRole ProjectRole) error {
+	_, err := prs.tx.Exec(`
+		INSERT INTO projects_roles (
+			project_id, 
+			role_id, 
+			percentage
+		)
+		VALUES ($1, $2, $3)`,
+		projectRole.ProjectID,
+		projectRole.RoleID,
+		projectRole.Percentage)
+
+	if err != nil {
+		return fmt.Errorf("error inserting project role: %v", err)
+	}
+
+	return nil
 }

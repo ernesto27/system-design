@@ -1,4 +1,3 @@
-// filepath: /home/ernesto/code/system-design/projects-managment/backend/controllers/project.go
 package controllers
 
 import (
@@ -41,7 +40,7 @@ func (p *Project) Create(w http.ResponseWriter, r *http.Request) {
 
 	projectReq.CreatedBy = userID
 
-	project, err := p.ProjectService.CreateProject(projectReq)
+	project, err := p.ProjectService.Create(projectReq)
 
 	if err != nil {
 		fmt.Println("Error creating project:", err)

@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router';
-import type { ProjectStatus } from '../types'; // Import from types.ts
-import { fetchProjectStatuses, createProject } from '../api'; // Import from api.ts
+import type { ProjectStatus, Role, Project } from '../types'; // Updated import
+import { fetchProjectStatuses, fetchRoles, createProject } from '../api';
+import ProjectRoleSelector from '../components/ProjectRoleSelector';
 
 // Admin navigation items
 const sidebarNavItems = [
@@ -20,20 +21,28 @@ export default function CreateProject() {
   const [projectStatuses, setProjectStatuses] = useState<ProjectStatus[]>([]);
   const [statusesLoading, setStatusesLoading] = useState(true);
   const [statusesError, setStatusesError] = useState<string | null>(null);
+  
+  // Updated state variable for role selection to use Role type directly
+  const [roles, setRoles] = useState<Role[]>([]);
+  const [projectRoles, setProjectRoles] = useState<Role[]>([]);
+  const [rolesLoading, setRolesLoading] = useState(true);
+  const [rolesError, setRolesError] = useState<string | null>(null);
+  
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [errors, setErrors] = useState<{ projectName?: string; description?: string; timeEstimation?: string; statusId?: string; api?: string }>({});
+  const [errors, setErrors] = useState<{ projectName?: string; description?: string; timeEstimation?: string; statusId?: string; projectRoles?: string; api?: string }>({});
   const [isLoading, setIsLoading] = useState(false);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
-  // Fetch project statuses on component mount
+  // Fetch project statuses and roles on component mount
   useEffect(() => {
-    const loadStatuses = async () => {
+    const loadData = async () => {
       try {
+        // Fetch project statuses
         setStatusesLoading(true);
-        const data = await fetchProjectStatuses(); // Use imported function
-        setProjectStatuses(data);
-        if (data.length > 0) {
-          setStatusId(data[0].id); // Set default status
+        const statusesData = await fetchProjectStatuses();
+        setProjectStatuses(statusesData);
+        if (statusesData.length > 0) {
+          setStatusId(statusesData[0].id); // Set default status
         }
         setStatusesError(null);
       } catch (error) {
@@ -42,14 +51,27 @@ export default function CreateProject() {
       } finally {
         setStatusesLoading(false);
       }
+
+      try {
+        // Fetch roles
+        setRolesLoading(true);
+        const rolesData = await fetchRoles();
+        setRoles(rolesData);
+        setRolesError(null);
+      } catch (error) {
+        console.error("Failed to fetch roles:", error);
+        setRolesError(error instanceof Error ? error.message : "Could not load roles.");
+      } finally {
+        setRolesLoading(false);
+      }
     };
 
-    loadStatuses();
+    loadData();
   }, []);
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    const newErrors: { projectName?: string; description?: string; timeEstimation?: string; statusId?: string; api?: string } = {};
+    const newErrors: { projectName?: string; description?: string; timeEstimation?: string; statusId?: string; projectRoles?: string; api?: string } = {};
     
     // Clear previous success message
     setSuccessMessage(null);
@@ -74,49 +96,76 @@ export default function CreateProject() {
     }
 
     if (!statusId) {
-        newErrors.statusId = "Project status is required.";
+      newErrors.statusId = "Project status is required.";
     }
 
     setErrors(newErrors);
 
-    if (Object.keys(newErrors).length === 0) {
-      setIsLoading(true);
-      setErrors({}); // Clear previous API errors
-
-      try {
-        // Use the createProject function from the api service
-        const projectData = {
-          name: projectName,
-          description,
-          time_estimation: Number(timeEstimation),
-          project_status_id: Number(statusId)
-        };
-        const createdProject = await createProject(projectData); // Use imported function
-
-        console.log('Project created:', createdProject);
-        
-        // Set success message instead of alert
-        setSuccessMessage(`Project was created successfully!`);
-
-        // Reset form
-        setProjectName('');
-        setDescription('');
-        setTimeEstimation('');
-        setStatusId(projectStatuses.length > 0 ? projectStatuses[0].id : '');
-
-        // Auto-hide success message after 5 seconds
-        setTimeout(() => {
-          setSuccessMessage(null);
-        }, 5000);
-
-      } catch (error) {
-        console.error("Project creation failed:", error);
-        setErrors({ 
-          api: error instanceof Error ? error.message : "Failed to create project. Please try again later." 
-        });
-      } finally {
-        setIsLoading(false);
+    // Scroll to the first input with an error if there are validation errors
+    if (Object.keys(newErrors).length > 0) {
+      const errorFields = ['projectName', 'description', 'timeEstimation', 'statusId', 'projectRoles'];
+      for (const field of errorFields) {
+        if (newErrors[field as keyof typeof newErrors]) {
+          const element = document.getElementById(field === 'projectName' ? 'project-name' : 
+                                                 field === 'description' ? 'project-description' : 
+                                                 field === 'timeEstimation' ? 'time-estimation' : 
+                                                 field === 'statusId' ? 'project-status' : 
+                                                 field === 'projectRoles' ? 'role-select' : '');
+          if (element) {
+            element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            element.focus();
+            break; 
+          }
+        }
       }
+      return; 
+    }
+
+    setIsLoading(true);
+    setErrors({}); // Clear previous API errors
+
+    try {
+      // Create a project object that follows the Project interface structure
+      const projectData: Project = {
+        name: projectName,
+        description,
+        projectStatusId: Number(statusId),
+        timeEstimation: Number(timeEstimation),
+        Roles: projectRoles.length > 0 ? projectRoles : undefined
+      };
+      
+      const createdProject = await createProject(projectData);
+
+      console.log('Project created:', createdProject);
+      
+      // Set success message instead of alert
+      setSuccessMessage(`Project was created successfully!`);
+
+      // Reset form
+      setProjectName('');
+      setDescription('');
+      setTimeEstimation('');
+      setStatusId(projectStatuses.length > 0 ? projectStatuses[0].id : '');
+      setProjectRoles([]); // Reset project roles
+
+      // Auto-hide success message after 5 seconds
+      setTimeout(() => {
+        setSuccessMessage(null);
+      }, 5000);
+
+    } catch (error) {
+      console.error("Project creation failed:", error);
+      setErrors({ 
+        api: error instanceof Error ? error.message : "Failed to create project. Please try again later." 
+      });
+      
+      // Scroll to the API error message if there is one
+      const apiErrorElement = document.getElementById('api-error');
+      if (apiErrorElement) {
+        apiErrorElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -351,9 +400,25 @@ export default function CreateProject() {
                         {errors.statusId}
                       </p>
                     )}
-                     {statusesError && (
+                    {statusesError && (
                       <p className="mt-2 text-sm text-red-600 dark:text-red-400">
                         {statusesError}
+                      </p>
+                    )}
+                  </div>
+                  
+                  {/* Project Roles Section */}
+                  <div className="border-t border-gray-200 dark:border-gray-700 pt-8">
+                    <ProjectRoleSelector
+                      roles={roles}
+                      projectRoles={projectRoles}
+                      setProjectRoles={setProjectRoles}
+                      loading={rolesLoading}
+                      error={rolesError}
+                    />
+                    {errors.projectRoles && (
+                      <p className="mt-2 text-sm text-red-600 dark:text-red-400">
+                        {errors.projectRoles}
                       </p>
                     )}
                   </div>
