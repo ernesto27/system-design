@@ -195,4 +195,22 @@ export const deleteComment = async (commentId: number): Promise<void> => {
   });
 };
 
+/**
+ * Like a comment by its ID
+ */
+export const likeComment = async (commentId: number): Promise<void> => {
+  await fetchWithAuth(`${API_BASE_URL}/comments/${commentId}/like`, {
+    method: 'POST',
+  });
+};
+
+/**
+ * Unlike a comment by its ID
+ */
+export const unlikeComment = async (commentId: number): Promise<void> => {
+  await fetchWithAuth(`${API_BASE_URL}/comments/${commentId}/like`, {
+    method: 'DELETE',
+  });
+};
+
 // Add other API functions as needed (e.g., loginUser, etc.)

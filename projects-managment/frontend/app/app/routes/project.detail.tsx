@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router';
-import { fetchProjectById, fetchProjectStatuses, fetchRoles, updateProject, fetchProjectComments, createComment, deleteComment } from '../api';
+import { fetchProjectById, fetchProjectStatuses, fetchRoles, updateProject, fetchProjectComments, createComment, deleteComment, likeComment, unlikeComment } from '../api';
 import type { Project, ProjectStatus, Role, Comment } from '../types';
 import AdminLayout from '../components/AdminLayout';
 import ProjectRoleSelector from '../components/ProjectRoleSelector';
@@ -22,6 +22,7 @@ export default function ProjectDetail() {
   const [loadingComments, setLoadingComments] = useState(false);
   const [commentError, setCommentError] = useState<string | null>(null);
   const [addingComment, setAddingComment] = useState(false);
+  const [processingLike, setProcessingLike] = useState<number | null>(null);
   
   // Comment deletion confirmation modal
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
@@ -169,6 +170,64 @@ export default function ProjectDetail() {
     } catch (err) {
       console.error("Error deleting comment:", err);
       setCommentError(err instanceof Error ? err.message : 'Failed to delete comment');
+    }
+  };
+
+  // Handle liking a comment
+  const handleLikeComment = async (commentId: number) => {
+    if (!commentId) return;
+    
+    try {
+      setProcessingLike(commentId);
+      setCommentError(null);
+      
+      await likeComment(commentId);
+      
+      // Update local state to reflect the like
+      setComments(comments.map(comment => {
+        if (comment.id === commentId) {
+          return {
+            ...comment,
+            likesCount: (comment.likesCount || 0) + 1,
+            isLiked: true
+          };
+        }
+        return comment;
+      }));
+    } catch (err) {
+      console.error("Error liking comment:", err);
+      setCommentError(err instanceof Error ? err.message : 'Failed to like comment');
+    } finally {
+      setProcessingLike(null);
+    }
+  };
+  
+  // Handle unliking a comment
+  const handleUnlikeComment = async (commentId: number) => {
+    if (!commentId) return;
+    
+    try {
+      setProcessingLike(commentId);
+      setCommentError(null);
+      
+      await unlikeComment(commentId);
+      
+      // Update local state to reflect the unlike
+      setComments(comments.map(comment => {
+        if (comment.id === commentId) {
+          return {
+            ...comment,
+            likesCount: Math.max((comment.likesCount || 0) - 1, 0),
+            isLiked: false
+          };
+        }
+        return comment;
+      }));
+    } catch (err) {
+      console.error("Error unliking comment:", err);
+      setCommentError(err instanceof Error ? err.message : 'Failed to unlike comment');
+    } finally {
+      setProcessingLike(null);
     }
   };
 
@@ -477,6 +536,36 @@ export default function ProjectDetail() {
                   </div>
                   <div className="mt-3">
                     <p className="text-sm text-gray-800 dark:text-gray-200 whitespace-pre-wrap">{comment.content}</p>
+                    
+                    {/* Like/Unlike section */}
+                    <div className="mt-3 flex items-center">
+                      {comment.isLiked ? (
+                        <button 
+                          onClick={() => handleUnlikeComment(comment.id!)}
+                          disabled={processingLike === comment.id}
+                          className="inline-flex items-center text-sm text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:hover:text-indigo-300 disabled:opacity-50"
+                        >
+                          <svg className="h-5 w-5 mr-1 fill-current" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
+                            <path fillRule="evenodd" d="M3.172 5.172a4 4 0 015.656 0L10 6.343l1.172-1.171a4 4 0 115.656 5.656L10 17.657l-6.828-6.829a4 4 0 010-5.656z" clipRule="evenodd" />
+                          </svg>
+                          {processingLike === comment.id ? 'Processing...' : 'Unlike'}
+                        </button>
+                      ) : (
+                        <button 
+                          onClick={() => handleLikeComment(comment.id!)}
+                          disabled={processingLike === comment.id}
+                          className="inline-flex items-center text-sm text-gray-500 dark:text-gray-400 hover:text-indigo-600 dark:hover:text-indigo-400 disabled:opacity-50"
+                        >
+                          <svg className="h-5 w-5 mr-1 stroke-current" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+                          </svg>
+                          {processingLike === comment.id ? 'Processing...' : 'Like'}
+                        </button>
+                      )}
+                      <span className="ml-2 text-xs text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-700 rounded-full px-2 py-1">
+                        {comment.likesCount || 0} {comment.likesCount === 1 ? 'like' : 'likes'}
+                      </span>
+                    </div>
                   </div>
                 </div>
               ))}

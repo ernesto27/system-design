@@ -135,6 +135,14 @@ func GetRouter(
 			commentController.GetProjectComments(w, r)
 		})
 
+		r.Post(apiVersion+"/comments/{id}/like", func(w http.ResponseWriter, r *http.Request) {
+			commentController.LikeComment(w, r)
+		})
+
+		r.Delete(apiVersion+"/comments/{id}/like", func(w http.ResponseWriter, r *http.Request) {
+			commentController.UnlikeComment(w, r)
+		})
+
 		r.Delete(apiVersion+"/comments/{id}", func(w http.ResponseWriter, r *http.Request) {
 			commentController.Delete(w, r)
 		})

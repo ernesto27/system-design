@@ -44,6 +44,8 @@ export interface Comment {
   userId: number;
   content: string;
   user?: User;
+  likesCount?: number;
+  isLiked?: boolean;
   createdAt?: string;
   updatedAt?: string;
 }
