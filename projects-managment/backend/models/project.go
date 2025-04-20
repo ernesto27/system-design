@@ -1,4 +1,3 @@
-// filepath: /home/ernesto/code/system-design/projects-managment/backend/models/project.go
 package models
 
 import (
@@ -9,15 +8,15 @@ import (
 )
 
 type Project struct {
-	ID             int       `json:"id"`
-	Name           string    `json:"name"`
-	Description    string    `json:"description"`
-	Status         string    `json:"status"`
-	TimeEstimation int       `json:"timeEstimation"`
-	CreatedAt      time.Time `json:"createdAt"`
-	UpdatedAt      time.Time `json:"updatedAt"`
-	CreatedBy      int       `json:"createdBy"`
-	Roles          []Role    `json:"roles"`
+	ID             int           `json:"id"`
+	Name           string        `json:"name"`
+	Description    string        `json:"description"`
+	Status         ProjectStatus `json:"status"`
+	TimeEstimation int           `json:"timeEstimation"`
+	CreatedAt      string        `json:"createdAt"`
+	UpdatedAt      string        `json:"updatedAt"`
+	CreatedBy      int           `json:"createdBy"`
+	Roles          []Role        `json:"roles"`
 }
 
 type ProjectService struct {
@@ -96,13 +95,11 @@ func (ps *ProjectService) Create(project Project) (Project, error) {
 	}
 
 	project.ID = id
-	project.CreatedAt = now
-	project.UpdatedAt = now
 
 	return project, nil
 }
 
-func (ps *ProjectService) GetProject(id int) (Project, error) {
+func (ps *ProjectService) GetByID(id int) (Project, error) {
 	rows, err := ps.DB.Query(`
 		SELECT 
 			p.id, 
@@ -128,23 +125,24 @@ func (ps *ProjectService) GetProject(id int) (Project, error) {
 	}
 	defer rows.Close()
 
-	var project *Project
+	var project Project
+	var found bool
 
 	for rows.Next() {
+		found = true
 		var (
-			projectID, timeEstimation, createdUserID int
-			projectName, projectDesc, statusName     string
-			createdAt, updatedAt                     time.Time
-			roleID                                   sql.NullInt64
-			roleName                                 sql.NullString
-			rolePercentage                           sql.NullInt64
+			timeEstimation, createdUserID int
+			createdAt, updatedAt          time.Time
+			roleID                        sql.NullInt64
+			roleName                      sql.NullString
+			rolePercentage                sql.NullInt64
 		)
 
 		err := rows.Scan(
-			&projectID,
-			&projectName,
-			&projectDesc,
-			&statusName,
+			&project.ID,
+			&project.Name,
+			&project.Description,
+			&project.Status.Name,
 			&timeEstimation,
 			&createdAt,
 			&updatedAt,
@@ -158,17 +156,33 @@ func (ps *ProjectService) GetProject(id int) (Project, error) {
 			return Project{}, err
 		}
 
+		// Convert time fields to string format
+		project.CreatedAt = createdAt.Format(time.RFC3339)
+		project.UpdatedAt = updatedAt.Format(time.RFC3339)
+		project.TimeEstimation = timeEstimation
+		project.CreatedBy = createdUserID
 	}
 
 	if err = rows.Err(); err != nil {
 		return Project{}, err
 	}
 
-	if project == nil {
+	if !found {
 		return Project{}, ErrProjectNotFound
 	}
 
-	return *project, nil
+	roleService := RoleService{
+		DB: ps.DB,
+	}
+
+	roles, err := roleService.GetProjectRoles(id)
+	if err != nil {
+		return Project{}, fmt.Errorf("error fetching roles for project %d: %w", id, err)
+	}
+
+	project.Roles = roles
+
+	return project, nil
 }
 
 func (ps *ProjectService) GetAllProjects(page, limit int) ([]Project, error) {
@@ -197,13 +211,11 @@ func (ps *ProjectService) GetAllProjects(page, limit int) ([]Project, error) {
 	var projects []Project
 	for rows.Next() {
 		var project Project
-		var statusName string
-
 		err := rows.Scan(
 			&project.ID,
 			&project.Name,
 			&project.Description,
-			&statusName,
+			&project.Status.Name,
 			&project.TimeEstimation,
 			&project.CreatedAt,
 			&project.UpdatedAt,
@@ -213,8 +225,6 @@ func (ps *ProjectService) GetAllProjects(page, limit int) ([]Project, error) {
 		if err != nil {
 			return nil, err
 		}
-
-		project.Status = statusName
 
 		roleService := RoleService{
 			DB: ps.DB,

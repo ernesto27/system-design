@@ -9,6 +9,8 @@ import (
 	"server/models"
 	"server/response"
 	"strconv"
+
+	"github.com/go-chi/chi"
 )
 
 type Project struct {
@@ -76,4 +78,34 @@ func (p *Project) GetAll(w http.ResponseWriter, r *http.Request) {
 	}
 
 	response.New(projects).Success(w)
+}
+
+func (p *Project) GetByID(w http.ResponseWriter, r *http.Request) {
+	idStr := chi.URLParam(r, "id")
+	if idStr == "" {
+		fmt.Println("Missing project ID parameter")
+		response.NewWithoutData().WithMessage("Missing project ID").BadRequest(w)
+		return
+	}
+
+	id, err := strconv.Atoi(idStr)
+	if err != nil {
+		fmt.Println("Invalid project ID:", err)
+		response.NewWithoutData().WithMessage("Invalid project ID").BadRequest(w)
+		return
+	}
+	project, err := p.ProjectService.GetByID(id)
+	if err != nil {
+		if err.Error() == "project not found" {
+			fmt.Println("Project not found:", id)
+			response.NewWithoutData().WithMessage("Project not found").InternalServerError(w)
+			return
+		}
+
+		fmt.Println("Error fetching project:", err)
+		response.NewWithoutData().InternalServerError(w)
+		return
+	}
+
+	response.New(project).Success(w)
 }

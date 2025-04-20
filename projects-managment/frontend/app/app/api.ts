@@ -114,4 +114,22 @@ export const fetchProjects = async (): Promise<Project[]> => {
   }
 };
 
+/**
+ * Fetches a project by its ID
+ */
+export const fetchProjectById = async (id: number): Promise<Project> => {
+  const response = await fetchWithAuth(`${API_BASE_URL}/projects/${id}`);
+  
+  const responseData = await response.json(); 
+
+  if (responseData && responseData.data) {
+    return responseData.data as Project;
+  } else if (responseData && !responseData.data) {
+    return responseData as Project;
+  } else {
+    console.error("Unexpected API response structure for project details:", responseData);
+    throw new Error("Received unexpected data format for project details.");
+  }
+};
+
 // Add other API functions as needed (e.g., loginUser, etc.)

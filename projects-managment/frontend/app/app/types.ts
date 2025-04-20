@@ -12,12 +12,17 @@ export interface Role {
   _uniqueId?: number; // Optional unique identifier for UI purposes
 }
 
+export interface Status {
+  id: number;
+  name: string;
+}
+
 export interface Project {
   id?: number;
   name: string;
   description: string;
   projectStatusId: number;
-  status?: string; 
+  status?: Status; 
   timeEstimation?: number;
   createdAt?: string;
   updatedAt?: string;
