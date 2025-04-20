@@ -71,6 +71,12 @@ func GetRouter(
 		},
 	}
 
+	commentController := controllers.Comment{
+		CommentService: models.CommentService{
+			DB: dbInstance,
+		},
+	}
+
 	c := cors.New(cors.Options{
 		AllowedOrigins:   []string{"*"},
 		AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
@@ -118,6 +124,19 @@ func GetRouter(
 
 		r.Get(apiVersion+"/roles", func(w http.ResponseWriter, r *http.Request) {
 			roleController.GetRoles(w, r)
+		})
+
+		// Comment routes
+		r.Post(apiVersion+"/comments", func(w http.ResponseWriter, r *http.Request) {
+			commentController.Create(w, r)
+		})
+
+		r.Get(apiVersion+"/projects/{id}/comments", func(w http.ResponseWriter, r *http.Request) {
+			commentController.GetProjectComments(w, r)
+		})
+
+		r.Delete(apiVersion+"/comments/{id}", func(w http.ResponseWriter, r *http.Request) {
+			commentController.Delete(w, r)
 		})
 	})
 

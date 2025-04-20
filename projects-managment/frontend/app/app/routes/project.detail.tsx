@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router';
-import { fetchProjectById, fetchProjectStatuses, fetchRoles, updateProject } from '../api';
-import type { Project, ProjectStatus, Role } from '../types';
+import { fetchProjectById, fetchProjectStatuses, fetchRoles, updateProject, fetchProjectComments, createComment, deleteComment } from '../api';
+import type { Project, ProjectStatus, Role, Comment } from '../types';
 import AdminLayout from '../components/AdminLayout';
 import ProjectRoleSelector from '../components/ProjectRoleSelector';
 
@@ -15,6 +15,17 @@ export default function ProjectDetail() {
   const [error, setError] = useState<string | null>(null);
   const [isViewMode, setIsViewMode] = useState(true);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  
+  // Comments state
+  const [comments, setComments] = useState<Comment[]>([]);
+  const [newComment, setNewComment] = useState("");
+  const [loadingComments, setLoadingComments] = useState(false);
+  const [commentError, setCommentError] = useState<string | null>(null);
+  const [addingComment, setAddingComment] = useState(false);
+  
+  // Comment deletion confirmation modal
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [commentToDelete, setCommentToDelete] = useState<number | null>(null);
   
   // Form state for editing
   const [projectName, setProjectName] = useState('');
@@ -63,6 +74,9 @@ export default function ProjectDetail() {
         
         // Use the roles directly from the API - they already have IDs
         setProjectRoles(projectData.roles || []);
+
+        // Load comments
+        loadComments(projectId);
       } catch (err) {
         console.error("Error loading project:", err);
         setError(err instanceof Error ? err.message : 'Failed to load project');
@@ -73,6 +87,90 @@ export default function ProjectDetail() {
 
     loadData();
   }, [id]);
+
+  // Load comments for the project
+  const loadComments = async (projectId: number) => {
+    try {
+      setLoadingComments(true);
+      setCommentError(null);
+      const commentsData = await fetchProjectComments(projectId);
+      setComments(commentsData as unknown as Comment[]);
+    } catch (err) {
+      console.error("Error loading comments:", err);
+      setCommentError(err instanceof Error ? err.message : 'Failed to load comments');
+    } finally {
+      setLoadingComments(false);
+    }
+  };
+
+  // Handle adding a new comment
+  const handleAddComment = async () => {
+    if (!newComment.trim() || !project?.id) return;
+    
+    try {
+      setAddingComment(true);
+      setCommentError(null);
+      
+      const comment: Comment = {
+        projectId: project.id,
+        userId: 0,
+        content: newComment.trim()
+      };
+      
+      await createComment(comment);
+      setNewComment(''); // Clear input field
+      
+      // Reload comments to get the newly added one
+      if (project.id) {
+        await loadComments(project.id);
+      }
+    } catch (err) {
+      console.error("Error adding comment:", err);
+      setCommentError(err instanceof Error ? err.message : 'Failed to add comment');
+    } finally {
+      setAddingComment(false);
+    }
+  };
+  
+  // Show delete confirmation modal
+  const showDeleteConfirmation = (commentId: number) => {
+    setCommentToDelete(commentId);
+    setIsDeleteModalOpen(true);
+  };
+
+  // Confirm delete and actually delete the comment
+  const confirmDeleteComment = async () => {
+    if (!commentToDelete) return;
+    
+    try {
+      await deleteComment(commentToDelete);
+      
+      // Update local state to remove the deleted comment
+      setComments(comments.filter(comment => comment.id !== commentToDelete));
+      
+      // Close the modal
+      setIsDeleteModalOpen(false);
+      setCommentToDelete(null);
+    } catch (err) {
+      console.error("Error deleting comment:", err);
+      setCommentError(err instanceof Error ? err.message : 'Failed to delete comment');
+    }
+  };
+  
+  // Handle deleting a comment
+  const handleDeleteComment = async (commentId: number) => {
+    if (!commentId) return;
+    
+    try {
+      await deleteComment(commentId);
+      
+      // Update local state to remove the deleted comment
+      setComments(comments.filter(comment => comment.id !== commentId));
+    } catch (err) {
+      console.error("Error deleting comment:", err);
+      setCommentError(err instanceof Error ? err.message : 'Failed to delete comment');
+    }
+  };
 
   // Format date function
   const formatDate = (dateString?: string) => {
@@ -276,6 +374,115 @@ export default function ProjectDetail() {
             </dd>
           </div>
         </dl>
+      </div>
+      
+      {/* Comments section */}
+      <div className="border-t border-gray-200 dark:border-gray-700 px-6 py-5">
+        <div className="mb-6">
+          <h3 className="text-lg leading-6 font-medium text-gray-900 dark:text-white mb-4">Comments</h3>
+          
+          {/* Add comment form */}
+          <div className="mb-6">
+            <div className="flex">
+              <textarea
+                placeholder="Add a comment..."
+                value={newComment}
+                onChange={(e) => setNewComment(e.target.value)}
+                className="flex-grow rounded-md border border-gray-300 dark:border-gray-600 shadow-sm px-4 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:focus:ring-indigo-500 focus:border-indigo-500 dark:focus:border-indigo-500"
+                rows={3}
+              />
+            </div>
+            <div className="mt-2 flex justify-end">
+              <button
+                type="button"
+                onClick={handleAddComment}
+                disabled={addingComment || !newComment.trim()}
+                className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50"
+              >
+                {addingComment ? (
+                  <>
+                    <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    Posting...
+                  </>
+                ) : (
+                  <>
+                    <svg className="-ml-1 mr-2 h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                    </svg>
+                    Post Comment
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+          
+          {/* Error message */}
+          {commentError && (
+            <div className="rounded-md bg-red-50 dark:bg-red-900/30 p-4 mb-4">
+              <div className="flex">
+                <div className="flex-shrink-0">
+                  <svg className="h-5 w-5 text-red-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                  </svg>
+                </div>
+                <div className="ml-3">
+                  <p className="text-sm font-medium text-red-800 dark:text-red-200">{commentError}</p>
+                </div>
+              </div>
+            </div>
+          )}
+          
+          {/* Comments list */}
+          {loadingComments ? (
+            <div className="text-center py-8">
+              <svg className="animate-spin h-8 w-8 text-indigo-500 mx-auto" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+              </svg>
+              <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">Loading comments...</p>
+            </div>
+          ) : comments.length === 0 ? (
+            <div className="text-center py-8 border rounded-md border-gray-200 dark:border-gray-700">
+              <svg className="h-12 w-12 text-gray-400 mx-auto" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
+              </svg>
+              <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">No comments yet. Be the first to comment!</p>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {comments.map((comment) => (
+                <div key={comment.id} className="bg-gray-50 dark:bg-gray-800 rounded-lg p-4 shadow-sm">
+                  <div className="flex justify-between items-start">
+                    <div className="flex items-center">
+                      <div className="w-8 h-8 rounded-full bg-indigo-100 dark:bg-indigo-800 flex items-center justify-center text-indigo-800 dark:text-indigo-100 font-semibold text-sm mr-3">
+                        {comment.user?.username ? comment.user.username.charAt(0).toUpperCase() : '?'}
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium text-gray-900 dark:text-white">{comment.user?.username || 'Unknown User'}</p>
+                        <p className="text-xs text-gray-500 dark:text-gray-400">{formatDate(comment.createdAt)}</p>
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => showDeleteConfirmation(comment.id!)}
+                      className="text-gray-400 hover:text-red-500 dark:hover:text-red-400"
+                      title="Delete comment"
+                    >
+                      <svg className="h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                      </svg>
+                    </button>
+                  </div>
+                  <div className="mt-3">
+                    <p className="text-sm text-gray-800 dark:text-gray-200 whitespace-pre-wrap">{comment.content}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
@@ -518,6 +725,58 @@ export default function ProjectDetail() {
       currentPath="/projects"
     >
       {content}
+      
+      {/* Delete Comment Confirmation Modal */}
+      {isDeleteModalOpen && (
+        <div className="fixed inset-0 z-50 overflow-y-auto" aria-labelledby="modal-title" role="dialog" aria-modal="true">
+          <div className="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+            {/* Background overlay */}
+            <div className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" aria-hidden="true" onClick={() => setIsDeleteModalOpen(false)}></div>
+            
+            {/* Center modal properly */}
+            <span className="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
+            
+            {/* Modal panel */}
+            <div className="relative inline-block align-bottom bg-white dark:bg-gray-800 rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
+              <div className="bg-white dark:bg-gray-800 px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
+                <div className="sm:flex sm:items-start">
+                  <div className="mx-auto flex-shrink-0 flex items-center justify-center h-12 w-12 rounded-full bg-red-100 dark:bg-red-900 sm:mx-0 sm:h-10 sm:w-10">
+                    <svg className="h-6 w-6 text-red-600 dark:text-red-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                    </svg>
+                  </div>
+                  <div className="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left">
+                    <h3 className="text-lg leading-6 font-medium text-gray-900 dark:text-white" id="modal-title">
+                      Delete Comment
+                    </h3>
+                    <div className="mt-2">
+                      <p className="text-sm text-gray-500 dark:text-gray-400">
+                        Are you sure you want to delete this comment? This action cannot be undone.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div className="bg-gray-50 dark:bg-gray-700 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
+                <button 
+                  type="button" 
+                  className="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-red-600 text-base font-medium text-white hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 sm:ml-3 sm:w-auto sm:text-sm"
+                  onClick={confirmDeleteComment}
+                >
+                  Delete
+                </button>
+                <button 
+                  type="button" 
+                  className="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 dark:border-gray-600 shadow-sm px-4 py-2 bg-white dark:bg-gray-800 text-base font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm"
+                  onClick={() => setIsDeleteModalOpen(false)}
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </AdminLayout>
   );
 }

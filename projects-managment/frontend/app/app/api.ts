@@ -1,4 +1,4 @@
-import type { ProjectStatus, Project, Role } from './types';
+import type { ProjectStatus, Project, Role, Comment } from './types';
 
 const API_BASE_URL = 'http://localhost:8080/api/v1';
 
@@ -148,6 +148,51 @@ export const updateProject = async (id: number, project: Project): Promise<Proje
   } else {
     return responseData as Project;
   }
+};
+
+/**
+ * Fetches comments for a specific project
+ */
+export const fetchProjectComments = async (projectId: number): Promise<Comment[]> => {
+  const response = await fetchWithAuth(`${API_BASE_URL}/projects/${projectId}/comments`);
+  
+  const responseData = await response.json(); 
+
+  if (responseData && Array.isArray(responseData.data)) {
+    return responseData.data as Comment[];
+  } else if (Array.isArray(responseData)) {
+    return responseData as Comment[];
+  } else {
+    console.error("Unexpected API response structure for comments:", responseData);
+    throw new Error("Received unexpected data format for comments.");
+  }
+};
+
+/**
+ * Create a new comment for a project
+ */
+export const createComment = async (comment: Comment): Promise<Comment> => {
+  const response = await fetchWithAuth(`${API_BASE_URL}/comments`, {
+    method: 'POST',
+    body: JSON.stringify(comment),
+  });
+  
+  const responseData = await response.json();
+  
+  if (responseData && responseData.data) {
+    return responseData.data as Comment;
+  } else {
+    return responseData as Comment;
+  }
+};
+
+/**
+ * Delete a comment by its ID
+ */
+export const deleteComment = async (commentId: number): Promise<void> => {
+  await fetchWithAuth(`${API_BASE_URL}/comments/${commentId}`, {
+    method: 'DELETE',
+  });
 };
 
 // Add other API functions as needed (e.g., loginUser, etc.)

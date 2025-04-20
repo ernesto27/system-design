@@ -74,10 +74,24 @@ CREATE TABLE projects_roles (
     FOREIGN KEY (role_id) REFERENCES roles(id)
 );
 
+-- Create comments table
+CREATE TABLE comments (
+    id SERIAL PRIMARY KEY,
+    project_id INT NOT NULL,
+    user_id INT NOT NULL,
+    content TEXT NOT NULL,
+    created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
 -- +goose StatementEnd
 
 -- +goose Down
 -- +goose StatementBegin
+DROP TABLE IF EXISTS comments;
+DROP TABLE IF EXISTS projects_roles;
 DROP TABLE IF EXISTS projects;
 DROP TABLE IF EXISTS project_statuses;
 DROP TABLE IF EXISTS user_roles;
