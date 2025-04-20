@@ -9,6 +9,12 @@ interface ProjectRoleSelectorProps {
   error: string | null;
 }
 
+let uniqueIdCounter = 0;
+
+const generateUniqueId = () => {
+  return ++uniqueIdCounter;
+};
+
 const ProjectRoleSelector: React.FC<ProjectRoleSelectorProps> = ({
   roles,
   projectRoles,
@@ -43,18 +49,14 @@ const ProjectRoleSelector: React.FC<ProjectRoleSelectorProps> = ({
       return;
     }
 
-    // Generate a unique key for this role instance (using timestamp)
-    const uniqueId = Date.now();
-
-    // Add the new role
+    // Add the new role with a unique identifier
     setProjectRoles([
       ...projectRoles,
       { 
         id: roleId, 
         name: selectedRole.name, 
         percentage: percentageValue,
-        // Add a unique identifier for UI purposes only
-        _uniqueId: uniqueId
+        _uniqueId: generateUniqueId() // Use a robust unique identifier
       }
     ]);
 
@@ -63,12 +65,9 @@ const ProjectRoleSelector: React.FC<ProjectRoleSelectorProps> = ({
     setPercentage('100');
   };
 
-  // Updated to handle potentially undefined _uniqueId
-  const handleRemoveRole = (uniqueId: number | undefined) => {
-    if (typeof uniqueId === 'undefined') {
-      return;
-    }
-    setProjectRoles(projectRoles.filter(pr => pr._uniqueId !== uniqueId));
+  // Use the _uniqueId to remove roles
+  const handleRemoveRole = (uniqueId: number) => {
+    setProjectRoles(projectRoles.filter(role => role._uniqueId !== uniqueId));
   };
 
   return (
@@ -146,7 +145,7 @@ const ProjectRoleSelector: React.FC<ProjectRoleSelectorProps> = ({
           <div className="bg-white dark:bg-gray-700 shadow overflow-hidden sm:rounded-md">
             <ul className="divide-y divide-gray-200 dark:divide-gray-600">
               {projectRoles.map((role) => (
-                <li key={role._uniqueId} className="px-4 py-3 flex items-center justify-between text-sm">
+                <li key={role._uniqueId || role.id} className="px-4 py-3 flex items-center justify-between text-sm">
                   <div className="flex items-center">
                     <span className="truncate font-medium text-gray-900 dark:text-white">
                       {role.name}
@@ -157,7 +156,7 @@ const ProjectRoleSelector: React.FC<ProjectRoleSelectorProps> = ({
                   </div>
                   <button
                     type="button"
-                    onClick={() => handleRemoveRole(role._uniqueId)}
+                    onClick={() => handleRemoveRole(role._uniqueId || role.id)}
                     className="ml-4 flex-shrink-0 text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300"
                   >
                     Remove

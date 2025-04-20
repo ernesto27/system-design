@@ -132,4 +132,22 @@ export const fetchProjectById = async (id: number): Promise<Project> => {
   }
 };
 
+/**
+ * Updates an existing project.
+ */
+export const updateProject = async (id: number, project: Project): Promise<Project> => {
+  const response = await fetchWithAuth(`${API_BASE_URL}/projects/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify(project),
+  });
+  
+  const responseData = await response.json();
+  
+  if (responseData && responseData.data) {
+    return responseData.data as Project;
+  } else {
+    return responseData as Project;
+  }
+};
+
 // Add other API functions as needed (e.g., loginUser, etc.)

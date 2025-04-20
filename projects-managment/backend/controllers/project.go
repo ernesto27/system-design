@@ -98,7 +98,7 @@ func (p *Project) GetByID(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		if err.Error() == "project not found" {
 			fmt.Println("Project not found:", id)
-			response.NewWithoutData().WithMessage("Project not found").InternalServerError(w)
+			response.NewWithoutData().WithMessage("Project not found").BadRequest(w)
 			return
 		}
 
@@ -108,4 +108,50 @@ func (p *Project) GetByID(w http.ResponseWriter, r *http.Request) {
 	}
 
 	response.New(project).Success(w)
+}
+
+// Update handles updating an existing project
+func (p *Project) Update(w http.ResponseWriter, r *http.Request) {
+	idStr := chi.URLParam(r, "id")
+	if idStr == "" {
+		fmt.Println("Missing project ID parameter")
+		response.NewWithoutData().WithMessage("Missing project ID").BadRequest(w)
+		return
+	}
+
+	id, err := strconv.Atoi(idStr)
+	if err != nil {
+		fmt.Println("Invalid project ID:", err)
+		response.NewWithoutData().WithMessage("Invalid project ID").BadRequest(w)
+		return
+	}
+
+	var projectReq models.Project
+	err = json.NewDecoder(r.Body).Decode(&projectReq)
+	if err != nil {
+		fmt.Println("Error parsing request:", err)
+		response.NewWithoutData().BadRequest(w)
+		return
+	}
+
+	if projectReq.Name == "" || projectReq.Description == "" {
+		fmt.Println(MessageFieldsEmpty)
+		response.NewWithoutData().WithMessage(MessageFieldsEmpty).BadRequest(w)
+		return
+	}
+
+	// Update the project
+	updatedProject, err := p.ProjectService.Update(id, projectReq)
+	if err != nil {
+		if err.Error() == "project not found" {
+			fmt.Println("Project not found:", id)
+			response.NewWithoutData().WithMessage("Project not found").InternalServerError(w)
+			return
+		}
+		fmt.Println("Error updating project:", err)
+		response.NewWithoutData().InternalServerError(w)
+		return
+	}
+
+	response.New(updatedProject).Success(w)
 }

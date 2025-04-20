@@ -112,6 +112,10 @@ func GetRouter(
 			projectController.GetByID(w, r)
 		})
 
+		r.Put(apiVersion+"/projects/{id}", func(w http.ResponseWriter, r *http.Request) {
+			projectController.Update(w, r)
+		})
+
 		r.Get(apiVersion+"/roles", func(w http.ResponseWriter, r *http.Request) {
 			roleController.GetRoles(w, r)
 		})

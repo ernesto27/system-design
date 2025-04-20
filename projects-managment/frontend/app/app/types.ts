@@ -21,7 +21,6 @@ export interface Project {
   id?: number;
   name: string;
   description: string;
-  projectStatusId: number;
   status?: Status; 
   timeEstimation?: number;
   createdAt?: string;

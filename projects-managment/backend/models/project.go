@@ -105,6 +105,7 @@ func (ps *ProjectService) GetByID(id int) (Project, error) {
 			p.id, 
 			p.name, 
 			p.description, 
+			ps.id AS status_id,
 			ps.name AS status_name, 
 			p.time_estimation,
 			p.created_at, 
@@ -142,6 +143,7 @@ func (ps *ProjectService) GetByID(id int) (Project, error) {
 			&project.ID,
 			&project.Name,
 			&project.Description,
+			&project.Status.ID,
 			&project.Status.Name,
 			&timeEstimation,
 			&createdAt,
@@ -253,6 +255,72 @@ func (ps *ProjectService) CountProjects() (int, error) {
 		return 0, fmt.Errorf("error counting projects: %w", err)
 	}
 	return count, nil
+}
+
+func (ps *ProjectService) Update(id int, project Project) (Project, error) {
+	_, err := ps.GetByID(id)
+	if err != nil {
+		return Project{}, err
+	}
+
+	now := time.Now()
+
+	tx, err := ps.DB.Begin()
+	if err != nil {
+		return project, fmt.Errorf("failed to begin transaction: %v", err)
+	}
+
+	defer func() {
+		if err != nil {
+			tx.Rollback()
+		}
+	}()
+
+	// Update the project
+	_, err = tx.Exec(`
+		UPDATE projects 
+		SET name = $1, 
+		    description = $2, 
+		    status_id = $3,
+		    time_estimation = $4,
+		    updated_at = $5
+		WHERE id = $6`,
+		project.Name,
+		project.Description,
+		project.Status.ID,
+		project.TimeEstimation,
+		now,
+		id)
+
+	if err != nil {
+		return project, fmt.Errorf("failed to update project: %v", err)
+	}
+
+	// Delete existing project roles
+	_, err = tx.Exec("DELETE FROM projects_roles WHERE project_id = $1", id)
+	if err != nil {
+		return project, fmt.Errorf("failed to delete existing project roles: %v", err)
+	}
+
+	// Insert new project roles
+	projectRole := ProjectRoleService{tx: tx}
+	for _, role := range project.Roles {
+		err = projectRole.Create(ProjectRole{
+			ProjectID:  id,
+			RoleID:     role.ID,
+			Percentage: role.Percentage,
+		})
+		if err != nil {
+			return project, err
+		}
+	}
+
+	// Commit the transaction
+	if err = tx.Commit(); err != nil {
+		return project, fmt.Errorf("failed to commit transaction: %v", err)
+	}
+
+	return ps.GetByID(id)
 }
 
 type ProjectRole struct {
