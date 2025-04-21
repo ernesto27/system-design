@@ -29,3 +29,24 @@ export interface Project {
   roles?: Role[]; 
 }
 
+export interface User {
+  id: number;
+  username: string;
+  password?: string;
+  email?: string;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface Comment {
+  id?: number;
+  projectId: number;
+  userId: number;
+  content: string;
+  user?: User;
+  likesCount?: number;
+  isLiked?: boolean;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
