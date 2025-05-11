@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"firmaelectronica/internal/controllers"
 	"firmaelectronica/pkg/auth"
@@ -162,23 +161,6 @@ func runServer(cfg config, dbConfig db.Config) {
 
 	// Protected API routes
 	protected := http.NewServeMux()
-	protected.HandleFunc("GET /api/protected", func(w http.ResponseWriter, r *http.Request) {
-		// Extract the claims from the request context
-		claims, ok := r.Context().Value(controllers.UserClaimsKey).(*auth.JWTClaims)
-		if !ok {
-			http.Error(w, "User not authenticated", http.StatusUnauthorized)
-			return
-		}
-
-		// Return user ID and message in the response
-		response := map[string]string{
-			"message": "This is a protected endpoint",
-			"user_id": claims.UserID,
-		}
-		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(response)
-	})
-
 	// Document routes
 	protected.HandleFunc("POST /api/documents", documentHandler.Create)
 

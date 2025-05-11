@@ -13,3 +13,11 @@ docker run --name firma-electronica-db \
   -H "Authorization: Bearer " \
   -F "metadata={\"title\":\"Test Document\",\"description\":\"This is a test document\",\"signers\":[{\"email\":\"signer@example.com\",\"firstName\":\"John\",\"lastName\":\"Doe\"}]}" \
   -F "document=@/home/ernesto/code/projects/system-design/firma-electronica/main.go"
+
+
+  docker run --name firma-electronica-test-db \
+  -e POSTGRES_DB=firma_electronica_test \
+  -e POSTGRES_USER=postgres \
+  -e POSTGRES_PASSWORD=postgres \
+  -p 5433:5432 \
+  -d postgres:17
