@@ -1,36 +1,41 @@
 package controllers
 
 import (
+	"context"
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
 	"firmaelectronica/pkg/auth"
 	"firmaelectronica/pkg/db"
+	"firmaelectronica/pkg/email"
 	"firmaelectronica/pkg/response"
 	"firmaelectronica/pkg/storage"
+	"fmt"
 	"io"
 	"log"
 	"net/http"
 	"time"
 
 	"github.com/google/uuid"
+	"gorm.io/gorm"
 )
 
-// DocumentHandler handles document-related requests
 type DocumentHandler struct {
 	DB      *db.DB
-	Storage *storage.S3Storage
+	Storage storage.Storage
+	Email   email.Provider
+	BaseURL string
 }
 
-// NewDocumentHandler creates a new document handler
-func NewDocumentHandler(database *db.DB, s3storage *storage.S3Storage) *DocumentHandler {
+func NewDocumentHandler(database *db.DB, storageService storage.Storage, emailProvider email.Provider, baseURL string) *DocumentHandler {
 	return &DocumentHandler{
 		DB:      database,
-		Storage: s3storage,
+		Storage: storageService,
+		Email:   emailProvider,
+		BaseURL: baseURL,
 	}
 }
 
-// CreateDocumentRequest represents the request to create a document
 type CreateDocumentRequest struct {
 	Title       string     `json:"title"`
 	Description string     `json:"description"`
@@ -38,7 +43,6 @@ type CreateDocumentRequest struct {
 	Signers     []Signer   `json:"signers"`
 }
 
-// Signer represents a person who will sign the document
 type Signer struct {
 	Email     string `json:"email"`
 	FirstName string `json:"firstName"`
@@ -159,7 +163,8 @@ func (h *DocumentHandler) Create(w http.ResponseWriter, r *http.Request) {
 	defer func() {
 		if r := recover(); r != nil {
 			tx.Rollback()
-			panic(r)
+			response.InternalServerError(w, fmt.Errorf("panic: %v", r))
+			return
 		}
 	}()
 
@@ -193,7 +198,7 @@ func (h *DocumentHandler) Create(w http.ResponseWriter, r *http.Request) {
 	signerInfos := make([]SignerInformation, 0, len(createReq.Signers))
 	for _, signerReq := range createReq.Signers {
 		// Generate a unique hash for signer access
-		signerHash := generateSignerHash(document.ID, signerReq.Email)
+		signerHash := generateSignerHash(document.ID, signerReq.Email, h.BaseURL)
 
 		signer := db.Signer{
 			DocumentID: document.ID,
@@ -220,6 +225,13 @@ func (h *DocumentHandler) Create(w http.ResponseWriter, r *http.Request) {
 		})
 	}
 
+	if err := h.sendSignerNotifications(tx, document, signerInfos); err != nil {
+		tx.Rollback()
+		log.Printf("Error sending notification emails: %v", err)
+		response.InternalServerError(w, err)
+		return
+	}
+
 	// Commit transaction
 	if err := tx.Commit().Error; err != nil {
 		log.Printf("Error committing transaction: %v", err)
@@ -239,10 +251,88 @@ func (h *DocumentHandler) Create(w http.ResponseWriter, r *http.Request) {
 }
 
 // generateSignerHash generates a unique hash for signer access
-func generateSignerHash(documentID uuid.UUID, email string) string {
+func generateSignerHash(documentID uuid.UUID, email string, baseURL string) string {
 	hasher := sha256.New()
 	hasher.Write([]byte(documentID.String()))
 	hasher.Write([]byte(email))
+	hasher.Write([]byte(baseURL))
 	hasher.Write([]byte(time.Now().String()))
 	return hex.EncodeToString(hasher.Sum(nil)[:16]) // Use first 16 bytes (32 chars)
+}
+
+// sendSignerNotifications sends email notifications to all signers
+func (h *DocumentHandler) sendSignerNotifications(tx *gorm.DB, document db.Document, signers []SignerInformation) error {
+	if h.Email == nil {
+		log.Println("Email service not configured, skipping signer notifications")
+		return nil
+	}
+
+	ctx := context.Background()
+
+	for _, signer := range signers {
+		signURL := fmt.Sprintf("%s/sign/%s", h.BaseURL, signer.Hash)
+
+		// Send email
+		emailMsg := &email.Email{
+			To:      []string{signer.Email},
+			Subject: fmt.Sprintf("You have a document to sign: %s", document.Title),
+			Body:    fmt.Sprintf("Hello %s,\n\nYou have been requested to sign the document \"%s\". Please visit %s to review and sign the document.\n\nThank you,\nFirma Electronica Team", signer.FirstName, document.Title, signURL),
+			HTMLBody: fmt.Sprintf(`<html>
+				<body>
+					<h1>Document Signature Request</h1>
+					<p>Hello %s,</p>
+					<p>You have been requested to sign the document <strong>%s</strong>.</p>
+					<p>Please click the button below to review and sign the document:</p>
+					<div style="text-align: center; margin: 30px 0;">
+						<a href="%s" style="background-color: #4CAF50; color: white; padding: 14px 20px; text-align: center; text-decoration: none; display: inline-block; border-radius: 4px; font-weight: bold;">
+							Sign Document
+						</a>
+					</div>
+					<p>Or copy and paste this link in your browser:</p>
+					<p>%s</p>
+					<p>Thank you,<br>Firma Electronica Team</p>
+				</body>
+			</html>`, signer.FirstName, document.Title, signURL, signURL),
+		}
+
+		messageID, err := h.Email.Send(ctx, emailMsg)
+		if err != nil {
+			log.Printf("Error sending notification email to %s: %v", signer.Email, err)
+			return fmt.Errorf("failed to send email to %s: %w", signer.Email, err)
+		}
+
+		log.Printf("Notification email sent to %s (Message ID: %s)", signer.Email, messageID)
+
+		// Get signer ID from database using transaction
+		var dbSigner db.Signer
+		if err := tx.Where("hash = ?", signer.Hash).First(&dbSigner).Error; err != nil {
+			log.Printf("Error retrieving signer by hash: %v", err)
+			return fmt.Errorf("failed to retrieve signer ID for hash %s: %w", signer.Hash, err)
+		}
+
+		// Record notification in the database using the transaction
+		notification := db.Notification{
+			SignerID:   dbSigner.ID,
+			DocumentID: document.ID,
+			Type:       db.NotificationTypeInvitation,
+			Status:     db.NotificationStatusSent,
+		}
+
+		if err := tx.Create(&notification).Error; err != nil {
+			log.Printf("Error recording notification in database: %v", err)
+			return fmt.Errorf("failed to record notification: %w", err)
+		}
+	}
+
+	return nil
+}
+
+// getSignerIDByHash retrieves the signer ID given the hash
+func (h *DocumentHandler) getSignerIDByHash(hash string) uint {
+	var signer db.Signer
+	if err := h.DB.Where("hash = ?", hash).First(&signer).Error; err != nil {
+		log.Printf("Error retrieving signer by hash: %v", err)
+		return 0
+	}
+	return signer.ID
 }

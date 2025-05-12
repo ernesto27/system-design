@@ -2,9 +2,9 @@ Firma electronica system
 
 TODO 
 
-- Crear modelo de bases de datos - Postgres
-- Crear endpoint para poder obtener informacion de documento a firmar, validaciones 
-- Endpoint para firmar documento (via email)
+- Crear modelo de bases de datos - Postgres - X
+- Crear endpoint para poder obtener informacion de documento a firmar, validaciones - X 
+- Endpoint para firmar documento (via email) - X 
 - Usar servicio blockchain para guardar datos de firma electronica
 - Envio de email a firmantes
 

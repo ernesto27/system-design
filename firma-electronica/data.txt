@@ -6,12 +6,12 @@ docker run --name firma-electronica-db \
   -d postgres:17
 
 
-   curl -X POST http://localhost:8080/api/login -H "Content-Type: application/json" -d '{"email":"test@example.com","password":"1111"}'
+curl -X POST http://localhost:8080/api/login -H "Content-Type: application/json" -d '{"email":"test@example.com","password":"1111"}'
 
 
-   curl -X POST http://localhost:8080/api/documents \
-  -H "Authorization: Bearer " \
-  -F "metadata={\"title\":\"Test Document\",\"description\":\"This is a test document\",\"signers\":[{\"email\":\"signer@example.com\",\"firstName\":\"John\",\"lastName\":\"Doe\"}]}" \
+curl -X POST http://localhost:8080/api/documents \
+  -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoiNWNkMzQzMGYtYzk2ZS00NDMyLTgwYTUtODUzNjJhNDkwYmQ4IiwiZW1haWwiOiJ0ZXN0QGV4YW1wbGUuY29tIiwiZmlyc3RfbmFtZSI6IlRlc3QiLCJsYXN0X25hbWUiOiJVc2VyIiwiZXhwIjoxNzQ3MDkxMjk0LCJuYmYiOjE3NDcwMDQ4OTQsImlhdCI6MTc0NzAwNDg5NH0.0NDCeaW_ePq9s2CCPFaAFBQHyiYDJBbFshUgnWvqTB4" \
+  -F "metadata={\"title\":\"Test Document\",\"description\":\"This is a test document\",\"signers\":[{\"email\":\"ernestoponce27@gmail.com\",\"firstName\":\"John\",\"lastName\":\"Doe\"}]}" \
   -F "document=@/home/ernesto/code/projects/system-design/firma-electronica/main.go"
 
 

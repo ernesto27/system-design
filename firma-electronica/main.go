@@ -6,6 +6,7 @@ import (
 	"firmaelectronica/internal/controllers"
 	"firmaelectronica/pkg/auth"
 	"firmaelectronica/pkg/db"
+	"firmaelectronica/pkg/email"
 	"firmaelectronica/pkg/storage"
 	"fmt"
 	"log"
@@ -37,6 +38,15 @@ type config struct {
 	S3Timeout          time.Duration `env:"S3_TIMEOUT" envDefault:"30s"`
 	AWSAccessKeyID     string        `env:"AWS_ACCESS_KEY_ID"`
 	AWSSecretAccessKey string        `env:"AWS_SECRET_ACCESS_KEY"`
+
+	// Email configuration
+	MailgunDomain        string        `env:"MAILGUN_DOMAIN" envDefault:""`
+	MailgunAPIKey        string        `env:"MAILGUN_API_KEY" envDefault:""`
+	MailgunDefaultSender string        `env:"MAILGUN_DEFAULT_SENDER" envDefault:"Mailgun Sandbox <postmaster@sandboxa3f47374c6974846b5b4b338893a9118.mailgun.org>"`
+	MailgunTimeout       time.Duration `env:"MAILGUN_TIMEOUT" envDefault:"30s"`
+
+	// App configuration
+	AppBaseURL string `env:"APP_BASE_URL" envDefault:"http://localhost:8080"`
 
 	// HTTP server configuration
 	HTTPPort        int           `env:"HTTP_PORT" envDefault:"8080"`
@@ -133,7 +143,6 @@ func runServer(cfg config, dbConfig db.Config) {
 	}
 	jwtService := auth.NewService(jwtConfig)
 
-	// Create S3 storage service
 	s3Config := storage.S3Config{
 		BucketName:      cfg.S3BucketName,
 		Region:          cfg.S3Region,
@@ -141,21 +150,35 @@ func runServer(cfg config, dbConfig db.Config) {
 		AccessKeyID:     cfg.AWSAccessKeyID,
 		SecretAccessKey: cfg.AWSSecretAccessKey,
 	}
-	s3Storage, err := storage.New(s3Config)
+
+	s3Provider, err := storage.NewS3Provider(s3Config)
 	if err != nil {
-		log.Fatalf("Failed to create S3 storage service: %v", err)
+		log.Fatalf("Failed to create S3 provider: %v", err)
 	}
 
-	// Initialize controllers with dependencies
+	storageService := storage.New(storage.Config{
+		Timeout: cfg.S3Timeout,
+	}, s3Provider)
+
+	mailgunConfig := email.MailgunConfig{
+		Domain:        cfg.MailgunDomain,
+		APIKey:        cfg.MailgunAPIKey,
+		DefaultSender: cfg.MailgunDefaultSender,
+		Timeout:       cfg.MailgunTimeout,
+	}
+	mailgunProvider := email.NewMailgunProvider(mailgunConfig)
+
+	emailService := email.New(email.Config{
+		DefaultSender: cfg.MailgunDefaultSender,
+		Timeout:       cfg.MailgunTimeout,
+	}, mailgunProvider)
+
 	controller := controllers.NewController(database, jwtService)
 
-	// Initialize document handler
-	documentHandler := controllers.NewDocumentHandler(database, s3Storage)
+	documentHandler := controllers.NewDocumentHandler(database, storageService, emailService, cfg.AppBaseURL)
 
-	// Create a new server mux
 	mux := http.NewServeMux()
 
-	// Register routes using latest pattern syntax
 	mux.HandleFunc("GET /hello", controller.HelloHandler)
 	mux.HandleFunc("POST /api/login", controller.LoginHandler)
 
