@@ -12,6 +12,7 @@ import (
 
 	"github.com/anthropics/anthropic-sdk-go"
 	"github.com/invopop/jsonschema"
+	"github.com/joho/godotenv"
 )
 
 type Agent struct {
@@ -302,6 +303,18 @@ func GenerateSchema[T any]() anthropic.ToolInputSchemaParam {
 }
 
 func main() {
+	// Load environment variables from .env file
+	err := godotenv.Load()
+	if err != nil {
+		fmt.Println("Warning: Error loading .env file:", err)
+	}
+
+	apiKey := os.Getenv("ANTHROPIC_API_KEY")
+	if apiKey == "" {
+		fmt.Println("Error: ANTHROPIC_API_KEY environment variable is not set")
+		os.Exit(1)
+	}
+
 	client := anthropic.NewClient()
 
 	scanner := bufio.NewScanner(os.Stdin)
@@ -316,7 +329,7 @@ func main() {
 
 	tools := []ToolDefinition{ReadFileDefinition, ListFilesDefinition, EditFileDefinition}
 	agent := NewAgent(&client, getUserMessage, tools)
-	err := agent.Run(context.TODO())
+	err = agent.Run(context.TODO())
 	if err != nil {
 		panic(err)
 	}
