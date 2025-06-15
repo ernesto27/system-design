@@ -1,0 +1,36 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:17-alpine
+    container_name: twitter_postgres
+    environment:
+      POSTGRES_DB: twitter_db
+      POSTGRES_USER: twitter_user
+      POSTGRES_PASSWORD: twitter_password
+      POSTGRES_HOST_AUTH_METHOD: trust
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      # - ./migrations/postgres:/docker-entrypoint-initdb.d
+    networks:
+      - twitter_network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U twitter_user -d twitter_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+
+volumes:
+  postgres_data:
+    driver: local
+  redis_data:
+    driver: local
+
+networks:
+  twitter_network:
+    driver: bridge

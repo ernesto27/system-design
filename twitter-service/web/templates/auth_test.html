@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{.title}}</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            border-radius: 8px;
+            padding: 30px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #1da1f2;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .auth-section {
+            margin: 30px 0;
+            padding: 20px;
+            border: 1px solid #e1e8ed;
+            border-radius: 8px;
+        }
+        .btn {
+            display: inline-block;
+            padding: 12px 24px;
+            background-color: #1da1f2;
+            color: white;
+            text-decoration: none;
+            border-radius: 25px;
+            border: none;
+            cursor: pointer;
+            font-size: 16px;
+            transition: background-color 0.3s;
+        }
+        .btn:hover {
+            background-color: #1991db;
+        }
+        .btn-google {
+            background-color: #db4437;
+        }
+        .btn-google:hover {
+            background-color: #c23321;
+        }
+        .user-info {
+            background-color: #f8f9fa;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 15px 0;
+            display: none;
+        }
+        .token-display {
+            background-color: #f8f9fa;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 15px 0;
+            word-break: break-all;
+            font-family: monospace;
+            display: none;
+        }
+        .endpoint-test {
+            margin: 20px 0;
+            padding: 15px;
+            background-color: #f8f9fa;
+            border-radius: 5px;
+        }
+        .endpoint-test button {
+            margin: 5px;
+        }
+        .response {
+            background-color: #e8f5e8;
+            border: 1px solid #d4edda;
+            padding: 10px;
+            border-radius: 4px;
+            margin-top: 10px;
+            white-space: pre-wrap;
+            font-family: monospace;
+            font-size: 12px;
+        }
+        .error {
+            background-color: #f8d7da;
+            border-color: #f5c6cb;
+        }
+        .avatar {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            margin-right: 15px;
+            vertical-align: middle;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>{{.title}}</h1>
+        
+        <div class="auth-section">
+            <h2>🔐 Authentication Test</h2>
+            <p>Test Google OAuth integration for the Twitter-like service.</p>
+            
+            <div id="login-section">
+                <a href="{{.baseURL}}/auth/google/login" class="btn btn-google">
+                    📱 Login with Google
+                </a>
+            </div>
+            
+            <div id="user-section" class="user-info">
+                <h3>👤 Logged in as:</h3>
+                <div id="user-details"></div>
+                <button onclick="logout()" class="btn">Logout</button>
+            </div>
+            
+            <div id="token-section" class="token-display">
+                <h4>🔑 Access Token:</h4>
+                <div id="access-token"></div>
+            </div>
+        </div>
+        
+        <div class="endpoint-test">
+            <h3>🧪 API Endpoint Tests</h3>
+            <p>Test various API endpoints (requires authentication for protected routes):</p>
+            
+            <button onclick="testEndpoint('/api/version', 'GET')" class="btn">
+                Test API Version
+            </button>
+            
+            <button onclick="testEndpoint('/health', 'GET')" class="btn">
+                Test Health Check
+            </button>
+            
+            <button onclick="testEndpoint('/auth/profile', 'GET', true)" class="btn">
+                Test Get Profile (Protected)
+            </button>
+            
+            <button onclick="testEndpoint('/api/v1/users/me', 'GET', true)" class="btn">
+                Test Get User (Protected)
+            </button>
+            
+            <div id="response-container"></div>
+        </div>
+        
+        <div class="auth-section">
+            <h3>📋 Instructions</h3>
+            <ol>
+                <li>Click "Login with Google" to authenticate</li>
+                <li>You'll be redirected to Google OAuth consent screen</li>
+                <li>After authentication, you'll be redirected back with a JWT token</li>
+                <li>Test the protected endpoints to verify authentication</li>
+                <li>Use the token in API calls by adding: <code>Authorization: Bearer YOUR_TOKEN</code></li>
+            </ol>
+        </div>
+    </div>
+
+    <script>
+        let accessToken = '';
+        
+        // Check if we're returning from OAuth with token in URL fragment
+        window.onload = function() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const token = urlParams.get('token');
+            
+            if (token) {
+                handleLoginSuccess({
+                    access_token: token,
+                    user: { /* You can pass user data here */ }
+                });
+            }
+            
+            // Check localStorage for existing token
+            const savedToken = localStorage.getItem('access_token');
+            const savedUser = localStorage.getItem('user_data');
+            
+            if (savedToken && savedUser) {
+                accessToken = savedToken;
+                const userData = JSON.parse(savedUser);
+                showUserInfo(userData);
+            }
+        };
+        
+        function handleLoginSuccess(response) {
+            accessToken = response.access_token;
+            localStorage.setItem('access_token', accessToken);
+            localStorage.setItem('user_data', JSON.stringify(response.user));
+            
+            showUserInfo(response.user);
+            showToken(accessToken);
+        }
+        
+        function showUserInfo(user) {
+            document.getElementById('login-section').style.display = 'none';
+            document.getElementById('user-section').style.display = 'block';
+            
+            document.getElementById('user-details').innerHTML = `
+                ${user.avatar_url ? `<img src="${user.avatar_url}" class="avatar" alt="Avatar">` : ''}
+                <strong>${user.display_name || user.username || user.email}</strong><br>
+                Email: ${user.email}<br>
+                Username: ${user.username || 'Not set'}<br>
+                ID: ${user.id}
+            `;
+        }
+        
+        function showToken(token) {
+            document.getElementById('token-section').style.display = 'block';
+            document.getElementById('access-token').innerText = token;
+        }
+        
+        function logout() {
+            accessToken = '';
+            localStorage.removeItem('access_token');
+            localStorage.removeItem('user_data');
+            
+            document.getElementById('login-section').style.display = 'block';
+            document.getElementById('user-section').style.display = 'none';
+            document.getElementById('token-section').style.display = 'none';
+            
+            // Call logout endpoint
+            testEndpoint('/auth/logout', 'POST', true);
+        }
+        
+        async function testEndpoint(path, method = 'GET', requiresAuth = false) {
+            const responseContainer = document.getElementById('response-container');
+            
+            const headers = {
+                'Content-Type': 'application/json'
+            };
+            
+            if (requiresAuth && accessToken) {
+                headers['Authorization'] = `Bearer ${accessToken}`;
+            }
+            
+            try {
+                const response = await fetch(`{{.baseURL}}${path}`, {
+                    method: method,
+                    headers: headers
+                });
+                
+                const data = await response.json();
+                
+                const responseDiv = document.createElement('div');
+                responseDiv.className = response.ok ? 'response' : 'response error';
+                responseDiv.innerHTML = `
+                    <strong>${method} ${path}</strong> - Status: ${response.status}<br>
+                    ${JSON.stringify(data, null, 2)}
+                `;
+                
+                responseContainer.appendChild(responseDiv);
+                responseContainer.scrollTop = responseContainer.scrollHeight;
+                
+            } catch (error) {
+                const responseDiv = document.createElement('div');
+                responseDiv.className = 'response error';
+                responseDiv.innerHTML = `
+                    <strong>${method} ${path}</strong> - Error:<br>
+                    ${error.message}
+                `;
+                responseContainer.appendChild(responseDiv);
+            }
+        }
+        
+        // Handle OAuth callback in popup
+        if (window.location.pathname === '/auth/google/callback') {
+            // This would be handled by the server, but if you want to show a success page:
+            document.body.innerHTML = '<div class="container"><h1>Authentication Successful!</h1><p>You can close this window.</p></div>';
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,97 @@
+# Docker ignore file for Twitter Service
+
+# Binaries and executables
+main
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+tmp/
+dist/
+
+# Test binary, built with `go test -c`
+*.test
+
+# Output of the go coverage tool
+*.out
+
+# Go workspace file
+go.work
+
+# Dependency directories
+vendor/
+
+# Environment files
+.env
+.env.local
+.env.development
+.env.test
+.env.production
+
+# Log files
+*.log
+logs/
+
+# IDE and editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Temporary files
+*.tmp
+*.temp
+
+# Database files
+*.db
+*.sqlite
+*.sqlite3
+
+# Cache directories
+.cache/
+node_modules/
+
+# Build directories
+build/
+dist/
+
+# Documentation build
+docs/_build/
+
+# Upload directories
+uploads/
+tmp/
+temp/
+
+# Git
+.git/
+.gitignore
+
+# Docker
+.dockerignore
+Dockerfile*
+docker-compose*.yml
+
+# Testing
+coverage.txt
+coverage.html
+
+# Air (hot reload) files
+.air.toml
+tmp/
+
+# Documentation
+README.md
+*.md
+docs/

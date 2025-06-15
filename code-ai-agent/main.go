@@ -9,6 +9,7 @@ import (
 	"path"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/anthropics/anthropic-sdk-go"
 	"github.com/invopop/jsonschema"
@@ -217,6 +218,20 @@ func ListFiles(input json.RawMessage) (string, error) {
 
 var ListFilesInputSchema = GenerateSchema[ListFilesInput]()
 
+var CreateFileDefinition = ToolDefinition{
+	Name:        "create_file",
+	Description: "Create a new file with specified content. If the file already exists, it will be overwritten. Creates directories if they don't exist.",
+	InputSchema: CreateFileInputSchema,
+	Function:    CreateFile,
+}
+
+var FileInfoDefinition = ToolDefinition{
+	Name:        "file_info",
+	Description: "Get file metadata including size, permissions, modification time, and whether it's a directory or file.",
+	InputSchema: FileInfoInputSchema,
+	Function:    FileInfo,
+}
+
 var EditFileDefinition = ToolDefinition{
 	Name: "edit_file",
 	Description: `Make edits to a text file.
@@ -229,6 +244,19 @@ If the file specified with path doesn't exist, it will be created.
 	Function:    EditFile,
 }
 
+type CreateFileInput struct {
+	Path    string `json:"path" jsonschema_description:"The relative path where the file should be created"`
+	Content string `json:"content" jsonschema_description:"The content to write to the file"`
+}
+
+var CreateFileInputSchema = GenerateSchema[CreateFileInput]()
+
+type FileInfoInput struct {
+	Path string `json:"path" jsonschema_description:"The relative path of the file or directory to get information about"`
+}
+
+var FileInfoInputSchema = GenerateSchema[FileInfoInput]()
+
 type EditFileInput struct {
 	Path   string `json:"path" jsonschema_description:"The path to the file"`
 	OldStr string `json:"old_str" jsonschema_description:"Text to search for - must match exactly and must only have one match exactly"`
@@ -236,6 +264,73 @@ type EditFileInput struct {
 }
 
 var EditFileInputSchema = GenerateSchema[EditFileInput]()
+
+func CreateFile(input json.RawMessage) (string, error) {
+	createFileInput := CreateFileInput{}
+	err := json.Unmarshal(input, &createFileInput)
+	if err != nil {
+		return "", err
+	}
+
+	if createFileInput.Path == "" {
+		return "", fmt.Errorf("path is required")
+	}
+
+	// Create directory if it doesn't exist
+	dir := path.Dir(createFileInput.Path)
+	if dir != "." {
+		err := os.MkdirAll(dir, 0755)
+		if err != nil {
+			return "", fmt.Errorf("failed to create directory: %w", err)
+		}
+	}
+
+	// Write the file
+	err = os.WriteFile(createFileInput.Path, []byte(createFileInput.Content), 0644)
+	if err != nil {
+		return "", fmt.Errorf("failed to create file: %w", err)
+	}
+
+	return fmt.Sprintf("Successfully created file %s with %d bytes", createFileInput.Path, len(createFileInput.Content)), nil
+}
+
+func FileInfo(input json.RawMessage) (string, error) {
+	fileInfoInput := FileInfoInput{}
+	err := json.Unmarshal(input, &fileInfoInput)
+	if err != nil {
+		return "", err
+	}
+
+	if fileInfoInput.Path == "" {
+		return "", fmt.Errorf("path is required")
+	}
+
+	info, err := os.Stat(fileInfoInput.Path)
+	if err != nil {
+		return "", fmt.Errorf("failed to get file info: %w", err)
+	}
+
+	fileType := "file"
+	if info.IsDir() {
+		fileType = "directory"
+	}
+
+	result := map[string]interface{}{
+		"path":         fileInfoInput.Path,
+		"type":         fileType,
+		"size":         info.Size(),
+		"permissions":  info.Mode().String(),
+		"modified":     info.ModTime().Format(time.RFC3339),
+		"is_directory": info.IsDir(),
+	}
+
+	jsonResult, err := json.MarshalIndent(result, "", "  ")
+	if err != nil {
+		return "", fmt.Errorf("failed to marshal result: %w", err)
+	}
+
+	return string(jsonResult), nil
+}
 
 func EditFile(input json.RawMessage) (string, error) {
 	editFileInput := EditFileInput{}
@@ -327,7 +422,7 @@ func main() {
 		return scanner.Text(), true
 	}
 
-	tools := []ToolDefinition{ReadFileDefinition, ListFilesDefinition, EditFileDefinition}
+	tools := []ToolDefinition{ReadFileDefinition, ListFilesDefinition, CreateFileDefinition, FileInfoDefinition, EditFileDefinition}
 	agent := NewAgent(&client, getUserMessage, tools)
 	err = agent.Run(context.TODO())
 	if err != nil {
