@@ -30,9 +30,13 @@ func (r *CassandraPostRepository) Create(post *entities.Post) error {
 	query := `INSERT INTO posts (id, user_id, content, created_at, updated_at, is_deleted) 
 			  VALUES (?, ?, ?, ?, ?, ?)`
 
+	// Convert google/uuid to gocql.UUID
+	postID, _ := gocql.ParseUUID(post.ID.String())
+	userID, _ := gocql.ParseUUID(post.UserID.String())
+
 	return r.session.Query(query,
-		post.ID,
-		post.UserID,
+		postID,
+		userID,
 		post.Content,
 		post.CreatedAt,
 		post.UpdatedAt,
@@ -42,12 +46,16 @@ func (r *CassandraPostRepository) Create(post *entities.Post) error {
 
 func (r *CassandraPostRepository) GetByID(id uuid.UUID) (*entities.Post, error) {
 	var post entities.Post
+	var postID, userID gocql.UUID
 	query := `SELECT id, user_id, content, created_at, updated_at, is_deleted 
 			  FROM posts WHERE id = ? AND is_deleted = false`
 
-	err := r.session.Query(query, id).Scan(
-		&post.ID,
-		&post.UserID,
+	// Convert google/uuid to gocql.UUID for query
+	queryID, _ := gocql.ParseUUID(id.String())
+
+	err := r.session.Query(query, queryID).Scan(
+		&postID,
+		&userID,
 		&post.Content,
 		&post.CreatedAt,
 		&post.UpdatedAt,
@@ -61,6 +69,10 @@ func (r *CassandraPostRepository) GetByID(id uuid.UUID) (*entities.Post, error) 
 		return nil, err
 	}
 
+	// Convert gocql.UUID back to google/uuid
+	post.ID, _ = uuid.Parse(postID.String())
+	post.UserID, _ = uuid.Parse(userID.String())
+
 	return &post, nil
 }
 
@@ -70,14 +82,18 @@ func (r *CassandraPostRepository) GetByUserID(userID uuid.UUID, limit int) ([]*e
 			  FROM posts WHERE user_id = ? AND is_deleted = false 
 			  ORDER BY created_at DESC LIMIT ?`
 
-	iter := r.session.Query(query, userID, limit).Iter()
+	// Convert google/uuid to gocql.UUID for query
+	queryUserID, _ := gocql.ParseUUID(userID.String())
+
+	iter := r.session.Query(query, queryUserID, limit).Iter()
 	defer iter.Close()
 
 	for {
 		var post entities.Post
+		var postID, postUserID gocql.UUID
 		if !iter.Scan(
-			&post.ID,
-			&post.UserID,
+			&postID,
+			&postUserID,
 			&post.Content,
 			&post.CreatedAt,
 			&post.UpdatedAt,
@@ -85,6 +101,11 @@ func (r *CassandraPostRepository) GetByUserID(userID uuid.UUID, limit int) ([]*e
 		) {
 			break
 		}
+
+		// Convert gocql.UUID back to google/uuid
+		post.ID, _ = uuid.Parse(postID.String())
+		post.UserID, _ = uuid.Parse(postUserID.String())
+
 		posts = append(posts, &post)
 	}
 
@@ -98,15 +119,21 @@ func (r *CassandraPostRepository) GetByUserID(userID uuid.UUID, limit int) ([]*e
 func (r *CassandraPostRepository) Update(post *entities.Post) error {
 	query := `UPDATE posts SET content = ?, updated_at = ? WHERE id = ?`
 
+	// Convert google/uuid to gocql.UUID
+	postID, _ := gocql.ParseUUID(post.ID.String())
+
 	return r.session.Query(query,
 		post.Content,
 		time.Now(),
-		post.ID,
+		postID,
 	).Exec()
 }
 
 func (r *CassandraPostRepository) Delete(id uuid.UUID) error {
 	query := `UPDATE posts SET is_deleted = true, updated_at = ? WHERE id = ?`
 
-	return r.session.Query(query, time.Now(), id).Exec()
+	// Convert google/uuid to gocql.UUID
+	postID, _ := gocql.ParseUUID(id.String())
+
+	return r.session.Query(query, time.Now(), postID).Exec()
 }

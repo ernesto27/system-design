@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"fmt"
 	"net/http"
 	"strconv"
 	"twitterservice/internal/domain/entities"
@@ -43,7 +44,9 @@ func (h *PostHandler) CreatePost(c *gin.Context) {
 
 	post, err := h.postService.CreatePost(userID, req.Content)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create post"})
+		// Log the actual error for debugging
+		fmt.Printf("Error creating post: %v\n", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create post", "details": err.Error()})
 		return
 	}
 

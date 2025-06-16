@@ -1,6 +1,7 @@
 package services
 
 import (
+	"fmt"
 	"time"
 	"twitterservice/internal/domain/entities"
 	"twitterservice/internal/domain/repositories"
@@ -36,11 +37,15 @@ func (s *postService) CreatePost(userID uuid.UUID, content string) (*entities.Po
 		IsDeleted: false,
 	}
 
+	fmt.Printf("Creating post: ID=%s, UserID=%s, Content=%s\n", post.ID, post.UserID, content)
+
 	err := s.postRepo.Create(post)
 	if err != nil {
+		fmt.Printf("Error in repository Create: %v\n", err)
 		return nil, err
 	}
 
+	fmt.Printf("Post created successfully: %s\n", post.ID)
 	return post, nil
 }
 
