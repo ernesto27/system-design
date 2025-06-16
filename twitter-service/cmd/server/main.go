@@ -51,13 +51,15 @@ func main() {
 	// Initialize repositories
 	userRepo := repositories.NewUserRepository()
 	postRepo := repositories.NewCassandraPostRepository(cassandraDB.Session)
+	followRepo := repositories.NewFollowRepository()
 
 	// Initialize services
 	authService := services.NewAuthService(userRepo, cfg)
 	postService := services.NewPostService(postRepo)
+	followService := services.NewFollowService(followRepo, userRepo)
 
 	// Setup routes
-	router := routes.SetupRoutes(authService, postService, cfg)
+	router := routes.SetupRoutes(authService, postService, followService, cfg)
 
 	// Start server
 	logrus.WithFields(logrus.Fields{

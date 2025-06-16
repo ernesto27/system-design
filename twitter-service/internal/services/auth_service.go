@@ -149,29 +149,9 @@ func (s *AuthService) ValidateJWT(tokenString string) (*entities.User, error) {
 		return nil, fmt.Errorf("invalid token claims")
 	}
 
-	// Get user from database
-	userID, err := uuid.Parse(claims.UserID)
-	if err != nil {
-		return nil, fmt.Errorf("invalid user ID in token: %w", err)
-	}
-
-	user, err := s.userRepo.GetUserByID(context.Background(), userID)
+	user, err := s.userRepo.GetUserByEmail(context.Background(), claims.Email)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get user: %w", err)
-	}
-
-	// If user not found in database, but it's a valid token (for test tokens)
-	if user == nil {
-		// For development/testing: create a virtual user from token claims
-		if s.config.App.Environment == "development" && strings.HasPrefix(claims.Email, "test") {
-			return &entities.User{
-				ID:          userID,
-				Email:       claims.Email,
-				Username:    claims.Username,
-				DisplayName: claims.Email, // Use email as display name for test users
-			}, nil
-		}
-		return nil, fmt.Errorf("user not found")
 	}
 
 	return user, nil

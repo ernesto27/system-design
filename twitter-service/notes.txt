@@ -6,6 +6,13 @@ curl -X POST http://localhost:8080/auth/test-login \
   }' | jq
 
 
+curl -X POST http://localhost:8080/auth/test-login \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "alice_dev",
+    "email": "alice@example.com"
+  }' | jq
+
 curl -X POST http://localhost:8080/api/v1/posts \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer " \
@@ -18,3 +25,14 @@ docker exec -it twitter_cassandra cqlsh
 
 USE twitter_keyspace;
 SELECT * FROM posts;
+
+
+curl -X POST http://localhost:8080/api/v1/users/1/follow \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json"
+
+curl -X DELETE http://localhost:8080/api/v1/users/1/unfollow \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json"
+
+

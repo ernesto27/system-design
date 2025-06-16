@@ -15,6 +15,7 @@ import (
 func SetupRoutes(
 	authService *services.AuthService,
 	postService services.PostService,
+	followService *services.FollowService,
 	cfg *config.Config,
 ) *gin.Engine {
 	// Create Gin router
@@ -41,10 +42,11 @@ func SetupRoutes(
 	// Create handlers
 	authHandler := handlers.NewAuthHandler(authService)
 	postHandler := handlers.NewPostHandler(postService)
+	followHandler := handlers.NewFollowHandler(followService)
 
 	// Serve static files (for test HTML)
-	r.Static("/static", "./web/static")
-	r.LoadHTMLGlob("web/templates/*")
+	// r.Static("/static", "./web/static")
+	// r.LoadHTMLGlob("web/templates/*")
 
 	// Root endpoint
 	r.GET("/", func(c *gin.Context) {
@@ -131,7 +133,14 @@ func SetupRoutes(
 			userGroup := protected.Group("/users")
 			{
 				userGroup.GET("/me", authHandler.GetProfile)
-				// Add more user endpoints here
+
+				// Follow routes
+				userGroup.POST("/:id/follow", followHandler.FollowUser)                   // Follow a user
+				userGroup.DELETE("/:id/unfollow", followHandler.UnfollowUser)             // Unfollow a user
+				userGroup.GET("/:id/follow/status", followHandler.CheckFollowStatus)      // Check follow status
+				userGroup.GET("/:id/followers", followHandler.GetFollowers)               // Get user's followers
+				userGroup.GET("/:id/following", followHandler.GetFollowing)               // Get user's following
+				userGroup.GET("/:id/mutual/:otherUserId", followHandler.GetMutualFollows) // Get mutual follows
 			}
 
 			// Posts routes

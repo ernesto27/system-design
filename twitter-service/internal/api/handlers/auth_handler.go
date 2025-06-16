@@ -24,11 +24,6 @@ func NewAuthHandler(authService *services.AuthService) *AuthHandler {
 }
 
 // GoogleLogin redirects to Google OAuth
-// @Summary Redirect to Google OAuth login
-// @Description Redirects user to Google OAuth consent screen
-// @Tags authentication
-// @Success 302 {string} string "Redirect to Google"
-// @Router /auth/google/login [get]
 func (h *AuthHandler) GoogleLogin(c *gin.Context) {
 	// Generate state parameter (in production, store this securely)
 	state := uuid.New().String()
@@ -45,15 +40,6 @@ func (h *AuthHandler) GoogleLogin(c *gin.Context) {
 }
 
 // GoogleCallback handles Google OAuth callback
-// @Summary Handle Google OAuth callback
-// @Description Processes Google OAuth callback and returns JWT token
-// @Tags authentication
-// @Param code query string true "OAuth authorization code"
-// @Param state query string true "OAuth state parameter"
-// @Success 200 {object} services.LoginResponse
-// @Failure 400 {object} map[string]string
-// @Failure 500 {object} map[string]string
-// @Router /auth/google/callback [get]
 func (h *AuthHandler) GoogleCallback(c *gin.Context) {
 	code := c.Query("code")
 	state := c.Query("state")

@@ -19,7 +19,8 @@ type UserRepository interface {
 	GetUserByEmail(ctx context.Context, email string) (*entities.User, error)
 	GetUserByUsername(ctx context.Context, username string) (*entities.User, error)
 	UpdateUser(ctx context.Context, user *entities.User) error
-	DeleteUser(ctx context.Context, id uuid.UUID) error
+	SearchUsers(ctx context.Context, query string, limit, offset int) ([]*entities.User, error)
+	GetUsersByIDs(ctx context.Context, ids []uuid.UUID) ([]*entities.User, error)
 }
 
 // userRepository implements UserRepository interface
@@ -95,7 +96,25 @@ func (r *userRepository) UpdateUser(ctx context.Context, user *entities.User) er
 	return r.db.WithContext(ctx).Save(user).Error
 }
 
-// DeleteUser deletes a user from the database
-func (r *userRepository) DeleteUser(ctx context.Context, id uuid.UUID) error {
-	return r.db.WithContext(ctx).Delete(&entities.User{}, id).Error
+// SearchUsers searches for users by username or display name
+func (r *userRepository) SearchUsers(ctx context.Context, query string, limit, offset int) ([]*entities.User, error) {
+	var users []*entities.User
+	searchPattern := "%" + query + "%"
+
+	err := r.db.WithContext(ctx).
+		Where("username ILIKE ? OR display_name ILIKE ?", searchPattern, searchPattern).
+		Where("is_active = ?", true).
+		Order("follower_count DESC").
+		Limit(limit).
+		Offset(offset).
+		Find(&users).Error
+
+	return users, err
+}
+
+// GetUsersByIDs retrieves multiple users by their IDs
+func (r *userRepository) GetUsersByIDs(ctx context.Context, ids []uuid.UUID) ([]*entities.User, error) {
+	var users []*entities.User
+	err := r.db.WithContext(ctx).Where("id IN ?", ids).Find(&users).Error
+	return users, err
 }
