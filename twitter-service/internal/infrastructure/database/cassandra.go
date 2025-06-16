@@ -65,22 +65,24 @@ func NewCassandraConnection(cfg *config.Config) (*CassandraDB, error) {
 }
 
 func createTables(session *gocql.Session) error {
-	// Create posts table (without DEFAULT values - not supported in Cassandra)
+	// Create posts table with composite primary key to avoid ALLOW FILTERING
+	// Using (id, is_deleted) as composite primary key
 	createPostsTable := `
 		CREATE TABLE IF NOT EXISTS posts (
-			id UUID PRIMARY KEY,
+			id UUID,
 			user_id UUID,
 			content TEXT,
 			created_at TIMESTAMP,
 			updated_at TIMESTAMP,
-			is_deleted BOOLEAN
+			is_deleted BOOLEAN,
+			PRIMARY KEY (id, is_deleted)
 		)`
 
 	if err := session.Query(createPostsTable).Exec(); err != nil {
 		return fmt.Errorf("failed to create posts table: %w", err)
 	}
 
-	// Create indexes
+	// Create indexes for user queries
 	createUserIDIndex := `CREATE INDEX IF NOT EXISTS posts_user_id_idx ON posts (user_id)`
 	if err := session.Query(createUserIDIndex).Exec(); err != nil {
 		return fmt.Errorf("failed to create user_id index: %w", err)

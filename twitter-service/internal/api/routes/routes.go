@@ -120,6 +120,9 @@ func SetupRoutes(
 			})
 		})
 
+		// Public posts routes
+		apiGroup.GET("/posts/:id", postHandler.GetPost) // Get specific post (public)
+
 		// Protected API routes
 		protected := apiGroup.Group("/")
 		protected.Use(middleware.AuthMiddleware(authService))
@@ -135,7 +138,6 @@ func SetupRoutes(
 			postsGroup := protected.Group("/posts")
 			{
 				postsGroup.POST("", postHandler.CreatePost)                // Create post
-				postsGroup.GET("/:id", postHandler.GetPost)                // Get specific post
 				postsGroup.PUT("/:id", postHandler.UpdatePost)             // Update post
 				postsGroup.DELETE("/:id", postHandler.DeletePost)          // Delete post
 				postsGroup.GET("/my", postHandler.GetMyPosts)              // Get my posts

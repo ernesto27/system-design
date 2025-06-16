@@ -67,7 +67,8 @@ func (h *PostHandler) GetPost(c *gin.Context) {
 
 	post, err := h.postService.GetPost(postID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get post"})
+		fmt.Printf("Error getting post: %v\n", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get post", "details": err.Error()})
 		return
 	}
 

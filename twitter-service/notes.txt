@@ -6,6 +6,14 @@ curl -X POST http://localhost:8080/auth/test-login \
   }' | jq
 
 
+curl -X POST http://localhost:8080/api/v1/posts \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer " \
+  -d '{
+    "content": "This is my first post!"
+  }'
+
+
 docker exec -it twitter_cassandra cqlsh
 
 USE twitter_keyspace;

@@ -117,7 +117,7 @@ func (r *CassandraPostRepository) GetByUserID(userID uuid.UUID, limit int) ([]*e
 }
 
 func (r *CassandraPostRepository) Update(post *entities.Post) error {
-	query := `UPDATE posts SET content = ?, updated_at = ? WHERE id = ?`
+	query := `UPDATE posts SET content = ?, updated_at = ? WHERE id = ? AND is_deleted = ?`
 
 	// Convert google/uuid to gocql.UUID
 	postID, _ := gocql.ParseUUID(post.ID.String())
@@ -126,14 +126,40 @@ func (r *CassandraPostRepository) Update(post *entities.Post) error {
 		post.Content,
 		time.Now(),
 		postID,
+		post.IsDeleted,
 	).Exec()
 }
 
 func (r *CassandraPostRepository) Delete(id uuid.UUID) error {
-	query := `UPDATE posts SET is_deleted = true, updated_at = ? WHERE id = ?`
+	// First, get the existing post to copy its data
+	existingPost, err := r.GetByID(id)
+	if err != nil {
+		return err
+	}
+	if existingPost == nil {
+		return nil // Post not found, consider it already deleted
+	}
 
 	// Convert google/uuid to gocql.UUID
 	postID, _ := gocql.ParseUUID(id.String())
+	userID, _ := gocql.ParseUUID(existingPost.UserID.String())
 
-	return r.session.Query(query, time.Now(), postID).Exec()
+	// Delete the active record (id, is_deleted = false)
+	deleteQuery := `DELETE FROM posts WHERE id = ? AND is_deleted = false`
+	if err := r.session.Query(deleteQuery, postID).Exec(); err != nil {
+		return err
+	}
+
+	// Insert the deleted record (id, is_deleted = true)
+	insertQuery := `INSERT INTO posts (id, user_id, content, created_at, updated_at, is_deleted) 
+					VALUES (?, ?, ?, ?, ?, ?)`
+
+	return r.session.Query(insertQuery,
+		postID,
+		userID,
+		existingPost.Content,
+		existingPost.CreatedAt,
+		time.Now(),
+		true,
+	).Exec()
 }

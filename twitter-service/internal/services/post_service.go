@@ -50,7 +50,18 @@ func (s *postService) CreatePost(userID uuid.UUID, content string) (*entities.Po
 }
 
 func (s *postService) GetPost(id uuid.UUID) (*entities.Post, error) {
-	return s.postRepo.GetByID(id)
+	fmt.Printf("Getting post with ID: %s\n", id.String())
+	post, err := s.postRepo.GetByID(id)
+	if err != nil {
+		fmt.Printf("Error in repository GetByID: %v\n", err)
+		return nil, err
+	}
+	if post == nil {
+		fmt.Printf("Post not found for ID: %s\n", id.String())
+	} else {
+		fmt.Printf("Post found: ID=%s, Content=%s\n", post.ID.String(), post.Content)
+	}
+	return post, nil
 }
 
 func (s *postService) GetUserPosts(userID uuid.UUID, limit int) ([]*entities.Post, error) {
