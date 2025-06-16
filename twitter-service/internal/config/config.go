@@ -2,6 +2,8 @@ package config
 
 import (
 	"os"
+	"strconv"
+	"time"
 
 	"github.com/joho/godotenv"
 	"github.com/sirupsen/logrus"
@@ -9,10 +11,11 @@ import (
 
 // Config holds all configuration for the application
 type Config struct {
-	App      AppConfig
-	Database DatabaseConfig
-	OAuth    OAuthConfig
-	JWT      JWTConfig
+	App       AppConfig
+	Database  DatabaseConfig
+	Cassandra CassandraConfig
+	OAuth     OAuthConfig
+	JWT       JWTConfig
 }
 
 // AppConfig holds application configuration
@@ -32,6 +35,14 @@ type DatabaseConfig struct {
 	Password string
 	DBName   string
 	SSLMode  string
+}
+
+// CassandraConfig holds Cassandra configuration
+type CassandraConfig struct {
+	Host     string
+	Port     int
+	Keyspace string
+	Timeout  time.Duration
 }
 
 // OAuthConfig holds OAuth configuration
@@ -70,6 +81,12 @@ func Load() (*Config, error) {
 			DBName:   getEnv("DB_NAME", "twitter_db"),
 			SSLMode:  getEnv("DB_SSL_MODE", "disable"),
 		},
+		Cassandra: CassandraConfig{
+			Host:     getEnv("CASSANDRA_HOST", "localhost"),
+			Port:     getEnvAsInt("CASSANDRA_PORT", 9042),
+			Keyspace: getEnv("CASSANDRA_KEYSPACE", "twitter_keyspace"),
+			Timeout:  getEnvAsDuration("CASSANDRA_TIMEOUT", "10s"),
+		},
 		OAuth: OAuthConfig{
 			GoogleClientID:     getEnv("GOOGLE_CLIENT_ID", ""),
 			GoogleClientSecret: getEnv("GOOGLE_CLIENT_SECRET", ""),
@@ -90,4 +107,25 @@ func getEnv(key, fallback string) string {
 		return value
 	}
 	return fallback
+}
+
+// getEnvAsInt gets an environment variable as int with a fallback value
+func getEnvAsInt(key string, fallback int) int {
+	if value := os.Getenv(key); value != "" {
+		if intValue, err := strconv.Atoi(value); err == nil {
+			return intValue
+		}
+	}
+	return fallback
+}
+
+// getEnvAsDuration gets an environment variable as duration with a fallback value
+func getEnvAsDuration(key string, fallback string) time.Duration {
+	if value := os.Getenv(key); value != "" {
+		if duration, err := time.ParseDuration(value); err == nil {
+			return duration
+		}
+	}
+	duration, _ := time.ParseDuration(fallback)
+	return duration
 }

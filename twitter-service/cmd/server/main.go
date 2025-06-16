@@ -31,10 +31,17 @@ func main() {
 		gin.SetMode(gin.ReleaseMode)
 	}
 
-	// Connect to database
+	// Connect to PostgreSQL database
 	if err := database.Connect(cfg); err != nil {
-		logrus.WithError(err).Fatal("Failed to connect to database")
+		logrus.WithError(err).Fatal("Failed to connect to PostgreSQL database")
 	}
+
+	// Connect to Cassandra database
+	cassandraDB, err := database.NewCassandraConnection(cfg)
+	if err != nil {
+		logrus.WithError(err).Fatal("Failed to connect to Cassandra database")
+	}
+	defer cassandraDB.Close()
 
 	// Run migrations
 	if err := database.AutoMigrate(); err != nil {
@@ -43,12 +50,14 @@ func main() {
 
 	// Initialize repositories
 	userRepo := repositories.NewUserRepository()
+	postRepo := repositories.NewCassandraPostRepository(cassandraDB.Session)
 
 	// Initialize services
 	authService := services.NewAuthService(userRepo, cfg)
+	postService := services.NewPostService(postRepo)
 
 	// Setup routes
-	router := routes.SetupRoutes(authService, cfg)
+	router := routes.SetupRoutes(authService, postService, cfg)
 
 	// Start server
 	logrus.WithFields(logrus.Fields{

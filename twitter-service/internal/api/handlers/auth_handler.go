@@ -125,3 +125,43 @@ func (h *AuthHandler) Logout(c *gin.Context) {
 		"message": "Logged out successfully",
 	})
 }
+
+// TestLogin creates a test user and returns a JWT token (development only)
+func (h *AuthHandler) TestLogin(c *gin.Context) {
+	var req TestLoginRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	// Create test user
+	user := &entities.User{
+		ID:          uuid.New(),
+		GoogleID:    "test_" + req.Email,
+		Email:       req.Email,
+		DisplayName: req.Name,
+	}
+
+	// Generate JWT token
+	token, _, err := h.authService.GenerateJWT(user)
+	if err != nil {
+		logrus.WithError(err).Error("Failed to generate JWT")
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to generate token"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"message": "Test login successful",
+		"token":   token,
+		"user": gin.H{
+			"id":    user.ID,
+			"email": user.Email,
+			"name":  user.DisplayName,
+		},
+	})
+}
+
+type TestLoginRequest struct {
+	Email string `json:"email" binding:"required,email"`
+	Name  string `json:"name" binding:"required"`
+}

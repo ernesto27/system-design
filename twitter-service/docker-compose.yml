@@ -22,13 +22,39 @@ services:
       test: ["CMD-SHELL", "pg_isready -U twitter_user -d twitter_db"]
       interval: 10s
       timeout: 5s
-      retries: 5
+      retries: 5  
+
+  # Cassandra Database for Posts
+  cassandra:
+    image: cassandra:4.1
+    container_name: twitter_cassandra
+    environment:
+      CASSANDRA_CLUSTER_NAME: twitter_cluster
+      CASSANDRA_DC: datacenter1
+      CASSANDRA_RACK: rack1
+      CASSANDRA_ENDPOINT_SNITCH: GossipingPropertyFileSnitch
+      HEAP_NEWSIZE: 128M
+      MAX_HEAP_SIZE: 512M
+    ports:
+      - "9042:9042"
+    volumes:
+      - cassandra_data:/var/lib/cassandra
+    networks:
+      - twitter_network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "nodetool status"]
+      interval: 30s
+      timeout: 10s
+      retries: 10
 
 
 volumes:
   postgres_data:
     driver: local
   redis_data:
+    driver: local
+  cassandra_data:
     driver: local
 
 networks:

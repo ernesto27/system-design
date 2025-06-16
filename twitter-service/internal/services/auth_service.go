@@ -114,7 +114,7 @@ func (s *AuthService) HandleGoogleCallback(ctx context.Context, code string) (*L
 	}
 
 	// Generate JWT token
-	accessToken, expiresIn, err := s.generateJWT(user)
+	accessToken, expiresIn, err := s.GenerateJWT(user)
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate JWT: %w", err)
 	}
@@ -160,7 +160,17 @@ func (s *AuthService) ValidateJWT(tokenString string) (*entities.User, error) {
 		return nil, fmt.Errorf("failed to get user: %w", err)
 	}
 
+	// If user not found in database, but it's a valid token (for test tokens)
 	if user == nil {
+		// For development/testing: create a virtual user from token claims
+		if s.config.App.Environment == "development" && strings.HasPrefix(claims.Email, "test") {
+			return &entities.User{
+				ID:          userID,
+				Email:       claims.Email,
+				Username:    claims.Username,
+				DisplayName: claims.Email, // Use email as display name for test users
+			}, nil
+		}
 		return nil, fmt.Errorf("user not found")
 	}
 
@@ -223,8 +233,8 @@ func (s *AuthService) generateUsernameFromEmail(email string) string {
 	return "user"
 }
 
-// generateJWT generates a JWT token for a user
-func (s *AuthService) generateJWT(user *entities.User) (string, int64, error) {
+// GenerateJWT generates a JWT token for a user
+func (s *AuthService) GenerateJWT(user *entities.User) (string, int64, error) {
 	expirationTime := time.Now().Add(24 * time.Hour)
 
 	claims := &JWTClaims{

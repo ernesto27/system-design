@@ -14,6 +14,7 @@ import (
 // SetupRoutes configures all routes for the application
 func SetupRoutes(
 	authService *services.AuthService,
+	postService services.PostService,
 	cfg *config.Config,
 ) *gin.Engine {
 	// Create Gin router
@@ -39,6 +40,7 @@ func SetupRoutes(
 
 	// Create handlers
 	authHandler := handlers.NewAuthHandler(authService)
+	postHandler := handlers.NewPostHandler(postService)
 
 	// Serve static files (for test HTML)
 	r.Static("/static", "./web/static")
@@ -93,6 +95,11 @@ func SetupRoutes(
 		authGroup.GET("/google/login", authHandler.GoogleLogin)
 		authGroup.GET("/google/callback", authHandler.GoogleCallback)
 
+		// Development/Testing endpoint
+		if cfg.App.Environment == "development" {
+			authGroup.POST("/test-login", authHandler.TestLogin)
+		}
+
 		// Protected routes (require authentication)
 		protected := authGroup.Group("/")
 		protected.Use(middleware.AuthMiddleware(authService))
@@ -124,11 +131,16 @@ func SetupRoutes(
 				// Add more user endpoints here
 			}
 
-			// Posts routes (future)
-			// postsGroup := protected.Group("/posts")
-			// {
-			//     // Add posts endpoints here
-			// }
+			// Posts routes
+			postsGroup := protected.Group("/posts")
+			{
+				postsGroup.POST("", postHandler.CreatePost)                // Create post
+				postsGroup.GET("/:id", postHandler.GetPost)                // Get specific post
+				postsGroup.PUT("/:id", postHandler.UpdatePost)             // Update post
+				postsGroup.DELETE("/:id", postHandler.DeletePost)          // Delete post
+				postsGroup.GET("/my", postHandler.GetMyPosts)              // Get my posts
+				postsGroup.GET("/user/:user_id", postHandler.GetUserPosts) // Get user posts
+			}
 
 			// Feed routes (future)
 			// feedGroup := protected.Group("/feed")
