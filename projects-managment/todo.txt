@@ -1,56 +1,131 @@
-Projects managment
+# Projects Management System
 
-Requirements.
+## Status Overview
 
-User login, 
-email, contraseña.
+### ✅ Completed Features
 
-Projects: 
-List of projects
-Detail, edit project. 
-Delete project.
+#### Authentication & Users
+- [x] User registration and login system
+- [x] Password hashing with bcrypt
+- [x] JWT-based authentication
+- [x] User management endpoints
 
+#### Database Models & Schema
+- [x] Users table with username, email, password_hash
+- [x] Roles table (seller, manager, developer, ux)
+- [x] User-roles junction table
+- [x] Projects table with name, description, status, time estimation
+- [x] Project statuses (pending, in_progress, completed, cancelled)
+- [x] Projects-roles junction table with percentage allocation
+- [x] Comments table with project association
+- [x] Comment likes functionality
 
+#### Project Management
+- [x] Create new projects
+- [x] List all projects with pagination
+- [x] View project details
+- [x] Edit/update projects
+- [x] Project status management
+- [x] Role assignment to projects with percentage allocation
+- [x] Time estimation tracking
 
-Models - entities 
+#### Comments System
+- [x] Add comments to projects
+- [x] View project comments
+- [x] Delete comments
+- [x] Comment likes functionality
+- [x] User association with comments
 
-- Users 
-- Roles
-- Projects
+#### Frontend (React/TypeScript/Remix)
+- [x] Login page
+- [x] Project list view
+- [x] Project detail view with edit mode
+- [x] Admin project creation
+- [x] Home dashboard
+- [x] Comment system UI
+- [x] Responsive design with dark mode support
 
-## Users 
-id int 
-name string
-email string
-password string
-created_at datetime
-updated_at datetime
-role_id int
+#### Backend API
+- [x] RESTful API endpoints
+- [x] Go with Gin framework
+- [x] PostgreSQL database integration
+- [x] CORS support
+- [x] Error handling and validation
 
-### Roles
-id int
-name string
+### 🚧 In Progress / Needs Implementation
 
-### users-roles 
-id int
-user_id int
-role_id int
+#### User Management
+- [ ] User profile management
+- [ ] Change password functionality
+- [ ] User roles assignment interface
+- [ ] User deactivation/deletion
 
-### Projects
-id int
-name string
-description string
-created_at datetime
-updated_at datetime
-status_id int
+#### Project Features
+- [ ] Project deletion
+- [ ] Project search and filtering
+- [ ] Project categories/tags
+- [ ] File attachments to projects
+- [ ] Project templates
+- [ ] Project duplication
+- [ ] Bulk operations
 
-### status projects 
-id int
-name string
+#### Reporting & Analytics
+- [ ] Project progress tracking
+- [ ] Time tracking per role
+- [ ] Resource utilization reports
+- [ ] Project completion statistics
+- [ ] Export functionality (PDF, Excel)
 
-### employess 
-id int
-name string
-email  
+#### Advanced Features
+- [ ] Email notifications
+- [ ] Real-time updates (WebSocket)
+- [ ] Activity timeline
+- [ ] Project dependencies
+- [ ] Gantt chart view
+- [ ] Calendar integration
+- [ ] API documentation (Swagger)
 
-    
+#### Security & Performance
+- [ ] Rate limiting
+- [ ] Input sanitization
+- [ ] Database connection pooling
+- [ ] Caching layer (Redis)
+- [ ] Audit logging
+- [ ] Data backup strategy
+
+#### DevOps & Deployment
+- [ ] Docker containerization
+- [ ] CI/CD pipeline
+- [ ] Environment configuration
+- [ ] Database migrations automation
+- [ ] Monitoring and logging
+- [ ] Load testing
+
+### 🗄️ Database Schema (Implemented)
+
+```sql
+Users (id, username, email, password_hash, created_at, updated_at)
+Roles (id, name) 
+User_Roles (user_id, role_id)
+Project_Statuses (id, name)
+Projects (id, name, description, status_id, created_user_id, time_estimation, created_at, updated_at)
+Projects_Roles (id, project_id, role_id, percentage)
+Comments (id, project_id, user_id, content, likes_count, created_at, updated_at)
+Comment_Likes (id, comment_id, user_id, created_at)
+```
+
+### 📋 Priority Tasks (Next Sprint)
+
+1. **Project Deletion** - Add delete functionality to projects
+2. **User Profile Management** - Allow users to update their profiles
+3. **Project Search/Filter** - Implement search and filtering on project list
+4. **File Attachments** - Add ability to attach files to projects
+5. **Email Notifications** - Notify users of project updates and comments
+
+### 🛠️ Technical Stack
+
+- **Backend**: Go, Gin framework, PostgreSQL, GORM
+- **Frontend**: React, TypeScript, Remix, Tailwind CSS
+- **Authentication**: JWT tokens, bcrypt password hashing
+- **Database**: PostgreSQL with goose migrations
+- **Development**: Docker for local database
