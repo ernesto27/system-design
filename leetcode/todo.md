@@ -7,6 +7,14 @@
 - [ ] Validate code before execution, security checks
 
 
+js base two sum code  
+```javascript
+function twoSum(nums, target) {
+
+}
+```
+
+
 
 [
     {
