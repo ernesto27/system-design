@@ -5,6 +5,9 @@ import (
 )
 
 func main() {
+	// codeexecutor.RunInlineNodeScript()
+	// os.Exit(1)
+
 	config := NewDatabaseConfig()
 
 	db, err := ConnectDatabase(config)
@@ -21,7 +24,7 @@ func main() {
 	}
 
 	log.Println("Database connected, migrated, and seeded successfully!")
-	
+
 	router := SetupRouter(db)
 	log.Println("Starting server on :8080")
 	router.Run(":8080")

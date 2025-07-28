@@ -1,8 +1,10 @@
 package main
 
 import (
+	"encoding/json"
 	"log"
 	"gorm.io/gorm"
+	"gorm.io/datatypes"
 )
 
 func SeedData(db *gorm.DB) error {
@@ -11,6 +13,10 @@ func SeedData(db *gorm.DB) error {
 	}
 	
 	if err := SeedProblems(db); err != nil {
+		return err
+	}
+	
+	if err := SeedCodeBases(db); err != nil {
 		return err
 	}
 	
@@ -41,11 +47,35 @@ func SeedUsers(db *gorm.DB) error {
 }
 
 func SeedProblems(db *gorm.DB) error {
+	twoSumTestCases := []map[string]interface{}{
+		{
+			"name":            "Basic Input",
+			"nums":            []int{2, 7, 11, 15},
+			"target":          9,
+			"expected_output": []int{0, 1},
+		},
+		{
+			"name":            "Negative Numbers",
+			"nums":            []int{3, -4, 5, 8},
+			"target":          1,
+			"expected_output": []int{1, 2},
+		},
+		{
+			"name":            "Duplicates in Array",
+			"nums":            []int{3, 3},
+			"target":          6,
+			"expected_output": []int{0, 1},
+		},
+	}
+	
+	twoSumTestCasesJSON, _ := json.Marshal(twoSumTestCases)
+	
 	problems := []Problem{
 		{
 			Title:       "Two Sum",
 			Description: "Given an array of integers nums and an integer target, return indices of the two numbers such that they add up to target.",
 			Difficulty:  "Easy",
+			TestCases:   datatypes.JSON(twoSumTestCasesJSON),
 		},
 		{
 			Title:       "Add Two Numbers",
@@ -80,5 +110,60 @@ func SeedProblems(db *gorm.DB) error {
 		}
 	}
 	
+	return nil
+}
+
+func SeedCodeBases(db *gorm.DB) error {
+	// Get Two Sum problem ID
+	var twoSumProblem Problem
+	if err := db.Where("title = ?", "Two Sum").First(&twoSumProblem).Error; err != nil {
+		log.Printf("Two Sum problem not found, skipping code base seeding: %v", err)
+		return nil
+	}
+
+	codeBases := []CodeBase{
+		{
+			ProblemID: twoSumProblem.ID,
+			Language:  "javascript",
+			Template: `/**
+ * @param {number[]} nums
+ * @param {number} target
+ * @return {number[]}
+ */
+var twoSum = function(nums, target) {
+    
+};`,
+		},
+		{
+			ProblemID: twoSumProblem.ID,
+			Language:  "python",
+			Template: `def two_sum(nums, target):
+    """
+    :type nums: List[int]
+    :type target: int
+    :rtype: List[int]
+    """
+    pass`,
+		},
+		{
+			ProblemID: twoSumProblem.ID,
+			Language:  "go",
+			Template: `func twoSum(nums []int, target int) []int {
+    
+}`,
+		},
+	}
+
+	for _, codeBase := range codeBases {
+		var existingCodeBase CodeBase
+		if err := db.Where("problem_id = ? AND language = ?", codeBase.ProblemID, codeBase.Language).First(&existingCodeBase).Error; err == gorm.ErrRecordNotFound {
+			if err := db.Create(&codeBase).Error; err != nil {
+				log.Printf("Failed to create code base for problem %d, language %s: %v", codeBase.ProblemID, codeBase.Language, err)
+				return err
+			}
+			log.Printf("Created code base: Problem %d, Language %s", codeBase.ProblemID, codeBase.Language)
+		}
+	}
+
 	return nil
 }

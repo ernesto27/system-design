@@ -3,6 +3,8 @@ package main
 import (
 	"encoding/json"
 	"time"
+
+	"gorm.io/datatypes"
 	"gorm.io/gorm"
 )
 
@@ -28,12 +30,13 @@ func (u User) MarshalJSON() ([]byte, error) {
 }
 
 type Problem struct {
-	ID          uint      `gorm:"primaryKey" json:"id"`
-	Title       string    `gorm:"not null" json:"title"`
-	Description string    `gorm:"type:text" json:"description"`
-	Difficulty  string    `gorm:"not null" json:"difficulty"`
-	CreatedAt   time.Time `gorm:"autoCreateTime" json:"created_at"`
-	UpdatedAt   time.Time `gorm:"autoUpdateTime" json:"updated_at"`
+	ID          uint           `gorm:"primaryKey" json:"id"`
+	Title       string         `gorm:"not null" json:"title"`
+	Description string         `gorm:"type:text" json:"description"`
+	Difficulty  string         `gorm:"not null" json:"difficulty"`
+	TestCases   datatypes.JSON `gorm:"type:jsonb" json:"test_cases"`
+	CreatedAt   time.Time      `gorm:"autoCreateTime" json:"created_at"`
+	UpdatedAt   time.Time      `gorm:"autoUpdateTime" json:"updated_at"`
 }
 
 func (p Problem) MarshalJSON() ([]byte, error) {
@@ -88,6 +91,31 @@ type SubmissionResponse struct {
 	TestCases []TestCase `json:"test_cases"`
 }
 
+type CodeBase struct {
+	ID        uint      `gorm:"primaryKey" json:"id"`
+	ProblemID uint      `gorm:"not null;index" json:"problem_id"`
+	Language  string    `gorm:"not null;index" json:"language"`
+	Template  string    `gorm:"type:text;not null" json:"template"`
+	CreatedAt time.Time `gorm:"autoCreateTime" json:"created_at"`
+	UpdatedAt time.Time `gorm:"autoUpdateTime" json:"updated_at"`
+	
+	// Relationships
+	Problem Problem `gorm:"foreignKey:ProblemID" json:"problem,omitempty"`
+}
+
+func (c CodeBase) MarshalJSON() ([]byte, error) {
+	type Alias CodeBase
+	return json.Marshal(&struct {
+		CreatedAt string `json:"created_at"`
+		UpdatedAt string `json:"updated_at"`
+		*Alias
+	}{
+		CreatedAt: c.CreatedAt.Format("2006-01-02 15:04:05"),
+		UpdatedAt: c.UpdatedAt.Format("2006-01-02 15:04:05"),
+		Alias:     (*Alias)(&c),
+	})
+}
+
 func AutoMigrate(db *gorm.DB) error {
-	return db.AutoMigrate(&User{}, &Problem{}, &Submission{})
+	return db.AutoMigrate(&User{}, &Problem{}, &Submission{}, &CodeBase{})
 }
