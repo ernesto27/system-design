@@ -2,20 +2,27 @@ package main
 
 import (
 	"log"
+	"os"
 	"webhook/handlers"
 
 	"queue"
 
+	"github.com/joho/godotenv"
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
 )
 
 func main() {
+	// Load .env file if running outside Docker
+	err := godotenv.Load()
+	if err != nil {
+		panic(err)
+	}
+
 	// Initialize RabbitMQ queue
-	queueName := "webhook_events"
 	config := queue.Config{
-		URL:       "amqp://admin:password@localhost:5672",
-		QueueName: queueName,
+		URL:       os.Getenv("RABBITMQ_URL"),
+		QueueName: os.Getenv("QUEUE_NAME"),
 	}
 
 	rabbitMQ, err := queue.NewRabbitMQ(config)
@@ -32,7 +39,7 @@ func main() {
 		NoWait:     false,
 	}
 
-	if err := rabbitMQ.Create(queueName, queueConfig); err != nil {
+	if err := rabbitMQ.Create(os.Getenv("QUEUE_NAME"), queueConfig); err != nil {
 		log.Fatalf("Failed to create queue: %v", err)
 	}
 

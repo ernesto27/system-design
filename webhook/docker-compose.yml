@@ -1,10 +1,12 @@
 services:
   webhook-api:
     build:
-      context: ./api
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: ./api/Dockerfile
     ports:
       - "8081:8080"
+    env_file:
+      - ./api/.env
     restart: unless-stopped
     deploy:
       resources:
@@ -12,7 +14,8 @@ services:
           cpus: '1.0'
           memory: 512M
     depends_on:
-      - rabbitmq
+      rabbitmq:
+        condition: service_healthy
 
   rabbitmq:
     image: rabbitmq:3.13-management
@@ -20,11 +23,15 @@ services:
     ports:
       - "5672:5672"    # AMQP port
       - "15672:15672"  # Management UI
-    environment:
-      RABBITMQ_DEFAULT_USER: admin
-      RABBITMQ_DEFAULT_PASS: password
+    env_file:
+      - ./api/.env
     volumes:
       - rabbitmq_data:/var/lib/rabbitmq
+    healthcheck:
+      test: rabbitmq-diagnostics -q ping
+      interval: 30s
+      timeout: 10s
+      retries: 5
     restart: unless-stopped
 
 volumes:

@@ -3,14 +3,14 @@ FROM golang:1.24-alpine AS builder
 
 WORKDIR /app
 
-# Copy go mod and sum files
-COPY go.mod go.sum ./
+# Copy queue module first
+COPY queue /queue
+
+# Copy API source code
+COPY api/ ./
 
 # Download dependencies
 RUN go mod download
-
-# Copy source code
-COPY . ./
 
 # Build the application
 RUN CGO_ENABLED=0 GOOS=linux go build -o main .
@@ -25,6 +25,8 @@ WORKDIR /root/
 
 # Copy the binary from builder stage
 COPY --from=builder /app/main .
+# Copy the .env file from builder stage
+COPY --from=builder /app/.env .
 
 # Expose port
 EXPOSE 8080
