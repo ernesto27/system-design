@@ -3,6 +3,7 @@ package main
 import (
 	"log"
 	"os"
+	"webhook/database"
 	"webhook/handlers"
 
 	"queue"
@@ -17,6 +18,19 @@ func main() {
 	err := godotenv.Load()
 	if err != nil {
 		panic(err)
+	}
+
+	// Initialize database connection
+	dbURL := os.Getenv("DATABASE_URL")
+	db, err := database.Connect(dbURL)
+	if err != nil {
+		log.Fatalf("Failed to connect to database: %v", err)
+	}
+	defer db.Close()
+
+	// Run migrations
+	if err := database.RunMigrations(db); err != nil {
+		log.Fatalf("Failed to run migrations: %v", err)
 	}
 
 	// Initialize RabbitMQ queue

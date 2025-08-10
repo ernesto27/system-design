@@ -33,13 +33,17 @@ func NewRabbitMQ(config Config) (*RabbitMQ, error) {
 }
 
 func (r *RabbitMQ) Create(queueName string, config QueueConfig) error {
+	args := amqp.Table{
+		"x-message-ttl": int64(2592000000), // 30 days in milliseconds
+	}
+	
 	_, err := r.ch.QueueDeclare(
 		queueName,
 		config.Durable,
 		config.AutoDelete,
 		config.Exclusive,
 		config.NoWait,
-		nil,
+		args,
 	)
 	return err
 }
