@@ -74,7 +74,8 @@ POSTGRESQL
 Phase 1
 
 - [X] Implement the API endpoint using Golang and Echo framework.
-- [ ] Set up RabbitMQ , PostgreSQL with docker compose.
+- [X] Set up RabbitMQ with docker compose.
+- [ ] Set up PostgreSQL with docker compose.
 - [ ] Implement the Message Queue interface to support both RabbitMQ and SQS.
 - [ ] Create the Queue Consumer to process events from the Message Queue.
 - [ ] Save processed events to PostgreSQL. 
