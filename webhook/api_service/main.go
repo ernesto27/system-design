@@ -3,9 +3,9 @@ package main
 import (
 	"log"
 	"os"
-	"webhook/database"
 	"webhook/handlers"
 
+	"database"
 	"queue"
 
 	"github.com/joho/godotenv"

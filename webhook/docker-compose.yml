@@ -2,7 +2,7 @@ services:
   webhook-api:
     build:
       context: .
-      dockerfile: ./api/Dockerfile
+      dockerfile: ./api_service/Dockerfile
     ports:
       - "8081:8080"
     env_file:

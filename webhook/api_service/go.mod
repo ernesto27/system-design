@@ -3,12 +3,15 @@ module webhook
 go 1.24.0
 
 require (
+	database v0.0.0
 	github.com/labstack/echo/v4 v4.13.4
 	github.com/stretchr/testify v1.10.0
 	queue v0.0.0
 )
 
 replace queue => ../queue
+
+replace database => ../database
 
 require (
 	github.com/davecgh/go-spew v1.1.1 // indirect
