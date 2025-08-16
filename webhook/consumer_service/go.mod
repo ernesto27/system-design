@@ -3,7 +3,6 @@ module consumer_service
 go 1.24.0
 
 require (
-	database v0.0.0
 	github.com/joho/godotenv v1.5.1
 	queue v0.0.0
 )

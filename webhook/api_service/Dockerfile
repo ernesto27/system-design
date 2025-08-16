@@ -3,11 +3,12 @@ FROM golang:1.24-alpine AS builder
 
 WORKDIR /app
 
-# Copy queue module first
+# Copy packages first
 COPY queue /queue
+COPY database /database
 
 # Copy API source code
-COPY api/ ./
+COPY api_service/ ./
 
 # Download dependencies
 RUN go mod download
@@ -27,6 +28,8 @@ WORKDIR /root/
 COPY --from=builder /app/main .
 # Copy the .env file from builder stage
 COPY --from=builder /app/.env .
+
+COPY --from=builder /app/migrations ./migrations
 
 # Expose port
 EXPOSE 8080

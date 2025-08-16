@@ -5,14 +5,18 @@ services:
       dockerfile: ./api_service/Dockerfile
     ports:
       - "8081:8080"
-    env_file:
-      - ./api/.env
     restart: unless-stopped
-    deploy:
-      resources:
-        limits:
-          cpus: '1.0'
-          memory: 512M
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+
+  consumer-service:
+    build:
+      context: .
+      dockerfile: ./consumer_service/Dockerfile
+    restart: unless-stopped
     depends_on:
       rabbitmq:
         condition: service_healthy
@@ -25,7 +29,7 @@ services:
     ports:
       - "5432:5432"
     env_file:
-      - ./api/.env
+      - ./api_service/.env
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
@@ -42,7 +46,7 @@ services:
       - "5672:5672"    # AMQP port
       - "15672:15672"  # Management UI
     env_file:
-      - ./api/.env
+      - ./api_service/.env
     volumes:
       - rabbitmq_data:/var/lib/rabbitmq
     healthcheck:

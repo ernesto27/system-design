@@ -3,11 +3,15 @@ FROM golang:1.24-alpine AS builder
 
 WORKDIR /app
 
-# Copy go mod and sum files
-COPY go.mod go.sum ./
+# Copy packages first
+COPY queue /queue
+COPY database /database
+
+COPY consumer_service/ ./
 
 # Download dependencies
 RUN go mod download
+
 
 # Copy source code
 COPY . ./
@@ -25,6 +29,8 @@ WORKDIR /root/
 
 # Copy the binary from builder stage
 COPY --from=builder /app/main .
+# Copy the .env file from builder stage
+COPY --from=builder /app/.env .
 
 # Run the application
 CMD ["./main"]
