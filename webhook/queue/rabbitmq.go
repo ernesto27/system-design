@@ -32,13 +32,13 @@ func NewRabbitMQ(config Config) (*RabbitMQ, error) {
 	}, nil
 }
 
-func (r *RabbitMQ) Create(queueName string, config QueueConfig) error {
+func (r *RabbitMQ) Create(config QueueConfig) error {
 	args := amqp.Table{
 		"x-message-ttl": int64(2592000000), // 30 days in milliseconds
 	}
-	
+
 	_, err := r.ch.QueueDeclare(
-		queueName,
+		r.queueName,
 		config.Durable,
 		config.AutoDelete,
 		config.Exclusive,
@@ -55,19 +55,19 @@ func (r *RabbitMQ) Publish(ctx context.Context, message Message) error {
 	}
 
 	return r.ch.PublishWithContext(ctx,
-		"",             // exchange
-		r.queueName,    // routing key
-		false,          // mandatory
-		false,          // immediate
+		"",          // exchange
+		r.queueName, // routing key
+		false,       // mandatory
+		false,       // immediate
 		amqp.Publishing{
 			ContentType: "application/json",
 			Body:        body,
 		})
 }
 
-func (r *RabbitMQ) Consume(ctx context.Context, queueName string) (<-chan Message, error) {
+func (r *RabbitMQ) Consume(ctx context.Context) (<-chan Message, error) {
 	msgs, err := r.ch.Consume(
-		queueName,
+		r.queueName,
 		"",    // consumer
 		true,  // auto-ack
 		false, // exclusive
@@ -103,6 +103,58 @@ func (r *RabbitMQ) Consume(ctx context.Context, queueName string) (<-chan Messag
 	}()
 
 	return messageCh, nil
+}
+
+func (r *RabbitMQ) ConsumeWithAck(ctx context.Context) (<-chan DeliveryMessage, error) {
+	msgs, err := r.ch.Consume(
+		r.queueName,
+		"",    // consumer
+		false, // auto-ack (disabled for manual ack)
+		false, // exclusive
+		false, // no-local
+		false, // no-wait
+		nil,   // args
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	deliveryCh := make(chan DeliveryMessage)
+	go func() {
+		defer close(deliveryCh)
+		for {
+			select {
+			case d, ok := <-msgs:
+				if !ok {
+					return
+				}
+				var msg Message
+				if err := json.Unmarshal(d.Body, &msg); err == nil {
+					delivery := DeliveryMessage{
+						Message: msg,
+						Ack: func() error {
+							return d.Ack(false)
+						},
+						Nack: func() error {
+							return d.Nack(false, true) // requeue=true
+						},
+					}
+					select {
+					case deliveryCh <- delivery:
+					case <-ctx.Done():
+						return
+					}
+				} else {
+					// If we can't unmarshal, nack the message
+					d.Nack(false, false) // don't requeue malformed messages
+				}
+			case <-ctx.Done():
+				return
+			}
+		}
+	}()
+
+	return deliveryCh, nil
 }
 
 func (r *RabbitMQ) Close() error {

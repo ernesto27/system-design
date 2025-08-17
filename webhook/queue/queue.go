@@ -19,10 +19,17 @@ type QueueConfig struct {
 	NoWait     bool
 }
 
+type DeliveryMessage struct {
+	Message Message
+	Ack     func() error
+	Nack    func() error
+}
+
 type Queue interface {
-	Create(queueName string, config QueueConfig) error
+	Create(config QueueConfig) error
 	Publish(ctx context.Context, message Message) error
-	Consume(ctx context.Context, queueName string) (<-chan Message, error)
+	Consume(ctx context.Context) (<-chan Message, error)
+	ConsumeWithAck(ctx context.Context) (<-chan DeliveryMessage, error)
 	Close() error
 }
 

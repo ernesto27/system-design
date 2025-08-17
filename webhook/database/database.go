@@ -2,6 +2,7 @@ package database
 
 import (
 	"database/sql"
+	"encoding/json"
 	"log"
 	"time"
 
@@ -44,4 +45,29 @@ func RunMigrations(db *sql.DB) error {
 
 	log.Println("Migrations completed successfully")
 	return nil
+}
+
+func SaveWebhookEvent(db *sql.DB, event WebhookEvent) error {
+	// Convert Data map to JSON for PostgreSQL storage
+	dataJSON, err := json.Marshal(event.Data)
+	if err != nil {
+		return err
+	}
+
+	query := `
+		INSERT INTO webhook_events (id, event_id, source, type, data, timestamp, created_at)
+		VALUES ($1, $2, $3, $4, $5, $6, $7)
+	`
+
+	_, err = db.Exec(query,
+		event.ID,
+		event.EventID,
+		event.Source,
+		event.Type,
+		dataJSON, // Use JSON bytes instead of map
+		event.Timestamp,
+		event.CreatedAt,
+	)
+
+	return err
 }

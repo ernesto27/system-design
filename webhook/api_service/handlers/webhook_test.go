@@ -17,7 +17,7 @@ type MockQueue struct {
 	publishError error
 }
 
-func (m *MockQueue) Create(queueName string, config queue.QueueConfig) error {
+func (m *MockQueue) Create(config queue.QueueConfig) error {
 	return nil
 }
 
@@ -25,7 +25,11 @@ func (m *MockQueue) Publish(ctx context.Context, message queue.Message) error {
 	return m.publishError
 }
 
-func (m *MockQueue) Consume(ctx context.Context, queueName string) (<-chan queue.Message, error) {
+func (m *MockQueue) Consume(ctx context.Context) (<-chan queue.Message, error) {
+	return nil, nil
+}
+
+func (m *MockQueue) ConsumeWithAck(ctx context.Context) (<-chan queue.DeliveryMessage, error) {
 	return nil, nil
 }
 
@@ -114,5 +118,28 @@ func TestHandleWebhook(t *testing.T) {
 		assert.NoError(t, err)
 		assert.Equal(t, http.StatusBadRequest, rec.Code)
 		assert.Contains(t, rec.Body.String(), "Invalid request payload")
+	})
+
+	t.Run("Queue publish failure", func(t *testing.T) {
+		mockQueue := &MockQueue{publishError: assert.AnError}
+		json := `{
+			"id": "evt_126",
+			"source": "shopify",
+			"type": "order.created",
+			"data": {
+				"order_id": "12345"
+			}
+		}`
+
+		req := httptest.NewRequest(http.MethodPost, "/webhook", strings.NewReader(json))
+		req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
+		rec := httptest.NewRecorder()
+		c := e.NewContext(req, rec)
+
+		err := HandleWebhook(c, mockQueue)
+
+		assert.NoError(t, err)
+		assert.Equal(t, http.StatusInternalServerError, rec.Code)
+		assert.Contains(t, rec.Body.String(), "Failed to process webhook event")
 	})
 }

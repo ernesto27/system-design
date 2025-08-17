@@ -53,7 +53,7 @@ func main() {
 		NoWait:     false,
 	}
 
-	if err := rabbitMQ.Create(os.Getenv("QUEUE_NAME"), queueConfig); err != nil {
+	if err := rabbitMQ.Create(queueConfig); err != nil {
 		log.Fatalf("Failed to create queue: %v", err)
 	}
 
