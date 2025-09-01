@@ -60,8 +60,9 @@ func (r *RabbitMQ) Publish(ctx context.Context, message Message) error {
 		false,       // mandatory
 		false,       // immediate
 		amqp.Publishing{
-			ContentType: "application/json",
-			Body:        body,
+			ContentType:  "application/json",
+			Body:         body,
+			DeliveryMode: amqp.Persistent, // Make messages persistent
 		})
 }
 

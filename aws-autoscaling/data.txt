@@ -1,0 +1,25 @@
+nginx 
+docker run -d -p 8080:80 --name myapp nginx
+
+TODO 
+
+- Create a node backend api wiht CPU high load endopint, and api version
+- Upload to ECR registry
+- Create aws cloudformation to create load balancer and autoscaling 
+
+
+
+
+# Build the Docker image
+  docker build -t cpu-pressure-api .
+
+  # Run the container
+  docker run -p 3000:3000 cpu-pressure-api
+
+  # Or run in detached mode
+  docker run -d -p 3000:3000 --name cpu-pressure-app cpu-pressure-api
+
+  # Test the endpoints
+  curl http://localhost:3000/version
+  curl http://localhost:3000/cpu-pressure
+  curl http://localhost:3000/health
