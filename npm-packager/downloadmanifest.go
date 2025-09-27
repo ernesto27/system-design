@@ -14,6 +14,6 @@ func (d *DownloadManifest) getManifestURL() string {
 
 func (d *DownloadManifest) download() error {
 	url := d.getManifestURL()
-	filename := d.packageName + ".json"
+	filename := "manifest/" + d.packageName + ".json"
 	return downloadFile(url, filename)
 }

@@ -2,3 +2,4 @@ node_modules*
 extracted 
 *.tgz
 express
+manifest

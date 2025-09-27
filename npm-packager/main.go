@@ -46,7 +46,7 @@ func newPackageManager(pkg string) (*PackageManager, error) {
 
 	}
 
-	jsonParser := newParseJsonManifest(pkg + ".json")
+	jsonParser := newParseJsonManifest("manifest/" + pkg + ".json")
 	npmPackage, err := jsonParser.parse()
 	if err != nil {
 		return nil, err
@@ -175,6 +175,13 @@ func (pm *PackageManager) downloadDependencies() error {
 			continue
 		}
 
+		manifest := newDownloadManifest(dep.Name)
+
+		if err := manifest.download(); err != nil {
+			return err
+
+		}
+
 		fmt.Printf("Downloading dependency: %s: %s\n", dep.Name, dep.Version)
 		processed[depKey] = true
 		pm.processedPackages = append(pm.processedPackages, dep)
@@ -183,7 +190,7 @@ func (pm *PackageManager) downloadDependencies() error {
 		tarball := newDownloadTarball(tarballURL)
 		if err := tarball.download(); err != nil {
 			fmt.Printf("Error downloading %s: %v\n", dep.Name, err)
-			continue
+			return err
 		}
 
 		extractionPath := fmt.Sprintf("%s%s", pm.extractedPath, dep.Name)
@@ -191,14 +198,14 @@ func (pm *PackageManager) downloadDependencies() error {
 		extractor := newTGZExtractor(tarballFile, extractionPath)
 		if err := extractor.extract(); err != nil {
 			fmt.Printf("Error extracting %s: %v\n", dep.Name, err)
-			continue
+			return err
 		}
 
 		packageJson := newPackageJSONParser(path.Join(extractionPath, "package.json"))
 		data, err := packageJson.parse()
 		if err != nil {
 			fmt.Printf("Error parsing package.json for %s: %v\n", dep.Name, err)
-			continue
+			return err
 		}
 
 		for depName, depVersion := range data.Dependencies {
