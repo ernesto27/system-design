@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"os"
 	"path"
-	"regexp"
 	"strings"
 )
 
@@ -33,12 +32,13 @@ type Dependency struct {
 type PackageManager struct {
 	registryURL       string
 	pkg               string
+	version           string
 	dependencies      map[string]string
 	extractedPath     string
 	processedPackages []Dependency
 }
 
-func newPackageManager(pkg string) (*PackageManager, error) {
+func newPackageManager(pkg string, version string) (*PackageManager, error) {
 	manifest := newDownloadManifest(pkg)
 
 	if err := manifest.download(); err != nil {
@@ -52,25 +52,26 @@ func newPackageManager(pkg string) (*PackageManager, error) {
 		return nil, err
 	}
 
-	latestVersion := npmPackage.DistTags.Latest
-	fmt.Println("Latest version:", latestVersion)
-
-	var latestTarballURL string
-	if _, exists := npmPackage.Versions[latestVersion]; exists {
-		latestTarballURL = npmPackage.Versions[latestVersion].Dist.Tarball
-		fmt.Println("version:", latestTarballURL)
+	var pkgVersion string
+	if version == "" {
+		pkgVersion := npmPackage.DistTags.Latest
+		fmt.Println("Latest version:", pkgVersion)
 	} else {
-		fmt.Printf("Version %s not found in versions map\n", latestVersion)
+		// Find specific version.
+		versionInfo := newVersionInfo(version, npmPackage)
+		versionValue := versionInfo.getVersion()
+		fmt.Printf("Requested version: %s (type: %s)\n", version, versionValue)
+
 	}
 
-	tarball := newDownloadTarball(latestTarballURL)
+	tarball := newDownloadTarball(pkgVersion)
 	if err := tarball.download(); err != nil {
 		return nil, err
 	}
 
 	extracted := "./node_modules/"
 	extractionPath := fmt.Sprintf("%s%s", extracted, npmPackage.Name)
-	tarballFile := path.Join("tarball", path.Base(latestTarballURL))
+	tarballFile := path.Join("tarball", path.Base(pkgVersion))
 	extractor := newTGZExtractor(tarballFile, extractionPath)
 	if err := extractor.extract(); err != nil {
 		return nil, err
@@ -90,29 +91,6 @@ func newPackageManager(pkg string) (*PackageManager, error) {
 		extractedPath:     extracted,
 		processedPackages: make([]Dependency, 0),
 	}, nil
-}
-
-func parseVersion(versionSpec string) string {
-	versionRegex := regexp.MustCompile(`(\d+\.\d+\.\d+)`)
-	matches := versionRegex.FindStringSubmatch(versionSpec)
-	if len(matches) > 1 {
-		return matches[1]
-	}
-
-	versionSpec = strings.ReplaceAll(versionSpec, "^", "")
-	versionSpec = strings.ReplaceAll(versionSpec, "~", "")
-	versionSpec = strings.ReplaceAll(versionSpec, ">=", "")
-	versionSpec = strings.ReplaceAll(versionSpec, "<=", "")
-	versionSpec = strings.ReplaceAll(versionSpec, ">", "")
-	versionSpec = strings.ReplaceAll(versionSpec, "<", "")
-	versionSpec = strings.TrimSpace(versionSpec)
-
-	parts := strings.Fields(versionSpec)
-	if len(parts) > 0 {
-		return parts[0]
-	}
-
-	return versionSpec
 }
 
 func (pm *PackageManager) addDependency(name, version string) {
@@ -151,7 +129,7 @@ func (pm *PackageManager) downloadDependencies() error {
 	queue := make([]Dependency, 0)
 
 	for name, version := range pm.dependencies {
-		v := parseVersion(version)
+		v := strings.Replace(version, "^", "", 1)
 		queue = append(queue, Dependency{Name: name, Version: v})
 	}
 
@@ -212,7 +190,7 @@ func (pm *PackageManager) downloadDependencies() error {
 			if depName == "wrappy" {
 				fmt.Println("Debug stop")
 			}
-			v := parseVersion(depVersion)
+			v := strings.Replace(depVersion, "^", "", 1)
 			subDepKey := fmt.Sprintf("%s@%s", depName, v)
 			if !processed[subDepKey] {
 				fmt.Printf("  Found sub-dependency: %s: %s (from %s)\n", depName, v, depVersion)
@@ -232,7 +210,7 @@ func main() {
 
 	// packageName := os.Args[1]
 
-	packageManager, err := newPackageManager("express")
+	packageManager, err := newPackageManager("express", "5.1.0")
 	if err != nil {
 		fmt.Println("Error:", err)
 		return
