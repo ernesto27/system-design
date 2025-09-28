@@ -54,24 +54,25 @@ func newPackageManager(pkg string, version string) (*PackageManager, error) {
 
 	var pkgVersion string
 	if version == "" {
-		pkgVersion := npmPackage.DistTags.Latest
+		pkgVersion = npmPackage.DistTags.Latest
 		fmt.Println("Latest version:", pkgVersion)
 	} else {
 		// Find specific version.
 		versionInfo := newVersionInfo(version, npmPackage)
-		versionValue := versionInfo.getVersion()
-		fmt.Printf("Requested version: %s (type: %s)\n", version, versionValue)
+		pkgVersion = versionInfo.getVersion()
 
 	}
 
-	tarball := newDownloadTarball(pkgVersion)
+	tarballURL := fmt.Sprintf("%s%s/-/%s-%s.tgz", npmResgistryURL, pkg, pkg, pkgVersion)
+
+	tarball := newDownloadTarball(tarballURL)
 	if err := tarball.download(); err != nil {
 		return nil, err
 	}
 
 	extracted := "./node_modules/"
 	extractionPath := fmt.Sprintf("%s%s", extracted, npmPackage.Name)
-	tarballFile := path.Join("tarball", path.Base(pkgVersion))
+	tarballFile := path.Join("tarball", path.Base(tarballURL))
 	extractor := newTGZExtractor(tarballFile, extractionPath)
 	if err := extractor.extract(); err != nil {
 		return nil, err
@@ -209,8 +210,16 @@ func main() {
 	// }
 
 	// packageName := os.Args[1]
+	// v1 := "v2.9.0" // Note: requires 'v' prefix
+	// v2 := "v1.10.0"
 
-	packageManager, err := newPackageManager("express", "5.1.0")
+	// // Compare versions
+	// result := semver.Compare(v1, v2)
+	// fmt.Println(result)
+
+	// return
+
+	packageManager, err := newPackageManager("express", "^5.0.0")
 	if err != nil {
 		fmt.Println("Error:", err)
 		return

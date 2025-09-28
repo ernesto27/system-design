@@ -1,6 +1,10 @@
 package main
 
-import "strings"
+import (
+	"strings"
+
+	"golang.org/x/mod/semver"
+)
 
 // Version type constants
 const (
@@ -36,6 +40,10 @@ func (v *VersionInfo) getVersion() string {
 	// Detect version type and return classification
 	switch {
 	case strings.HasPrefix(version, "^"):
+		caretVersion := v.getVersionCaret()
+		if caretVersion != "" {
+			return caretVersion
+		}
 		return VersionTypeCaret
 	case strings.HasPrefix(version, "~"):
 		return VersionTypeTilde
@@ -66,4 +74,29 @@ func (v *VersionInfo) getVersion() string {
 		}
 		return VersionTypeUnknown
 	}
+}
+
+func (v *VersionInfo) getVersionCaret() string {
+	baseVersion := strings.Replace(v.version, "^", "", 1)
+	v1 := "v" + baseVersion
+
+	var bestVersion string
+	var bestSemver string
+
+	for k := range v.npmPackage.Versions {
+		v2 := "v" + k
+		if semver.Compare(v2, v1) >= 0 {
+			majorBase := semver.Major(v1)
+			majorCandidate := semver.Major(v2)
+
+			if majorBase == majorCandidate {
+				if bestSemver == "" || semver.Compare(v2, bestSemver) > 0 {
+					bestVersion = k
+					bestSemver = v2
+				}
+			}
+		}
+	}
+
+	return bestVersion
 }
