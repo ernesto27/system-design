@@ -10,21 +10,21 @@ type PackageJSON struct {
 	Name         string            `json:"name"`
 	Description  string            `json:"description"`
 	Version      string            `json:"version"`
-	Author       interface{}       `json:"author"`
-	Contributors interface{}       `json:"contributors"`
+	Author       any               `json:"author"`
+	Contributors any               `json:"contributors"`
 	License      string            `json:"license"`
-	Repository   interface{}       `json:"repository"`
+	Repository   any               `json:"repository"`
 	Homepage     string            `json:"homepage"`
-	Funding      interface{}       `json:"funding"`
+	Funding      any               `json:"funding"`
 	Keywords     []string          `json:"keywords"`
 	Dependencies map[string]string `json:"dependencies"`
-	Engines      map[string]string `json:"engines"`
+	Engines      any               `json:"engines"`
 	Files        []string          `json:"files"`
 	Scripts      map[string]string `json:"scripts"`
-	Main         string            `json:"main"`
-	Bin          interface{}       `json:"bin"`
+	Main         any               `json:"main"`
+	Bin          any               `json:"bin"`
 	Types        string            `json:"types"`
-	Exports      interface{}       `json:"exports"`
+	Exports      any               `json:"exports"`
 	Private      bool              `json:"private"`
 	Workspaces   []string          `json:"workspaces"`
 }

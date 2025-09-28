@@ -14,7 +14,7 @@ type NPMPackage struct {
 	Versions    map[string]Version `json:"versions"`
 	Time        map[string]string `json:"time"`
 Bugs        Bugs              `json:"bugs"`
-	License     string            `json:"license"`
+	License     any               `json:"license"`
 	Homepage    string            `json:"homepage"`
 	Keywords    []string          `json:"keywords"`
 	Repository  Repository        `json:"repository"`
@@ -35,7 +35,7 @@ type Version struct {
 	Name         string                 `json:"name"`
 	Version      string                 `json:"version"`
 	Author       Author                 `json:"author"`
-	License      string                 `json:"license"`
+	License      any                    `json:"license"`
 	ID           string                 `json:"_id"`
 	Maintainers  []Maintainer          `json:"maintainers"`
 	Homepage     string                 `json:"homepage"`
@@ -43,7 +43,7 @@ type Version struct {
 	Dist         Dist                   `json:"dist"`
 	From         string                 `json:"_from"`
 	Shasum       string                 `json:"_shasum"`
-	Engines      map[string]string      `json:"engines"`
+	Engines      any                    `json:"engines"`
 	GitHead      string                 `json:"gitHead"`
 	Scripts      map[string]string      `json:"scripts"`
 	NPMUser      NPMUser                `json:"_npmUser"`

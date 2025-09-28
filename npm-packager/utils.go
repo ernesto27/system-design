@@ -5,6 +5,7 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"path/filepath"
 )
 
 // downloadFile downloads a file from the given URL and saves it to the specified filename
@@ -17,6 +18,11 @@ func downloadFile(url, filename string) error {
 
 	if resp.StatusCode != http.StatusOK {
 		return fmt.Errorf("HTTP error: %d %s", resp.StatusCode, resp.Status)
+	}
+
+	dir := filepath.Dir(filename)
+	if err := os.MkdirAll(dir, 0755); err != nil {
+		return fmt.Errorf("failed to create directory structure: %w", err)
 	}
 
 	file, err := os.Create(filename)

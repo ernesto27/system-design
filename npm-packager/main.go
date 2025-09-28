@@ -1,9 +1,7 @@
 package main
 
 import (
-	"encoding/json"
 	"fmt"
-	"os"
 	"path"
 	"strings"
 )
@@ -32,55 +30,15 @@ type Dependency struct {
 type PackageManager struct {
 	registryURL       string
 	pkg               string
-	version           string
 	dependencies      map[string]string
 	extractedPath     string
 	processedPackages []Dependency
 }
 
 func newPackageManager(pkg string, version string) (*PackageManager, error) {
-	manifest := newDownloadManifest(pkg)
-
-	if err := manifest.download(); err != nil {
-		return nil, err
-
-	}
-
-	jsonParser := newParseJsonManifest("manifest/" + pkg + ".json")
-	npmPackage, err := jsonParser.parse()
-	if err != nil {
-		return nil, err
-	}
-
-	var pkgVersion string
-	if version == "" {
-		pkgVersion = npmPackage.DistTags.Latest
-		fmt.Println("Latest version:", pkgVersion)
-	} else {
-		// Find specific version.
-		versionInfo := newVersionInfo(version, npmPackage)
-		pkgVersion = versionInfo.getVersion()
-
-	}
-
-	tarballURL := fmt.Sprintf("%s%s/-/%s-%s.tgz", npmResgistryURL, pkg, pkg, pkgVersion)
-
-	tarball := newDownloadTarball(tarballURL)
-	if err := tarball.download(); err != nil {
-		return nil, err
-	}
-
 	extracted := "./node_modules/"
-	extractionPath := fmt.Sprintf("%s%s", extracted, npmPackage.Name)
-	tarballFile := path.Join("tarball", path.Base(tarballURL))
-	extractor := newTGZExtractor(tarballFile, extractionPath)
-	if err := extractor.extract(); err != nil {
-		return nil, err
-	}
-
-	// Get packager json fron principal package
-	packageJson := newPackageJSONParser(path.Join(extractionPath, "package.json"))
-	data, err := packageJson.parse()
+	extractionPath := fmt.Sprintf("%s%s", extracted, pkg)
+	data, err := downloadPackage(pkg, version, extractionPath)
 	if err != nil {
 		return nil, err
 	}
@@ -94,35 +52,53 @@ func newPackageManager(pkg string, version string) (*PackageManager, error) {
 	}, nil
 }
 
-func (pm *PackageManager) addDependency(name, version string) {
-	pm.dependencies[name] = version
-}
+func downloadPackage(pkg string, version string, extractedPath string) (*PackageJSON, error) {
+	manifest := newDownloadManifest(pkg)
+	if err := manifest.download(); err != nil {
+		return nil, err
+	}
 
-func (pm *PackageManager) saveDependenciesToJSON(filename string) error {
-	file, err := os.Create(filename)
+	jsonParser := newParseJsonManifest("manifest/" + pkg + ".json")
+	npmPackage, err := jsonParser.parse()
 	if err != nil {
-		return fmt.Errorf("failed to create file %s: %w", filename, err)
-	}
-	defer file.Close()
-
-	dependencyData := struct {
-		MainPackage  string       `json:"main_package"`
-		TotalCount   int          `json:"total_dependencies"`
-		Dependencies []Dependency `json:"dependencies"`
-	}{
-		MainPackage:  pm.pkg,
-		TotalCount:   len(pm.processedPackages),
-		Dependencies: pm.processedPackages,
+		return nil, err
 	}
 
-	encoder := json.NewEncoder(file)
-	encoder.SetIndent("", "  ")
-	if err := encoder.Encode(dependencyData); err != nil {
-		return fmt.Errorf("failed to encode JSON: %w", err)
+	versionInfo := newVersionInfo(version, npmPackage)
+	pkgVersion := versionInfo.getVersion()
+
+	var tarballName string
+	if strings.HasPrefix(pkg, "@") {
+		parts := strings.Split(pkg, "/")
+		if len(parts) == 2 {
+			tarballName = parts[1]
+		} else {
+			tarballName = pkg
+		}
+	} else {
+		tarballName = pkg
 	}
 
-	fmt.Printf("Saved %d dependencies to %s\n", len(pm.processedPackages), filename)
-	return nil
+	tarballURL := fmt.Sprintf("%s%s/-/%s-%s.tgz", npmResgistryURL, pkg, tarballName, pkgVersion)
+
+	tarball := newDownloadTarball(tarballURL)
+	if err := tarball.download(); err != nil {
+		return nil, err
+	}
+
+	tarballFile := path.Join("tarball", path.Base(tarballURL))
+	extractor := newTGZExtractor(tarballFile, extractedPath)
+	if err := extractor.extract(); err != nil {
+		return nil, err
+	}
+
+	packageJson := newPackageJSONParser(path.Join(extractedPath, "package.json"))
+	data, err := packageJson.parse()
+	if err != nil {
+		return nil, err
+	}
+
+	return data, nil
 }
 
 func (pm *PackageManager) downloadDependencies() error {
@@ -138,59 +114,22 @@ func (pm *PackageManager) downloadDependencies() error {
 		dep := queue[0]
 		queue = queue[1:]
 
-		if dep.Name == "wrappy" {
-			// FIX THIS
-			dep.Version = "1.0.2"
-			fmt.Println("Debug stop")
-		}
-
-		if dep.Name == "safer-buffer" {
-			fmt.Println("Debug stop")
-		}
-
 		depKey := fmt.Sprintf("%s@%s", dep.Name, dep.Version)
 		if processed[depKey] {
 			fmt.Printf("Skipping already processed: %s\n", depKey)
 			continue
 		}
 
-		manifest := newDownloadManifest(dep.Name)
-
-		if err := manifest.download(); err != nil {
-			return err
-
-		}
-
-		fmt.Printf("Downloading dependency: %s: %s\n", dep.Name, dep.Version)
 		processed[depKey] = true
 		pm.processedPackages = append(pm.processedPackages, dep)
 
-		tarballURL := fmt.Sprintf("%s%s/-/%s-%s.tgz", pm.registryURL, dep.Name, dep.Name, dep.Version)
-		tarball := newDownloadTarball(tarballURL)
-		if err := tarball.download(); err != nil {
-			fmt.Printf("Error downloading %s: %v\n", dep.Name, err)
-			return err
-		}
-
 		extractionPath := fmt.Sprintf("%s%s", pm.extractedPath, dep.Name)
-		tarballFile := path.Join("tarball", path.Base(tarballURL))
-		extractor := newTGZExtractor(tarballFile, extractionPath)
-		if err := extractor.extract(); err != nil {
-			fmt.Printf("Error extracting %s: %v\n", dep.Name, err)
-			return err
-		}
-
-		packageJson := newPackageJSONParser(path.Join(extractionPath, "package.json"))
-		data, err := packageJson.parse()
+		data, err := downloadPackage(dep.Name, dep.Version, extractionPath)
 		if err != nil {
-			fmt.Printf("Error parsing package.json for %s: %v\n", dep.Name, err)
 			return err
 		}
 
 		for depName, depVersion := range data.Dependencies {
-			if depName == "wrappy" {
-				fmt.Println("Debug stop")
-			}
 			v := strings.Replace(depVersion, "^", "", 1)
 			subDepKey := fmt.Sprintf("%s@%s", depName, v)
 			if !processed[subDepKey] {
@@ -209,17 +148,8 @@ func main() {
 	// 	return
 	// }
 
-	// packageName := os.Args[1]
-	// v1 := "v2.9.0" // Note: requires 'v' prefix
-	// v2 := "v1.10.0"
-
-	// // Compare versions
-	// result := semver.Compare(v1, v2)
-	// fmt.Println(result)
-
-	// return
-
-	packageManager, err := newPackageManager("express", "^5.0.0")
+	// packageManager, err := newPackageManager("express", "^5.0.0")
+	packageManager, err := newPackageManager("fastify", "")
 	if err != nil {
 		fmt.Println("Error:", err)
 		return
@@ -227,11 +157,6 @@ func main() {
 
 	if err := packageManager.downloadDependencies(); err != nil {
 		fmt.Println("Error downloading dependencies:", err)
-		return
-	}
-
-	if err := packageManager.saveDependenciesToJSON("dependencies.json"); err != nil {
-		fmt.Println("Error saving dependencies to JSON:", err)
 		return
 	}
 
