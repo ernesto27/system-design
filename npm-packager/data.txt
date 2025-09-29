@@ -1,0 +1,13 @@
+PACKAGES 
+
+DOWNLOAD MANIFEST
+DOWNLOAD TARBALL 
+DECOMPRESS TARBALL 
+COPY PACKAGE  IN NODE MODULES 
+
+
+TODO 
+
+[X] - fix lib version,  add struct , test
+[] - Use .config folder 
+[] - use package json
