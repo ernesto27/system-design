@@ -1,6 +1,9 @@
 package main
 
-import "path/filepath"
+import (
+	"os"
+	"path/filepath"
+)
 
 type DownloadManifest struct {
 	packageName  string
@@ -17,6 +20,10 @@ func (d *DownloadManifest) getManifestURL() string {
 
 func (d *DownloadManifest) download() error {
 	url := d.getManifestURL()
-	filename := filepath.Join(d.manifestPath, d.packageName + ".json")
+	filename := filepath.Join(d.manifestPath, d.packageName+".json")
+
+	if _, err := os.Stat(filename); err == nil {
+		return nil
+	}
 	return downloadFile(url, filename)
 }

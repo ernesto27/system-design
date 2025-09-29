@@ -6,6 +6,7 @@ import (
 	"path"
 	"path/filepath"
 	"strings"
+	"time"
 )
 
 const npmResgistryURL = "https://registry.npmjs.org/"
@@ -22,6 +23,12 @@ func newDownloadTarball(url string, tarballPath string) *DownloadTarball {
 func (d *DownloadTarball) download() error {
 	filename := path.Base(d.url)
 	filePath := filepath.Join(d.tarballPath, filename)
+
+	// Check if file already exists,  do not download again
+	if _, err := os.Stat(filePath); err == nil {
+		return nil
+	}
+
 	return downloadFile(d.url, filePath)
 }
 
@@ -174,6 +181,8 @@ func (pm *PackageManager) downloadDependencies() error {
 }
 
 func main() {
+	startTime := time.Now()
+
 	// if len(os.Args) < 2 {
 	// 	fmt.Println("Usage: go run main.go <package-name>")
 	// 	return
@@ -190,4 +199,6 @@ func main() {
 		return
 	}
 
+	executionTime := time.Since(startTime)
+	fmt.Printf("\nExecution completed in: %v\n", executionTime)
 }
