@@ -9,5 +9,6 @@ COPY PACKAGE  IN NODE MODULES
 TODO 
 
 [X] - fix lib version,  add struct , test
-[] - Use .config folder 
-[] - use package json
+[X] - Use .config folder 
+[X] - use package json
+[] - Cache tarball,  do  not download if file exits  

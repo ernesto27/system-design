@@ -1,11 +1,14 @@
 package main
 
+import "path/filepath"
+
 type DownloadManifest struct {
-	packageName string
+	packageName  string
+	manifestPath string
 }
 
-func newDownloadManifest(name string) *DownloadManifest {
-	return &DownloadManifest{packageName: name}
+func newDownloadManifest(name string, manifestPath string) *DownloadManifest {
+	return &DownloadManifest{packageName: name, manifestPath: manifestPath}
 }
 
 func (d *DownloadManifest) getManifestURL() string {
@@ -14,6 +17,6 @@ func (d *DownloadManifest) getManifestURL() string {
 
 func (d *DownloadManifest) download() error {
 	url := d.getManifestURL()
-	filename := "manifest/" + d.packageName + ".json"
+	filename := filepath.Join(d.manifestPath, d.packageName + ".json")
 	return downloadFile(url, filename)
 }

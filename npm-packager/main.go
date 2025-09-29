@@ -2,24 +2,27 @@ package main
 
 import (
 	"fmt"
+	"os"
 	"path"
+	"path/filepath"
 	"strings"
 )
 
 const npmResgistryURL = "https://registry.npmjs.org/"
 
 type DownloadTarball struct {
-	url string
+	url         string
+	tarballPath string
 }
 
-func newDownloadTarball(url string) *DownloadTarball {
-	return &DownloadTarball{url: url}
+func newDownloadTarball(url string, tarballPath string) *DownloadTarball {
+	return &DownloadTarball{url: url, tarballPath: tarballPath}
 }
 
 func (d *DownloadTarball) download() error {
 	filename := path.Base(d.url)
-	tarballPath := path.Join("tarball", filename)
-	return downloadFile(d.url, tarballPath)
+	filePath := filepath.Join(d.tarballPath, filename)
+	return downloadFile(d.url, filePath)
 }
 
 type Dependency struct {
@@ -29,36 +32,65 @@ type Dependency struct {
 
 type PackageManager struct {
 	registryURL       string
-	pkg               string
 	dependencies      map[string]string
 	extractedPath     string
 	processedPackages []Dependency
+	configPath        string
+	manifestPath      string
+	tarballPath       string
 }
 
-func newPackageManager(pkg string, version string) (*PackageManager, error) {
-	extracted := "./node_modules/"
-	extractionPath := fmt.Sprintf("%s%s", extracted, pkg)
-	data, err := downloadPackage(pkg, version, extractionPath)
+func newPackageManager() (*PackageManager, error) {
+	homeDir, err := os.UserHomeDir()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get user home directory: %v", err)
+	}
+
+	configPath := filepath.Join(homeDir, ".config", "go-npm")
+	if err := createDir(configPath); err != nil {
+		return nil, err
+	}
+
+	manifestPath := filepath.Join(configPath, "manifest")
+	if err := createDir(manifestPath); err != nil {
+		return nil, err
+	}
+
+	tarballPath := filepath.Join(configPath, "tarball")
+	if err := createDir(tarballPath); err != nil {
+		return nil, err
+	}
+
+	// Get package json dependencies
+	packageJSON := newPackageJSONParser("package.json")
+	data, err := packageJSON.parse()
 	if err != nil {
 		return nil, err
 	}
 
+	fmt.Println("Dependencies found in package.json:")
+	for name, version := range data.Dependencies {
+		fmt.Printf("  %s: %s\n", name, version)
+	}
+
 	return &PackageManager{
 		registryURL:       "https://registry.npmjs.org/",
-		pkg:               pkg,
 		dependencies:      data.Dependencies,
-		extractedPath:     extracted,
+		extractedPath:     "./node_modules/",
 		processedPackages: make([]Dependency, 0),
+		configPath:        configPath,
+		manifestPath:      manifestPath,
+		tarballPath:       tarballPath,
 	}, nil
 }
 
-func downloadPackage(pkg string, version string, extractedPath string) (*PackageJSON, error) {
-	manifest := newDownloadManifest(pkg)
+func downloadPackage(pkg string, version string, extractedPath string, manifestPath string, tarballPath string) (*PackageJSON, error) {
+	manifest := newDownloadManifest(pkg, manifestPath)
 	if err := manifest.download(); err != nil {
 		return nil, err
 	}
 
-	jsonParser := newParseJsonManifest("manifest/" + pkg + ".json")
+	jsonParser := newParseJsonManifest(filepath.Join(manifestPath, pkg+".json"))
 	npmPackage, err := jsonParser.parse()
 	if err != nil {
 		return nil, err
@@ -81,12 +113,12 @@ func downloadPackage(pkg string, version string, extractedPath string) (*Package
 
 	tarballURL := fmt.Sprintf("%s%s/-/%s-%s.tgz", npmResgistryURL, pkg, tarballName, pkgVersion)
 
-	tarball := newDownloadTarball(tarballURL)
+	tarball := newDownloadTarball(tarballURL, tarballPath)
 	if err := tarball.download(); err != nil {
 		return nil, err
 	}
 
-	tarballFile := path.Join("tarball", path.Base(tarballURL))
+	tarballFile := filepath.Join(tarballPath, path.Base(tarballURL))
 	extractor := newTGZExtractor(tarballFile, extractedPath)
 	if err := extractor.extract(); err != nil {
 		return nil, err
@@ -106,8 +138,7 @@ func (pm *PackageManager) downloadDependencies() error {
 	queue := make([]Dependency, 0)
 
 	for name, version := range pm.dependencies {
-		v := strings.Replace(version, "^", "", 1)
-		queue = append(queue, Dependency{Name: name, Version: v})
+		queue = append(queue, Dependency{Name: name, Version: version})
 	}
 
 	for len(queue) > 0 {
@@ -124,7 +155,7 @@ func (pm *PackageManager) downloadDependencies() error {
 		pm.processedPackages = append(pm.processedPackages, dep)
 
 		extractionPath := fmt.Sprintf("%s%s", pm.extractedPath, dep.Name)
-		data, err := downloadPackage(dep.Name, dep.Version, extractionPath)
+		data, err := downloadPackage(dep.Name, dep.Version, extractionPath, pm.manifestPath, pm.tarballPath)
 		if err != nil {
 			return err
 		}
@@ -148,8 +179,7 @@ func main() {
 	// 	return
 	// }
 
-	// packageManager, err := newPackageManager("express", "^5.0.0")
-	packageManager, err := newPackageManager("fastify", "")
+	packageManager, err := newPackageManager()
 	if err != nil {
 		fmt.Println("Error:", err)
 		return

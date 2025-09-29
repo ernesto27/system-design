@@ -39,3 +39,13 @@ func downloadFile(url, filename string) error {
 	fmt.Printf("Downloaded: %s\n", filename)
 	return nil
 }
+
+func createDir(dirPath string) error {
+	if _, err := os.Stat(dirPath); os.IsNotExist(err) {
+		if err := os.Mkdir(dirPath, 0755); err != nil {
+			return fmt.Errorf("failed to create directory %s: %w", dirPath, err)
+		}
+		fmt.Printf("Created directory: %s\n", dirPath)
+	}
+	return nil
+}

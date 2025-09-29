@@ -56,28 +56,3 @@ func (p *PackageJSONParser) parse() (*PackageJSON, error) {
 
 	return &packageJSON, nil
 }
-
-func (p *PackageJSON) hasDependency(name string) bool {
-	if p.Dependencies != nil {
-		if _, exists := p.Dependencies[name]; exists {
-			return true
-		}
-	}
-	return false
-}
-
-func (p *PackageJSON) getDependencyVersion(name string) (string, bool) {
-	if p.Dependencies != nil {
-		if version, exists := p.Dependencies[name]; exists {
-			return version, true
-		}
-	}
-	return "", false
-}
-
-func (p *PackageJSON) getTotalDependencies() int {
-	if p.Dependencies != nil {
-		return len(p.Dependencies)
-	}
-	return 0
-}
