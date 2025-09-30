@@ -11,4 +11,5 @@ TODO
 [X] - fix lib version,  add struct , test
 [X] - Use .config folder 
 [X] - use package json
-[] - Cache tarball,  do  not download if file exits  
+[X] - Cache tarball,  do  not download if file exits
+[] - manifest download if new version exists   
