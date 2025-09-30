@@ -145,11 +145,10 @@ func (pm *PackageManager) downloadDependencies() error {
 		}
 
 		for depName, depVersion := range data.Dependencies {
-			v := strings.Replace(depVersion, "^", "", 1)
-			subDepKey := fmt.Sprintf("%s@%s", depName, v)
+			subDepKey := fmt.Sprintf("%s@%s", depName, depVersion)
 			if !processed[subDepKey] {
-				fmt.Printf("  Found sub-dependency: %s: %s (from %s)\n", depName, v, depVersion)
-				queue = append(queue, Dependency{Name: depName, Version: v})
+				fmt.Printf("  Found sub-dependency: %s: %s \n", depName, depVersion)
+				queue = append(queue, Dependency{Name: depName, Version: depVersion})
 			}
 		}
 	}
