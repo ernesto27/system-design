@@ -16,7 +16,7 @@ type PackageJSON struct {
 	Repository   any               `json:"repository"`
 	Homepage     string            `json:"homepage"`
 	Funding      any               `json:"funding"`
-	Keywords     []string          `json:"keywords"`
+	Keywords     any               `json:"keywords"`
 	Dependencies map[string]string `json:"dependencies"`
 	Engines      any               `json:"engines"`
 	Files        []string          `json:"files"`

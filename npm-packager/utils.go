@@ -29,10 +29,12 @@ func downloadFile(url, filename string) error {
 	if err != nil {
 		return fmt.Errorf("failed to create file: %w", err)
 	}
-	defer file.Close()
 
 	_, err = io.Copy(file, resp.Body)
+	file.Close()
+
 	if err != nil {
+		os.Remove(filename)
 		return fmt.Errorf("failed to write file: %w", err)
 	}
 
