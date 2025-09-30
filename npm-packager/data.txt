@@ -12,4 +12,35 @@ TODO
 [X] - Use .config folder 
 [X] - use package json
 [X] - Cache tarball,  do  not download if file exits
+[] - if dependecies in package.json update 
+[] - add command -install
+[] - add command -i package 
 [] - manifest download if new version exists   
+[X] - donwload packages in parallel
+[] - if package exists if node_modules skip uncompress
+
+
+
+express ETAG b8dd7dcd28522e9c7b03891e5602b80f
+
+
+
+curl -H "If-None-Match: b8dd7dcd28522e9c7b03891e5602b80f" -I https://registry.npmjs.org/express
+
+guardar etag en archivo.
+enviar en peticion para manifest 
+
+
+guardar etag relacionado a paquete,  
+
+
+    {
+        "express": {
+            "etag": "b8dd7dcd28522e9c7b03891e5602b80f"
+        },
+
+        "lodash": {
+            "etag": "b8dd7dcd28522e9c7b03891e5602b80f"
+        }
+    }
+

@@ -15,6 +15,7 @@ const npmResgistryURL = "https://registry.npmjs.org/"
 type Dependency struct {
 	Name    string
 	Version string
+	Etag    string
 }
 
 type Job struct {
@@ -31,10 +32,11 @@ type JobResult struct {
 type PackageManager struct {
 	dependencies      map[string]string
 	extractedPath     string
-	processedPackages []Dependency
+	processedPackages map[string]Dependency
 	configPath        string
 	manifestPath      string
 	tarballPath       string
+	etagPath          string
 
 	// Concurrency fields
 	processedMutex sync.Mutex
@@ -66,6 +68,11 @@ func newPackageManager() (*PackageManager, error) {
 		return nil, err
 	}
 
+	etagPath := filepath.Join(configPath, "etag")
+	if err := createDir(etagPath); err != nil {
+		return nil, err
+	}
+
 	// Get package json dependencies
 	packageJSON := newPackageJSONParser("package.json")
 	data, err := packageJSON.parse()
@@ -81,10 +88,11 @@ func newPackageManager() (*PackageManager, error) {
 	return &PackageManager{
 		dependencies:      data.Dependencies,
 		extractedPath:     "./node_modules/",
-		processedPackages: make([]Dependency, 0),
+		processedPackages: make(map[string]Dependency),
 		configPath:        configPath,
 		manifestPath:      manifestPath,
 		tarballPath:       tarballPath,
+		etagPath:          etagPath,
 
 		// Initialize concurrency fields
 		processed:   make(map[string]bool),
@@ -94,16 +102,24 @@ func newPackageManager() (*PackageManager, error) {
 	}, nil
 }
 
-func downloadPackage(pkg string, version string, extractedPath string, manifestPath string, tarballPath string) (*PackageJSON, error) {
-	manifest := newDownloadManifest(pkg, manifestPath)
-	if err := manifest.download(); err != nil {
-		return nil, err
+func downloadPackage(
+	pkg string,
+	version string,
+	extractedPath string,
+	manifestPath string,
+	tarballPath string,
+	etagPath string,
+) (*PackageJSON, string, error) {
+	manifest := newDownloadManifest(pkg, manifestPath, etagPath)
+	etag, err := manifest.download()
+	if err != nil {
+		return nil, "", err
 	}
 
 	jsonParser := newParseJsonManifest(filepath.Join(manifestPath, pkg+".json"))
 	npmPackage, err := jsonParser.parse()
 	if err != nil {
-		return nil, err
+		return nil, "", err
 	}
 
 	versionInfo := newVersionInfo(version, npmPackage)
@@ -125,22 +141,22 @@ func downloadPackage(pkg string, version string, extractedPath string, manifestP
 
 	tarball := newDownloadTarball(tarballURL, tarballPath)
 	if err := tarball.download(); err != nil {
-		return nil, err
+		return nil, "", err
 	}
 
 	tarballFile := filepath.Join(tarballPath, path.Base(tarballURL))
 	extractor := newTGZExtractor(tarballFile, extractedPath)
 	if err := extractor.extract(); err != nil {
-		return nil, err
+		return nil, "", err
 	}
 
 	packageJson := newPackageJSONParser(path.Join(extractedPath, "package.json"))
 	data, err := packageJson.parse()
 	if err != nil {
-		return nil, err
+		return nil, "", err
 	}
 
-	return data, nil
+	return data, etag, nil
 }
 
 func (pm *PackageManager) worker() {
@@ -150,7 +166,8 @@ func (pm *PackageManager) worker() {
 		dep := job.Dependency
 		extractionPath := fmt.Sprintf("%s%s", pm.extractedPath, dep.Name)
 
-		data, err := downloadPackage(dep.Name, dep.Version, extractionPath, pm.manifestPath, pm.tarballPath)
+		data, etag, err := downloadPackage(dep.Name, dep.Version, extractionPath, pm.manifestPath, pm.tarballPath, pm.etagPath)
+		dep.Etag = etag
 
 		result := JobResult{
 			Dependency: dep,
@@ -166,6 +183,10 @@ func (pm *PackageManager) worker() {
 }
 
 func (pm *PackageManager) downloadDependencies() error {
+	if err := os.RemoveAll(pm.extractedPath); err != nil {
+		return fmt.Errorf("failed to remove existing node_modules: %v", err)
+	}
+
 	for i := 0; i < pm.workerCount; i++ {
 		pm.wg.Add(1)
 		go pm.worker()
@@ -197,7 +218,7 @@ func (pm *PackageManager) downloadDependencies() error {
 					continue
 				}
 				pm.processed[depKey] = true
-				pm.processedPackages = append(pm.processedPackages, dep)
+				pm.processedPackages[depKey] = dep
 				pm.processedMutex.Unlock()
 
 				job := Job{
@@ -214,6 +235,11 @@ func (pm *PackageManager) downloadDependencies() error {
 				if result.Error != nil {
 					fmt.Printf("Error processing %s@%s: %v\n", result.Dependency.Name, result.Dependency.Version, result.Error)
 					os.Exit(1)
+				}
+
+				_, ok := pm.processedPackages[result.Dependency.Name+"@"+result.Dependency.Version]
+				if ok {
+					pm.processedPackages[result.Dependency.Name+"@"+result.Dependency.Version] = result.Dependency
 				}
 
 				// Add new dependencies to queue
@@ -242,20 +268,28 @@ func (pm *PackageManager) downloadDependencies() error {
 func main() {
 	startTime := time.Now()
 
-	// if len(os.Args) < 2 {
-	// 	fmt.Println("Usage: go run main.go <package-name>")
-	// 	return
-	// }
+	fmt.Println("All args:", os.Args)
 
-	packageManager, err := newPackageManager()
-	if err != nil {
-		fmt.Println("Error:", err)
-		return
+	var param string
+	if len(os.Args) > 1 {
+		param = os.Args[1]
 	}
 
-	if err := packageManager.downloadDependencies(); err != nil {
-		fmt.Println("Error downloading dependencies:", err)
-		return
+	switch param {
+	case "i":
+		packageManager, err := newPackageManager()
+		if err != nil {
+			fmt.Println("Error:", err)
+			return
+		}
+
+		if err := packageManager.downloadDependencies(); err != nil {
+			fmt.Println("Error downloading dependencies:", err)
+			return
+		}
+
+	default:
+		os.Exit(1)
 	}
 
 	executionTime := time.Since(startTime)

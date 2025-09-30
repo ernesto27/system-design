@@ -24,5 +24,6 @@ func (d *DownloadTarball) download() error {
 		return nil
 	}
 
-	return downloadFile(d.url, filePath)
+	_, err := downloadFile(d.url, filePath)
+	return err
 }

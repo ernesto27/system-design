@@ -48,7 +48,7 @@ func (v *VersionInfo) getVersion() string {
 	case strings.Contains(version, "||"):
 		return ""
 	case version == "*" || version == "latest":
-		return ""
+		return v.npmPackage.DistTags.Latest
 	case strings.Contains(version, "x") || strings.Contains(version, "X"):
 		return ""
 	default:
