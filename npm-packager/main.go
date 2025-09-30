@@ -11,34 +11,12 @@ import (
 
 const npmResgistryURL = "https://registry.npmjs.org/"
 
-type DownloadTarball struct {
-	url         string
-	tarballPath string
-}
-
-func newDownloadTarball(url string, tarballPath string) *DownloadTarball {
-	return &DownloadTarball{url: url, tarballPath: tarballPath}
-}
-
-func (d *DownloadTarball) download() error {
-	filename := path.Base(d.url)
-	filePath := filepath.Join(d.tarballPath, filename)
-
-	// Check if file already exists,  do not download again
-	if _, err := os.Stat(filePath); err == nil {
-		return nil
-	}
-
-	return downloadFile(d.url, filePath)
-}
-
 type Dependency struct {
 	Name    string
 	Version string
 }
 
 type PackageManager struct {
-	registryURL       string
 	dependencies      map[string]string
 	extractedPath     string
 	processedPackages []Dependency
@@ -81,7 +59,6 @@ func newPackageManager() (*PackageManager, error) {
 	}
 
 	return &PackageManager{
-		registryURL:       "https://registry.npmjs.org/",
 		dependencies:      data.Dependencies,
 		extractedPath:     "./node_modules/",
 		processedPackages: make([]Dependency, 0),
