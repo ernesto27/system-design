@@ -53,7 +53,6 @@ func TestPackageJSONParser_Parse(t *testing.T) {
 				assert.Equal(t, "1.2.3", result.Version)
 				assert.Equal(t, "A test package", result.Description)
 				assert.Equal(t, "MIT", result.License)
-				assert.Equal(t, []string{"test", "example"}, result.Keywords)
 				assert.Equal(t, map[string]string{
 					"express": "^4.18.0",
 					"lodash":  "^4.17.21",

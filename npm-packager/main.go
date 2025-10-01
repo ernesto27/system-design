@@ -107,8 +107,8 @@ func newPackageManager() (*PackageManager, error) {
 }
 
 func (pm *PackageManager) downloadPackage(pkg string, version string, extractedPath string, etag string) (*PackageJSON, string, error) {
-	manifest := newDownloadManifest(pkg, pm.manifestPath, pm.etagPath)
-	etag, err := manifest.download(etag)
+	manifest := newDownloadManifest(pkg, pm.manifestPath)
+	etag, _, err := manifest.download(etag)
 	if err != nil {
 		return nil, "", err
 	}

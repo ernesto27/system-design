@@ -14,6 +14,7 @@ TODO
 [X] - Cache tarball,  do  not download if file exits
 [X] - if dependecies in package.json update 
 [] - add tests
+[] - read package-lock.json
 [] - add command -install
 [] - add command -i package 
 [] - manifest download if new version exists   

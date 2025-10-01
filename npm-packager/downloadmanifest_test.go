@@ -1,6 +1,8 @@
 package main
 
 import (
+	"fmt"
+	"net/http"
 	"os"
 	"path/filepath"
 	"testing"
@@ -8,25 +10,33 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+// setupTestDirs creates temporary manifest directory for testing
+func setupTestDirs(t *testing.T) string {
+	tmpDir := t.TempDir()
+	manifestDir := filepath.Join(tmpDir, "manifests")
+	os.MkdirAll(manifestDir, 0755)
+	return manifestDir
+}
+
 func TestDownloadManifest_Download(t *testing.T) {
+	packageName := "express"
+
 	testCases := []struct {
 		name        string
 		setupFunc   func(t *testing.T) (string, string, string)
 		expectError bool
-		validate    func(t *testing.T, manifestPath string, packageName string)
+		validate    func(t *testing.T, manifestPath string, packageName string, statusCode int)
 	}{
 		{
-			name: "Download express manifest",
+			name: "Download express manifest without Etag",
 			setupFunc: func(t *testing.T) (string, string, string) {
-				tmpDir := t.TempDir()
-				manifestDir := filepath.Join(tmpDir, "manifests")
-				etagDir := filepath.Join(tmpDir, "etag")
-				os.MkdirAll(manifestDir, 0755)
-				os.MkdirAll(etagDir, 0755)
-				return manifestDir, etagDir, "express"
+				manifestDir := setupTestDirs(t)
+				return manifestDir, packageName, ""
 			},
 			expectError: false,
-			validate: func(t *testing.T, manifestPath string, packageName string) {
+			validate: func(t *testing.T, manifestPath string, packageName string, statusCode int) {
+				assert.Equal(t, http.StatusOK, statusCode, "Expected status code 200")
+
 				expectedFile := filepath.Join(manifestPath, packageName+".json")
 				_, err := os.Stat(expectedFile)
 				assert.NoError(t, err, "Manifest file should exist")
@@ -37,39 +47,35 @@ func TestDownloadManifest_Download(t *testing.T) {
 			},
 		},
 		{
-			name: "Skip download if express manifest already exists",
+			name: "Download express manifest with Etag (not modified)",
 			setupFunc: func(t *testing.T) (string, string, string) {
-				tmpDir := t.TempDir()
-				manifestDir := filepath.Join(tmpDir, "manifests")
-				etagDir := filepath.Join(tmpDir, "etag")
-				os.MkdirAll(manifestDir, 0755)
-				os.MkdirAll(etagDir, 0755)
+				manifestDir := setupTestDirs(t)
 
-				manifestFile := filepath.Join(manifestDir, "express.json")
-				os.WriteFile(manifestFile, []byte(`{"name":"express"}`), 0644)
+				manifest := newDownloadManifest(packageName, manifestDir)
+				etag, _, err := manifest.download("")
+				assert.NoError(t, err)
+				fmt.Println(etag)
 
-				return manifestDir, etagDir, "express"
+				return manifestDir, packageName, etag
 			},
 			expectError: false,
-			validate: func(t *testing.T, manifestPath string, packageName string) {
+			validate: func(t *testing.T, manifestPath string, packageName string, statusCode int) {
+				assert.Equal(t, http.StatusNotModified, statusCode, "Expected status code 304")
+
 				expectedFile := filepath.Join(manifestPath, packageName+".json")
-				content, err := os.ReadFile(expectedFile)
+				info, err := os.Stat(expectedFile)
 				assert.NoError(t, err)
-				assert.Contains(t, string(content), `"name":"express"`)
+				assert.Greater(t, info.Size(), int64(0), "File should not be empty")
 			},
 		},
 		{
 			name: "Error with invalid package name",
 			setupFunc: func(t *testing.T) (string, string, string) {
-				tmpDir := t.TempDir()
-				manifestDir := filepath.Join(tmpDir, "manifests")
-				etagDir := filepath.Join(tmpDir, "etag")
-				os.MkdirAll(manifestDir, 0755)
-				os.MkdirAll(etagDir, 0755)
-				return manifestDir, etagDir, "this-package-does-not-exist-12345678"
+				manifestDir := setupTestDirs(t)
+				return manifestDir, "this-package-does-not-exist-12345678", ""
 			},
 			expectError: true,
-			validate: func(t *testing.T, manifestPath string, packageName string) {
+			validate: func(t *testing.T, manifestPath string, packageName string, statusCode int) {
 				expectedFile := filepath.Join(manifestPath, packageName+".json")
 				info, err := os.Stat(expectedFile)
 				if err == nil {
@@ -81,9 +87,9 @@ func TestDownloadManifest_Download(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			manifestPath, etagPath, packageName := tc.setupFunc(t)
-			manifest := newDownloadManifest(packageName, manifestPath, etagPath)
-			_, err := manifest.download("")
+			manifestPath, packageName, etag := tc.setupFunc(t)
+			manifest := newDownloadManifest(packageName, manifestPath)
+			etag, statusCode, err := manifest.download(etag)
 
 			if tc.expectError {
 				assert.Error(t, err, "Expected an error")
@@ -91,7 +97,8 @@ func TestDownloadManifest_Download(t *testing.T) {
 				assert.NoError(t, err, "Expected no error")
 			}
 
-			tc.validate(t, manifestPath, packageName)
+			fmt.Println(etag)
+			tc.validate(t, manifestPath, packageName, statusCode)
 		})
 	}
 }
