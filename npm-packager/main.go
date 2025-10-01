@@ -37,6 +37,7 @@ type PackageManager struct {
 	manifestPath      string
 	tarballPath       string
 	etagPath          string
+	Etag              Etag
 
 	// Concurrency fields
 	processedMutex sync.Mutex
@@ -85,6 +86,8 @@ func newPackageManager() (*PackageManager, error) {
 		fmt.Printf("  %s: %s\n", name, version)
 	}
 
+	etag := newEtag(etagPath)
+
 	return &PackageManager{
 		dependencies:      data.Dependencies,
 		extractedPath:     "./node_modules/",
@@ -93,6 +96,7 @@ func newPackageManager() (*PackageManager, error) {
 		manifestPath:      manifestPath,
 		tarballPath:       tarballPath,
 		etagPath:          etagPath,
+		Etag:              *etag,
 
 		// Initialize concurrency fields
 		processed:   make(map[string]bool),
@@ -102,21 +106,14 @@ func newPackageManager() (*PackageManager, error) {
 	}, nil
 }
 
-func downloadPackage(
-	pkg string,
-	version string,
-	extractedPath string,
-	manifestPath string,
-	tarballPath string,
-	etagPath string,
-) (*PackageJSON, string, error) {
-	manifest := newDownloadManifest(pkg, manifestPath, etagPath)
-	etag, err := manifest.download()
+func (pm *PackageManager) downloadPackage(pkg string, version string, extractedPath string, etag string) (*PackageJSON, string, error) {
+	manifest := newDownloadManifest(pkg, pm.manifestPath, pm.etagPath)
+	etag, err := manifest.download(etag)
 	if err != nil {
 		return nil, "", err
 	}
 
-	jsonParser := newParseJsonManifest(filepath.Join(manifestPath, pkg+".json"))
+	jsonParser := newParseJsonManifest(filepath.Join(pm.manifestPath, pkg+".json"))
 	npmPackage, err := jsonParser.parse()
 	if err != nil {
 		return nil, "", err
@@ -139,12 +136,12 @@ func downloadPackage(
 
 	tarballURL := fmt.Sprintf("%s%s/-/%s-%s.tgz", npmResgistryURL, pkg, tarballName, pkgVersion)
 
-	tarball := newDownloadTarball(tarballURL, tarballPath)
+	tarball := newDownloadTarball(tarballURL, pm.tarballPath)
 	if err := tarball.download(); err != nil {
 		return nil, "", err
 	}
 
-	tarballFile := filepath.Join(tarballPath, path.Base(tarballURL))
+	tarballFile := filepath.Join(pm.tarballPath, path.Base(tarballURL))
 	extractor := newTGZExtractor(tarballFile, extractedPath)
 	if err := extractor.extract(); err != nil {
 		return nil, "", err
@@ -166,7 +163,9 @@ func (pm *PackageManager) worker() {
 		dep := job.Dependency
 		extractionPath := fmt.Sprintf("%s%s", pm.extractedPath, dep.Name)
 
-		data, etag, err := downloadPackage(dep.Name, dep.Version, extractionPath, pm.manifestPath, pm.tarballPath, pm.etagPath)
+		etag := pm.Etag.get(dep.Name)
+
+		data, etag, err := pm.downloadPackage(dep.Name, dep.Version, extractionPath, etag)
 		dep.Etag = etag
 
 		result := JobResult{
@@ -262,10 +261,20 @@ func (pm *PackageManager) downloadDependencies() error {
 	close(pm.jobChan)
 	pm.wg.Wait()
 
+	pm.Etag.setPackages(pm.processedPackages)
+	if err := pm.Etag.save(); err != nil {
+		return fmt.Errorf("failed to save etag data: %v", err)
+	}
+
 	return nil
 }
 
 func main() {
+
+	// etag, _ := downloadFile("https://registry.npmjs.org/express", "/tmp/express.json", "W/\"b8dd7dcd28522e9c7b03891e5602b80f\"")
+	// fmt.Println("ETag:", etag)
+	// return
+
 	startTime := time.Now()
 
 	fmt.Println("All args:", os.Args)

@@ -8,13 +8,27 @@ import (
 	"path/filepath"
 )
 
-// downloadFile downloads a file from the given URL and saves it to the specified filename
-func downloadFile(url, filename string) (string, error) {
-	resp, err := http.Get(url)
+func downloadFile(url, filename string, etag string) (string, error) {
+	req, err := http.NewRequest("GET", url, nil)
+	if err != nil {
+		return "", fmt.Errorf("failed to create request: %w", err)
+	}
+
+	if etag != "" {
+		req.Header.Set("If-None-Match", etag)
+	}
+
+	client := &http.Client{}
+	resp, err := client.Do(req)
 	if err != nil {
 		return "", fmt.Errorf("failed to fetch URL: %w", err)
 	}
 	defer resp.Body.Close()
+
+	if resp.StatusCode == http.StatusNotModified {
+		fmt.Printf("File not modified (304): %s\n", filename)
+		return etag, nil
+	}
 
 	if resp.StatusCode != http.StatusOK {
 		return "", fmt.Errorf("HTTP error: %d %s", resp.StatusCode, resp.Status)
