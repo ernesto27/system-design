@@ -12,7 +12,8 @@ TODO
 [X] - Use .config folder 
 [X] - use package json
 [X] - Cache tarball,  do  not download if file exits
-[] - if dependecies in package.json update 
+[X] - if dependecies in package.json update 
+[] - add tests
 [] - add command -install
 [] - add command -i package 
 [] - manifest download if new version exists   
