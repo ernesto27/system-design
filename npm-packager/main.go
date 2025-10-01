@@ -209,7 +209,7 @@ func (pm *PackageManager) downloadDependencies() error {
 				dep := queue[0]
 				queue = queue[1:]
 
-				depKey := fmt.Sprintf("%s@%s", dep.Name, dep.Version)
+				depKey := dep.Name
 
 				pm.processedMutex.Lock()
 				if pm.processed[depKey] {
@@ -237,14 +237,14 @@ func (pm *PackageManager) downloadDependencies() error {
 					os.Exit(1)
 				}
 
-				_, ok := pm.processedPackages[result.Dependency.Name+"@"+result.Dependency.Version]
+				_, ok := pm.processedPackages[result.Dependency.Name]
 				if ok {
-					pm.processedPackages[result.Dependency.Name+"@"+result.Dependency.Version] = result.Dependency
+					pm.processedPackages[result.Dependency.Name] = result.Dependency
 				}
 
 				// Add new dependencies to queue
 				for depName, depVersion := range result.NewDependencies {
-					subDepKey := fmt.Sprintf("%s@%s", depName, depVersion)
+					subDepKey := depName
 
 					pm.processedMutex.Lock()
 					if !pm.processed[subDepKey] {
