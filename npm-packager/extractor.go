@@ -74,7 +74,6 @@ func (e *TGZExtractor) extract() error {
 		}
 	}
 
-	fmt.Printf("Successfully extracted %s to %s\n", e.srcPath, e.destPath)
 	return nil
 }
 

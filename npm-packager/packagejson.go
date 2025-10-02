@@ -9,7 +9,7 @@ import (
 type PackageJSON struct {
 	Name         string            `json:"name"`
 	Description  string            `json:"description"`
-	Version      string            `json:"version"`
+	Version      any               `json:"version"`
 	Author       any               `json:"author"`
 	Contributors any               `json:"contributors"`
 	License      string            `json:"license"`

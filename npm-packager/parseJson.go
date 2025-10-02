@@ -13,10 +13,10 @@ type NPMPackage struct {
 	DistTags    DistTags          `json:"dist-tags"`
 	Versions    map[string]Version `json:"versions"`
 	Time        map[string]string `json:"time"`
-Bugs        Bugs              `json:"bugs"`
+Bugs        any               `json:"bugs"`
 	License     any               `json:"license"`
 	Homepage    string            `json:"homepage"`
-	Keywords    []string          `json:"keywords"`
+	Keywords    any               `json:"keywords"`
 	Repository  Repository        `json:"repository"`
 	Description string            `json:"description"`
 	Contributors []Contributor    `json:"contributors"`
@@ -39,7 +39,7 @@ type Version struct {
 	ID           string                 `json:"_id"`
 	Maintainers  []Maintainer          `json:"maintainers"`
 	Homepage     string                 `json:"homepage"`
-	Bugs         Bugs                   `json:"bugs"`
+	Bugs         any                    `json:"bugs"`
 	Dist         Dist                   `json:"dist"`
 	From         string                 `json:"_from"`
 	Shasum       string                 `json:"_shasum"`
@@ -55,7 +55,7 @@ type Version struct {
 	Dependencies map[string]string      `json:"dependencies"`
 	DevDependencies map[string]string   `json:"devDependencies"`
 	HasShrinkwrap bool                  `json:"_hasShrinkwrap"`
-	Keywords     []string               `json:"keywords"`
+	Keywords     any                    `json:"keywords"`
 	Contributors []Contributor          `json:"contributors"`
 	Files        []string               `json:"files"`
 	NPMOperationalInternal NPMOperationalInternal `json:"_npmOperationalInternal"`

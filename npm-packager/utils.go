@@ -26,7 +26,6 @@ func downloadFile(url, filename string, etag string) (string, int, error) {
 	defer resp.Body.Close()
 
 	if resp.StatusCode == http.StatusNotModified {
-		fmt.Printf("File not modified (304): %s\n", filename)
 		return etag, resp.StatusCode, nil
 	}
 
@@ -52,7 +51,6 @@ func downloadFile(url, filename string, etag string) (string, int, error) {
 		return "", resp.StatusCode, fmt.Errorf("failed to write file: %w", err)
 	}
 
-	fmt.Printf("Downloaded: %s\n", filename)
 	return resp.Header.Get("ETag"), resp.StatusCode, nil
 }
 

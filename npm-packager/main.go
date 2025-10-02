@@ -20,13 +20,20 @@ type Dependency struct {
 
 type Job struct {
 	Dependency Dependency
+	ParentName string // Name of the parent package requesting this dependency
 	ResultChan chan<- JobResult
 }
 
 type JobResult struct {
 	Dependency      Dependency
+	ParentName      string
 	NewDependencies map[string]string
 	Error           error
+}
+
+type VersionConflict struct {
+	PackageName     string
+	RequestedBy     map[string]string // parent package -> version requested
 }
 
 type PackageManager struct {
@@ -38,14 +45,18 @@ type PackageManager struct {
 	tarballPath       string
 	etagPath          string
 	Etag              Etag
+	isAdd             bool
 
 	// Concurrency fields
 	processedMutex sync.Mutex
-	processed      map[string]bool
 	jobChan        chan Job
 	resultChan     chan JobResult
 	workerCount    int
 	wg             sync.WaitGroup
+
+	// Version conflict tracking
+	versionRequests map[string]map[string]string // package -> (parent -> version)
+	versionConflicts []VersionConflict
 }
 
 func newPackageManager() (*PackageManager, error) {
@@ -74,22 +85,10 @@ func newPackageManager() (*PackageManager, error) {
 		return nil, err
 	}
 
-	// Get package json dependencies
-	packageJSON := newPackageJSONParser("package.json")
-	data, err := packageJSON.parse()
-	if err != nil {
-		return nil, err
-	}
-
-	fmt.Println("Dependencies found in package.json:")
-	for name, version := range data.Dependencies {
-		fmt.Printf("  %s: %s\n", name, version)
-	}
-
 	etag := newEtag(etagPath)
 
 	return &PackageManager{
-		dependencies:      data.Dependencies,
+		dependencies:      make(map[string]string),
 		extractedPath:     "./node_modules/",
 		processedPackages: make(map[string]Dependency),
 		configPath:        configPath,
@@ -97,13 +96,40 @@ func newPackageManager() (*PackageManager, error) {
 		tarballPath:       tarballPath,
 		etagPath:          etagPath,
 		Etag:              *etag,
+		isAdd:             false,
 
 		// Initialize concurrency fields
-		processed:   make(map[string]bool),
 		jobChan:     make(chan Job, 100),
 		resultChan:  make(chan JobResult, 100),
 		workerCount: 5,
+
+		// Initialize version tracking
+		versionRequests: make(map[string]map[string]string),
+		versionConflicts: make([]VersionConflict, 0),
 	}, nil
+}
+
+func (pm *PackageManager) parsePackageJSON() error {
+	// Get package json dependencies
+	packageJSON := newPackageJSONParser("package.json")
+	data, err := packageJSON.parse()
+	if err != nil {
+		return err
+	}
+
+	fmt.Println("Dependencies found in package.json:")
+	for name, version := range data.Dependencies {
+		fmt.Printf("  %s: %s\n", name, version)
+	}
+
+	pm.dependencies = data.Dependencies
+
+	return nil
+}
+
+func (pm *PackageManager) setDependencies(pkg string, version string) {
+	pm.isAdd = true
+	pm.dependencies[pkg] = version
 }
 
 func (pm *PackageManager) downloadPackage(pkg string, version string, extractedPath string, etag string) (*PackageJSON, string, error) {
@@ -170,6 +196,7 @@ func (pm *PackageManager) worker() {
 
 		result := JobResult{
 			Dependency: dep,
+			ParentName: job.ParentName,
 			Error:      err,
 		}
 
@@ -182,8 +209,10 @@ func (pm *PackageManager) worker() {
 }
 
 func (pm *PackageManager) downloadDependencies() error {
-	if err := os.RemoveAll(pm.extractedPath); err != nil {
-		return fmt.Errorf("failed to remove existing node_modules: %v", err)
+	if !pm.isAdd {
+		if err := os.RemoveAll(pm.extractedPath); err != nil {
+			return fmt.Errorf("failed to remove existing node_modules: %v", err)
+		}
 	}
 
 	for i := 0; i < pm.workerCount; i++ {
@@ -191,10 +220,18 @@ func (pm *PackageManager) downloadDependencies() error {
 		go pm.worker()
 	}
 
-	queue := make([]Dependency, 0)
+	type QueueItem struct {
+		Dep        Dependency
+		ParentName string
+	}
+
+	queue := make([]QueueItem, 0)
 
 	for name, version := range pm.dependencies {
-		queue = append(queue, Dependency{Name: name, Version: version})
+		queue = append(queue, QueueItem{
+			Dep:        Dependency{Name: name, Version: version},
+			ParentName: "package.json",
+		})
 	}
 
 	activeJobs := 0
@@ -205,23 +242,31 @@ func (pm *PackageManager) downloadDependencies() error {
 
 		for len(queue) > 0 || activeJobs > 0 {
 			if len(queue) > 0 && activeJobs < pm.workerCount {
-				dep := queue[0]
+				item := queue[0]
 				queue = queue[1:]
 
+				dep := item.Dep
 				depKey := dep.Name
 
 				pm.processedMutex.Lock()
-				if pm.processed[depKey] {
+
+				// Track version request
+				if pm.versionRequests[depKey] == nil {
+					pm.versionRequests[depKey] = make(map[string]string)
+				}
+				pm.versionRequests[depKey][item.ParentName] = dep.Version
+
+				if _, exists := pm.processedPackages[depKey]; exists {
 					pm.processedMutex.Unlock()
-					fmt.Printf("Skipping already processed: %s\n", depKey)
+					// fmt.Printf("Skipping already processed: %s\n", depKey)
 					continue
 				}
-				pm.processed[depKey] = true
 				pm.processedPackages[depKey] = dep
 				pm.processedMutex.Unlock()
 
 				job := Job{
 					Dependency: dep,
+					ParentName: item.ParentName,
 					ResultChan: pm.resultChan,
 				}
 
@@ -246,9 +291,18 @@ func (pm *PackageManager) downloadDependencies() error {
 					subDepKey := depName
 
 					pm.processedMutex.Lock()
-					if !pm.processed[subDepKey] {
-						fmt.Printf("  Found sub-dependency: %s: %s\n", depName, depVersion)
-						queue = append(queue, Dependency{Name: depName, Version: depVersion})
+					if _, exists := pm.processedPackages[subDepKey]; !exists {
+						// fmt.Printf("  Found sub-dependency: %s: %s\n", depName, depVersion)
+						queue = append(queue, QueueItem{
+							Dep:        Dependency{Name: depName, Version: depVersion},
+							ParentName: result.Dependency.Name,
+						})
+					} else {
+						// Track version request even if already processed
+						if pm.versionRequests[subDepKey] == nil {
+							pm.versionRequests[subDepKey] = make(map[string]string)
+						}
+						pm.versionRequests[subDepKey][result.Dependency.Name] = depVersion
 					}
 					pm.processedMutex.Unlock()
 				}
@@ -261,12 +315,61 @@ func (pm *PackageManager) downloadDependencies() error {
 	close(pm.jobChan)
 	pm.wg.Wait()
 
+	// Detect and report version conflicts
+	pm.detectVersionConflicts()
+
 	pm.Etag.setPackages(pm.processedPackages)
 	if err := pm.Etag.save(); err != nil {
 		return fmt.Errorf("failed to save etag data: %v", err)
 	}
 
 	return nil
+}
+
+func (pm *PackageManager) detectVersionConflicts() {
+	fmt.Println("\n=== Version Conflict Detection ===")
+
+	hasConflicts := false
+
+	for pkgName, requesters := range pm.versionRequests {
+		if len(requesters) > 1 {
+			// Check if all versions are the same
+			versions := make(map[string]bool)
+			for _, version := range requesters {
+				versions[version] = true
+			}
+
+			// If more than one unique version is requested, it's a conflict
+			if len(versions) > 1 {
+				hasConflicts = true
+
+				conflict := VersionConflict{
+					PackageName: pkgName,
+					RequestedBy: requesters,
+				}
+				pm.versionConflicts = append(pm.versionConflicts, conflict)
+
+				fmt.Printf("\n⚠️  Package: %s\n", pkgName)
+				fmt.Printf("   Requested by %d different packages with different versions:\n", len(requesters))
+
+				for parent, version := range requesters {
+					fmt.Printf("   - %s requires %s\n", parent, version)
+				}
+
+				// Show which version was actually installed (the first one encountered)
+				if installedDep, ok := pm.processedPackages[pkgName]; ok {
+					fmt.Printf("   ✓ Installed version: %s\n", installedDep.Version)
+				}
+			}
+		}
+	}
+
+	if !hasConflicts {
+		fmt.Println("No version conflicts detected!")
+	} else {
+		fmt.Printf("\n⚠️  Total conflicts detected: %d\n", len(pm.versionConflicts))
+	}
+	fmt.Println("==================================")
 }
 
 func main() {
@@ -284,21 +387,45 @@ func main() {
 		param = os.Args[1]
 	}
 
+	packageManager, err := newPackageManager()
+	if err != nil {
+		fmt.Println("Error:", err)
+		return
+	}
+
 	switch param {
 	case "i":
-		packageManager, err := newPackageManager()
-		if err != nil {
-			fmt.Println("Error:", err)
+
+		if err := packageManager.parsePackageJSON(); err != nil {
+			fmt.Println("Error parsing package.json:", err)
 			return
 		}
 
-		if err := packageManager.downloadDependencies(); err != nil {
-			fmt.Println("Error downloading dependencies:", err)
-			return
+	case "add":
+		if len(os.Args) < 3 {
+			fmt.Println("Usage: go-npm add <package-name>@<version>")
+			os.Exit(1)
 		}
+		pkgArg := os.Args[2]
+		parts := strings.Split(pkgArg, "@")
+
+		pkg := parts[0]
+		version := ""
+		if len(parts) > 1 {
+			version = parts[1]
+		}
+		fmt.Println("pkg:", pkg)
+		fmt.Println("version:", version)
+
+		packageManager.setDependencies(pkg, version)
 
 	default:
 		os.Exit(1)
+	}
+
+	if err := packageManager.downloadDependencies(); err != nil {
+		fmt.Println("Error downloading dependencies:", err)
+		return
 	}
 
 	executionTime := time.Since(startTime)
