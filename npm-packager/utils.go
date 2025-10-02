@@ -63,3 +63,7 @@ func createDir(dirPath string) error {
 	}
 	return nil
 }
+
+func createDepKey(name, version, parentName string) string {
+	return name + "@" + version + "@" + parentName
+}

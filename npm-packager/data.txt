@@ -23,14 +23,47 @@ TODO
 
 
 
-express ETAG b8dd7dcd28522e9c7b03891e5602b80f
-
-
 
 curl -H "If-None-Match: b8dd7dcd28522e9c7b03891e5602b80f" -I https://registry.npmjs.org/express
 
 guardar etag en archivo.
 enviar en peticion para manifest 
+
+{
+    "express": {
+        "version": "4.17.1",
+        "dependencies": [
+            {
+                "name": "body-parser",
+                "version": "1.19.0"
+                "nested": false,
+            },
+            {
+                "name": "cookie-parser",
+                "version": "1.4.4"
+                "nested": false,
+            }
+        ]
+    },
+    "lodash": {
+        "version": "4.17.21",
+        "dependencies": [
+            {
+                "name": "lodash",
+                "version": "4.17.21"
+                "nested": false,
+            },
+            {
+                "name": "cookie-parser",
+                "version": "2.0.0"
+                "nested": true,
+            }
+        ]
+    }
+
+}
+
+
 
 
 guardar etag relacionado a paquete,  

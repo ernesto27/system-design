@@ -16,6 +16,7 @@ type Dependency struct {
 	Name    string
 	Version string
 	Etag    string
+	Nested  bool
 }
 
 type Job struct {
@@ -31,11 +32,6 @@ type JobResult struct {
 	Error           error
 }
 
-type VersionConflict struct {
-	PackageName     string
-	RequestedBy     map[string]string // parent package -> version requested
-}
-
 type PackageManager struct {
 	dependencies      map[string]string
 	extractedPath     string
@@ -44,20 +40,27 @@ type PackageManager struct {
 	manifestPath      string
 	tarballPath       string
 	etagPath          string
+	packagesPath      string
 	Etag              Etag
 	isAdd             bool
+	packages          Packages
 
-	// Concurrency fields
 	processedMutex sync.Mutex
+	packagesMutex  sync.Mutex
 	jobChan        chan Job
 	resultChan     chan JobResult
 	workerCount    int
 	wg             sync.WaitGroup
-
-	// Version conflict tracking
-	versionRequests map[string]map[string]string // package -> (parent -> version)
-	versionConflicts []VersionConflict
 }
+
+type Package struct {
+	Version            string `json:"version"`
+	Nested             bool
+	Dependencies       []Dependency `json:"dependencies"`
+	ParentDependencies []string
+}
+
+type Packages map[string]Package
 
 func newPackageManager() (*PackageManager, error) {
 	homeDir, err := os.UserHomeDir()
@@ -85,6 +88,11 @@ func newPackageManager() (*PackageManager, error) {
 		return nil, err
 	}
 
+	packagePath := filepath.Join(configPath, "packages")
+	if err := createDir(packagePath); err != nil {
+		return nil, err
+	}
+
 	etag := newEtag(etagPath)
 
 	return &PackageManager{
@@ -95,17 +103,15 @@ func newPackageManager() (*PackageManager, error) {
 		manifestPath:      manifestPath,
 		tarballPath:       tarballPath,
 		etagPath:          etagPath,
+		packagesPath:      packagePath,
 		Etag:              *etag,
 		isAdd:             false,
+		packages:          make(Packages),
 
 		// Initialize concurrency fields
 		jobChan:     make(chan Job, 100),
 		resultChan:  make(chan JobResult, 100),
 		workerCount: 5,
-
-		// Initialize version tracking
-		versionRequests: make(map[string]map[string]string),
-		versionConflicts: make([]VersionConflict, 0),
 	}, nil
 }
 
@@ -132,7 +138,14 @@ func (pm *PackageManager) setDependencies(pkg string, version string) {
 	pm.dependencies[pkg] = version
 }
 
-func (pm *PackageManager) downloadPackage(pkg string, version string, extractedPath string, etag string) (*PackageJSON, string, error) {
+func (pm *PackageManager) downloadPackage(
+	pkg string,
+	version string,
+	extractedPath string,
+	etag string,
+	parentPkg string,
+) (*PackageJSON, string, error) {
+
 	manifest := newDownloadManifest(pkg, pm.manifestPath)
 	etag, _, err := manifest.download(etag)
 	if err != nil {
@@ -167,6 +180,62 @@ func (pm *PackageManager) downloadPackage(pkg string, version string, extractedP
 		return nil, "", err
 	}
 
+	// if pkg == "router" {
+	// 	fmt.Println("Debug safe-buffer")
+	// }
+
+	// Protect all reads and writes to pm.packages map
+	pm.packagesMutex.Lock()
+	nested := false
+	if existingPkg, ok := pm.packages[pkg]; ok {
+		if existingPkg.Version != pkgVersion {
+			existingPkg.Nested = true
+			pm.packages[pkg] = existingPkg
+			nested = true
+			fmt.Println("Package already exists in packages map:", pkg)
+
+			for _, parent := range existingPkg.ParentDependencies {
+				if parentPkg, ok := pm.packages[parent]; ok {
+					for i, dep := range parentPkg.Dependencies {
+						if dep.Name == pkg {
+							d := parentPkg.Dependencies[i]
+							fmt.Println(d)
+							d.Nested = true
+							parentPkg.Dependencies[i] = d
+						}
+					}
+					pm.packages[parent] = parentPkg
+				}
+			}
+
+		}
+	} else {
+		pm.packages[pkg] = Package{
+			Version:            pkgVersion,
+			Dependencies:       make([]Dependency, 0),
+			ParentDependencies: []string{parentPkg},
+		}
+	}
+
+	dep := Dependency{
+		Name:    pkg,
+		Version: pkgVersion,
+		Etag:    etag,
+		Nested:  nested,
+	}
+
+	if parentPkg == "router" {
+		fmt.Println("Debug router parentPkg")
+	}
+
+	if parentPackage, exists := pm.packages[parentPkg]; exists {
+		parentPackage.Dependencies = append(parentPackage.Dependencies, dep)
+		pm.packages[parentPkg] = parentPackage
+	}
+	pm.packagesMutex.Unlock()
+
+	extractedPath = filepath.Join(extractedPath, fmt.Sprintf("/%s@%s", pkg, pkgVersion))
+
 	tarballFile := filepath.Join(pm.tarballPath, path.Base(tarballURL))
 	extractor := newTGZExtractor(tarballFile, extractedPath)
 	if err := extractor.extract(); err != nil {
@@ -187,11 +256,9 @@ func (pm *PackageManager) worker() {
 
 	for job := range pm.jobChan {
 		dep := job.Dependency
-		extractionPath := fmt.Sprintf("%s%s", pm.extractedPath, dep.Name)
-
 		etag := pm.Etag.get(dep.Name)
 
-		data, etag, err := pm.downloadPackage(dep.Name, dep.Version, extractionPath, etag)
+		data, etag, err := pm.downloadPackage(dep.Name, dep.Version, pm.packagesPath, etag, job.ParentName)
 		dep.Etag = etag
 
 		result := JobResult{
@@ -246,15 +313,9 @@ func (pm *PackageManager) downloadDependencies() error {
 				queue = queue[1:]
 
 				dep := item.Dep
-				depKey := dep.Name
+				depKey := createDepKey(dep.Name, dep.Version, item.ParentName)
 
 				pm.processedMutex.Lock()
-
-				// Track version request
-				if pm.versionRequests[depKey] == nil {
-					pm.versionRequests[depKey] = make(map[string]string)
-				}
-				pm.versionRequests[depKey][item.ParentName] = dep.Version
 
 				if _, exists := pm.processedPackages[depKey]; exists {
 					pm.processedMutex.Unlock()
@@ -288,21 +349,14 @@ func (pm *PackageManager) downloadDependencies() error {
 
 				// Add new dependencies to queue
 				for depName, depVersion := range result.NewDependencies {
-					subDepKey := depName
 
 					pm.processedMutex.Lock()
-					if _, exists := pm.processedPackages[subDepKey]; !exists {
+					if _, exists := pm.processedPackages[createDepKey(depName, depVersion, result.Dependency.Name)]; !exists {
 						// fmt.Printf("  Found sub-dependency: %s: %s\n", depName, depVersion)
 						queue = append(queue, QueueItem{
 							Dep:        Dependency{Name: depName, Version: depVersion},
 							ParentName: result.Dependency.Name,
 						})
-					} else {
-						// Track version request even if already processed
-						if pm.versionRequests[subDepKey] == nil {
-							pm.versionRequests[subDepKey] = make(map[string]string)
-						}
-						pm.versionRequests[subDepKey][result.Dependency.Name] = depVersion
 					}
 					pm.processedMutex.Unlock()
 				}
@@ -316,7 +370,13 @@ func (pm *PackageManager) downloadDependencies() error {
 	pm.wg.Wait()
 
 	// Detect and report version conflicts
-	pm.detectVersionConflicts()
+	// pm.detectVersionConflicts()
+
+	pc := newPackageCopy(pm.packagesPath, pm.extractedPath, pm.packages)
+	err := pc.copyPackages()
+	if err != nil {
+		return fmt.Errorf("failed to copy packages: %v", err)
+	}
 
 	pm.Etag.setPackages(pm.processedPackages)
 	if err := pm.Etag.save(); err != nil {
@@ -324,52 +384,6 @@ func (pm *PackageManager) downloadDependencies() error {
 	}
 
 	return nil
-}
-
-func (pm *PackageManager) detectVersionConflicts() {
-	fmt.Println("\n=== Version Conflict Detection ===")
-
-	hasConflicts := false
-
-	for pkgName, requesters := range pm.versionRequests {
-		if len(requesters) > 1 {
-			// Check if all versions are the same
-			versions := make(map[string]bool)
-			for _, version := range requesters {
-				versions[version] = true
-			}
-
-			// If more than one unique version is requested, it's a conflict
-			if len(versions) > 1 {
-				hasConflicts = true
-
-				conflict := VersionConflict{
-					PackageName: pkgName,
-					RequestedBy: requesters,
-				}
-				pm.versionConflicts = append(pm.versionConflicts, conflict)
-
-				fmt.Printf("\n⚠️  Package: %s\n", pkgName)
-				fmt.Printf("   Requested by %d different packages with different versions:\n", len(requesters))
-
-				for parent, version := range requesters {
-					fmt.Printf("   - %s requires %s\n", parent, version)
-				}
-
-				// Show which version was actually installed (the first one encountered)
-				if installedDep, ok := pm.processedPackages[pkgName]; ok {
-					fmt.Printf("   ✓ Installed version: %s\n", installedDep.Version)
-				}
-			}
-		}
-	}
-
-	if !hasConflicts {
-		fmt.Println("No version conflicts detected!")
-	} else {
-		fmt.Printf("\n⚠️  Total conflicts detected: %d\n", len(pm.versionConflicts))
-	}
-	fmt.Println("==================================")
 }
 
 func main() {
