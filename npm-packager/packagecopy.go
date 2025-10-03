@@ -5,6 +5,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"sync"
 )
 
 type PackageCopy struct {
@@ -26,17 +27,40 @@ func (pc *PackageCopy) copyPackages() error {
 		return fmt.Errorf("failed to create node_modules directory: %v", err)
 	}
 
+	var wg sync.WaitGroup
+	errChan := make(chan error, len(pc.packages))
+
 	for pkgName, pkg := range pc.packages {
-		sourcePkgPath := filepath.Join(pc.sourcePath, fmt.Sprintf("%s@%s", pkgName, pkg.Version))
-		targetPkgPath := filepath.Join(pc.targetPath, pkgName)
+		wg.Add(1)
+		go func(name string, p Package) {
+			defer wg.Done()
 
-		if err := pc.copyDirectory(sourcePkgPath, targetPkgPath); err != nil {
-			return fmt.Errorf("failed to copy package %s: %v", pkgName, err)
-		}
-		fmt.Printf("  ✓ Copied: %s@%s\n", pkgName, pkg.Version)
+			sourcePkgPath := filepath.Join(pc.sourcePath, fmt.Sprintf("%s@%s", name, p.Version))
+			targetPkgPath := filepath.Join(pc.targetPath, name)
 
-		if err := pc.handleNestedDependencies(pkgName, pkg, targetPkgPath); err != nil {
-			return fmt.Errorf("failed to handle nested dependencies for %s: %v", pkgName, err)
+			if err := pc.copyDirectory(sourcePkgPath, targetPkgPath); err != nil {
+				errChan <- fmt.Errorf("failed to copy package %s: %v", name, err)
+				return
+			}
+			fmt.Printf("  ✓ Copied: %s@%s\n", name, p.Version)
+
+			if err := pc.handleNestedDependencies(name, p, targetPkgPath); err != nil {
+				errChan <- fmt.Errorf("failed to handle nested dependencies for %s: %v", name, err)
+				return
+			}
+		}(pkgName, pkg)
+	}
+
+	// Close errChan when all goroutines complete
+	go func() {
+		wg.Wait()
+		close(errChan)
+	}()
+
+	// Return immediately on first error
+	for err := range errChan {
+		if err != nil {
+			return err
 		}
 	}
 

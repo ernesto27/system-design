@@ -15,11 +15,12 @@ TODO
 [X] - if dependecies in package.json update 
 [X] - add tests
 [] - read package-lock.json
+[] - Remove tarball file after decompress
 [X] - add command -install
 [] - Manage conflig differe lib version of packages
 [] - manifest download if new version exists   
 [X] - donwload packages in parallel
-[] - if package exists if node_modules skip uncompress
+[] - if package exists in config,  prevent download 
 
 
 

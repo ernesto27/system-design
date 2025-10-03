@@ -67,3 +67,11 @@ func createDir(dirPath string) error {
 func createDepKey(name, version, parentName string) string {
 	return name + "@" + version + "@" + parentName
 }
+
+func folderExists(dirPath string) bool {
+	info, err := os.Stat(dirPath)
+	if os.IsNotExist(err) {
+		return false
+	}
+	return err == nil && info.IsDir()
+}

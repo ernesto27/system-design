@@ -161,30 +161,6 @@ func (pm *PackageManager) downloadPackage(
 	versionInfo := newVersionInfo(version, npmPackage)
 	pkgVersion := versionInfo.getVersion()
 
-	var tarballName string
-	if strings.HasPrefix(pkg, "@") {
-		parts := strings.Split(pkg, "/")
-		if len(parts) == 2 {
-			tarballName = parts[1]
-		} else {
-			tarballName = pkg
-		}
-	} else {
-		tarballName = pkg
-	}
-
-	tarballURL := fmt.Sprintf("%s%s/-/%s-%s.tgz", npmResgistryURL, pkg, tarballName, pkgVersion)
-
-	tarball := newDownloadTarball(tarballURL, pm.tarballPath)
-	if err := tarball.download(); err != nil {
-		return nil, "", err
-	}
-
-	// if pkg == "router" {
-	// 	fmt.Println("Debug safe-buffer")
-	// }
-
-	// Protect all reads and writes to pm.packages map
 	pm.packagesMutex.Lock()
 	nested := false
 	if existingPkg, ok := pm.packages[pkg]; ok {
@@ -224,10 +200,6 @@ func (pm *PackageManager) downloadPackage(
 		Nested:  nested,
 	}
 
-	if parentPkg == "router" {
-		fmt.Println("Debug router parentPkg")
-	}
-
 	if parentPackage, exists := pm.packages[parentPkg]; exists {
 		parentPackage.Dependencies = append(parentPackage.Dependencies, dep)
 		pm.packages[parentPkg] = parentPackage
@@ -235,11 +207,33 @@ func (pm *PackageManager) downloadPackage(
 	pm.packagesMutex.Unlock()
 
 	extractedPath = filepath.Join(extractedPath, fmt.Sprintf("/%s@%s", pkg, pkgVersion))
+	isPackageFound := folderExists(extractedPath)
 
-	tarballFile := filepath.Join(pm.tarballPath, path.Base(tarballURL))
-	extractor := newTGZExtractor(tarballFile, extractedPath)
-	if err := extractor.extract(); err != nil {
-		return nil, "", err
+	if !isPackageFound {
+		var tarballName string
+		if strings.HasPrefix(pkg, "@") {
+			parts := strings.Split(pkg, "/")
+			if len(parts) == 2 {
+				tarballName = parts[1]
+			} else {
+				tarballName = pkg
+			}
+		} else {
+			tarballName = pkg
+		}
+
+		tarballURL := fmt.Sprintf("%s%s/-/%s-%s.tgz", npmResgistryURL, pkg, tarballName, pkgVersion)
+
+		tarball := newDownloadTarball(tarballURL, pm.tarballPath)
+		if err := tarball.download(); err != nil {
+			return nil, "", err
+		}
+
+		tarballFile := filepath.Join(pm.tarballPath, path.Base(tarballURL))
+		extractor := newTGZExtractor(tarballFile, extractedPath)
+		if err := extractor.extract(); err != nil {
+			return nil, "", err
+		}
 	}
 
 	packageJson := newPackageJSONParser(path.Join(extractedPath, "package.json"))

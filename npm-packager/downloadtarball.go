@@ -1,7 +1,6 @@
 package main
 
 import (
-	"os"
 	"path"
 	"path/filepath"
 )
@@ -18,11 +17,6 @@ func newDownloadTarball(url string, tarballPath string) *DownloadTarball {
 func (d *DownloadTarball) download() error {
 	filename := path.Base(d.url)
 	filePath := filepath.Join(d.tarballPath, filename)
-
-	// Check if file already exists,  do not download again
-	if _, err := os.Stat(filePath); err == nil {
-		return nil
-	}
 
 	_, _, err := downloadFile(d.url, filePath, "")
 	return err
