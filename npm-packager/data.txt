@@ -26,6 +26,16 @@ TODO
 [] - Creat tutorial
 
 
+	pm.Etag.setPackages(pm.processedPackages)
+	if err := pm.Etag.save(); err != nil {
+		return fmt.Errorf("failed to save etag data: %v", err)
+	}
+
+// if no package-lock exits
+// read package json .
+// Read manifest and get dependencies
+// Create packgejsonlock struct and file package-lock.json
+
 
 
 curl -H "If-None-Match: b8dd7dcd28522e9c7b03891e5602b80f" -I https://registry.npmjs.org/express

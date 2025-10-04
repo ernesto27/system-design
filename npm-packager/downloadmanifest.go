@@ -5,24 +5,18 @@ import (
 )
 
 type DownloadManifest struct {
-	packageName  string
 	manifestPath string
 }
 
-func newDownloadManifest(name string, manifestPath string) *DownloadManifest {
+func newDownloadManifest(manifestPath string) *DownloadManifest {
 	return &DownloadManifest{
-		packageName:  name,
 		manifestPath: manifestPath,
 	}
 }
 
-func (d *DownloadManifest) getManifestURL() string {
-	return npmResgistryURL + d.packageName
-}
-
-func (d *DownloadManifest) download(currentEtag string) (string, int, error) {
-	url := d.getManifestURL()
-	filename := filepath.Join(d.manifestPath, d.packageName+".json")
+func (d *DownloadManifest) download(pkg string, currentEtag string) (string, int, error) {
+	url := npmResgistryURL + pkg
+	filename := filepath.Join(d.manifestPath, pkg+".json")
 
 	// if _, err := os.Stat(filename); err == nil {
 	// 	return "", 0, nil

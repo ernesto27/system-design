@@ -45,9 +45,13 @@ type PackageManager struct {
 	isAdd             bool
 	packages          Packages
 	packageLock       *PackageLock
+	downloadManifest  *DownloadManifest
 	downloadTarball   *DownloadTarball
 	extractor         *TGZExtractor
 	packageCopy       *PackageCopy
+	parseJsonManifest *ParseJsonManifest
+	versionInfo       *VersionInfo
+	packageJsonParse  *PackageJSONParser
 
 	processedMutex sync.Mutex
 	packagesMutex  sync.Mutex
@@ -105,6 +109,9 @@ func newPackageManager() (*PackageManager, error) {
 
 	extractor := newTGZExtractor()
 	packageCopy := newPackageCopy("", "", make(Packages))
+	downloadManifest := newDownloadManifest(manifestPath)
+	parseJsonManifest := newParseJsonManifest()
+	versionInfo := newVersionInfo()
 
 	return &PackageManager{
 		dependencies:      make(map[string]string),
@@ -121,6 +128,9 @@ func newPackageManager() (*PackageManager, error) {
 		downloadTarball:   donwloadtarball,
 		extractor:         extractor,
 		packageCopy:       packageCopy,
+		downloadManifest:  downloadManifest,
+		parseJsonManifest: parseJsonManifest,
+		versionInfo:       versionInfo,
 
 		// Initialize concurrency fields
 		jobChan:     make(chan Job, 100),
@@ -129,20 +139,126 @@ func newPackageManager() (*PackageManager, error) {
 	}, nil
 }
 
+type QueueItem struct {
+	Dep        Dependency
+	ParentName string
+}
+
 func (pm *PackageManager) parsePackageJSON() error {
-	// Get package json dependencies
-	packageJSON := newPackageJSONParser("package.json")
-	data, err := packageJSON.parse()
+	_, err := os.Stat("1package-lock.json")
+	if err == nil {
+		return pm.parsePackageJSONLock()
+
+	}
+
+	if _, err := os.Stat("package.json"); os.IsNotExist(err) {
+		return fmt.Errorf("package.json not found in the current directory")
+	}
+
+	// // Get package json dependencies
+	packageJSON := newPackageJSONParser()
+	data, err := packageJSON.parse("package.json")
 	if err != nil {
 		return err
 	}
 
-	fmt.Println("Dependencies found in package.json:")
+	fmt.Println(data)
+
+	queue := make([]QueueItem, 0)
+
 	for name, version := range data.Dependencies {
-		fmt.Printf("  %s: %s\n", name, version)
+		queue = append(queue, QueueItem{
+			Dep:        Dependency{Name: name, Version: version},
+			ParentName: "package.json",
+		})
 	}
 
-	pm.dependencies = data.Dependencies
+	packageLock := PackageLock{}
+	packageLock.Packages = make(map[string]PackageItem)
+	packagesVersion := make(map[string]QueueItem)
+
+	for len(queue) > 0 {
+		item := queue[0]
+		queue = queue[1:]
+
+		if item.Dep.Name == "" {
+			continue
+		}
+
+		etag := pm.Etag.get(item.Dep.Name)
+		_, _, err := pm.downloadManifest.download(item.Dep.Name, etag)
+		if err != nil {
+			return err
+		}
+
+		npmPackage, err := pm.parseJsonManifest.parse(filepath.Join(pm.manifestPath, item.Dep.Name+".json"))
+		if err != nil {
+			return err
+		}
+
+		var packageResolved string
+		version := pm.versionInfo.getVersion(item.Dep.Version, npmPackage)
+		if _, ok := packagesVersion[item.Dep.Name]; ok {
+			if packagesVersion[item.Dep.Name].Dep.Version != version {
+				fmt.Println("Package Repeated:", item.Dep.Name)
+				fmt.Println("Resolved version:", version)
+				packageResolved = "node_modules/" + item.ParentName + "/node_modules/" + item.Dep.Name
+			} else {
+				continue
+			}
+		} else {
+			packageResolved = "node_modules/" + item.Dep.Name
+		}
+
+		// Todo check if packge exists in .cache
+		tarballURL := fmt.Sprintf("%s%s/-/%s-%s.tgz", npmResgistryURL, item.Dep.Name, item.Dep.Name, version)
+
+		err = pm.downloadTarball.download(tarballURL)
+		if err != nil {
+			return err
+		}
+
+		err = pm.extractor.extract(
+			filepath.Join(pm.tarballPath, path.Base(tarballURL)),
+			filepath.Join(pm.packagesPath, item.Dep.Name+"@"+version),
+		)
+
+		if err != nil {
+			return err
+		}
+
+		data, err := pm.packageJsonParse.parse(filepath.Join(pm.packagesPath, item.Dep.Name+"@"+version, "package.json"))
+		if err != nil {
+			return err
+		}
+
+		// Mark package as processed
+		packagesVersion[item.Dep.Name] = QueueItem{
+			Dep:        Dependency{Name: item.Dep.Name, Version: version},
+			ParentName: item.ParentName,
+		}
+		pckItem := PackageItem{
+			Version:  version,
+			Resolved: tarballURL,
+		}
+		packageLock.Packages[packageResolved] = pckItem
+
+		for name, version := range data.Dependencies {
+			queue = append(queue, QueueItem{
+				Dep:        Dependency{Name: name, Version: version},
+				ParentName: item.Dep.Name,
+			})
+		}
+	}
+
+	pm.packageLock = &packageLock
+
+	// fmt.Println("Dependencies found in package.json:")
+	// for name, version := range data.Dependencies {
+	// 	fmt.Printf("  %s: %s\n", name, version)
+	// }
+
+	// pm.dependencies = data.Dependencies
 
 	return nil
 }
@@ -152,249 +268,8 @@ func (pm *PackageManager) setDependencies(pkg string, version string) {
 	pm.dependencies[pkg] = version
 }
 
-func (pm *PackageManager) downloadPackage(
-	pkg string,
-	version string,
-	extractedPath string,
-	etag string,
-	parentPkg string,
-) (*PackageJSON, string, error) {
-
-	manifest := newDownloadManifest(pkg, pm.manifestPath)
-	etag, _, err := manifest.download(etag)
-	if err != nil {
-		return nil, "", err
-	}
-
-	jsonParser := newParseJsonManifest(filepath.Join(pm.manifestPath, pkg+".json"))
-	npmPackage, err := jsonParser.parse()
-	if err != nil {
-		return nil, "", err
-	}
-
-	versionInfo := newVersionInfo(version, npmPackage)
-	pkgVersion := versionInfo.getVersion()
-
-	pm.packagesMutex.Lock()
-	nested := false
-	if existingPkg, ok := pm.packages[pkg]; ok {
-		if existingPkg.Version != pkgVersion {
-			existingPkg.Nested = true
-			pm.packages[pkg] = existingPkg
-			nested = true
-			fmt.Println("Package already exists in packages map:", pkg)
-
-			for _, parent := range existingPkg.ParentDependencies {
-				if parentPkg, ok := pm.packages[parent]; ok {
-					for i, dep := range parentPkg.Dependencies {
-						if dep.Name == pkg {
-							d := parentPkg.Dependencies[i]
-							fmt.Println(d)
-							d.Nested = true
-							parentPkg.Dependencies[i] = d
-						}
-					}
-					pm.packages[parent] = parentPkg
-				}
-			}
-
-		}
-	} else {
-		pm.packages[pkg] = Package{
-			Version:            pkgVersion,
-			Dependencies:       make([]Dependency, 0),
-			ParentDependencies: []string{parentPkg},
-		}
-	}
-
-	dep := Dependency{
-		Name:    pkg,
-		Version: pkgVersion,
-		Etag:    etag,
-		Nested:  nested,
-	}
-
-	if parentPackage, exists := pm.packages[parentPkg]; exists {
-		parentPackage.Dependencies = append(parentPackage.Dependencies, dep)
-		pm.packages[parentPkg] = parentPackage
-	}
-	pm.packagesMutex.Unlock()
-
-	extractedPath = filepath.Join(extractedPath, fmt.Sprintf("/%s@%s", pkg, pkgVersion))
-	isPackageFound := folderExists(extractedPath)
-
-	if !isPackageFound {
-		var tarballName string
-		if strings.HasPrefix(pkg, "@") {
-			parts := strings.Split(pkg, "/")
-			if len(parts) == 2 {
-				tarballName = parts[1]
-			} else {
-				tarballName = pkg
-			}
-		} else {
-			tarballName = pkg
-		}
-
-		tarballURL := fmt.Sprintf("%s%s/-/%s-%s.tgz", npmResgistryURL, pkg, tarballName, pkgVersion)
-
-		if err := pm.downloadTarball.download(tarballURL); err != nil {
-			return nil, "", err
-		}
-
-		tarballFile := filepath.Join(pm.tarballPath, path.Base(tarballURL))
-
-		if err := pm.extractor.extract(tarballFile, extractedPath); err != nil {
-			return nil, "", err
-		}
-	}
-
-	packageJson := newPackageJSONParser(path.Join(extractedPath, "package.json"))
-	data, err := packageJson.parse()
-	if err != nil {
-		return nil, "", err
-	}
-
-	return data, etag, nil
-}
-
-func (pm *PackageManager) worker() {
-	defer pm.wg.Done()
-
-	for job := range pm.jobChan {
-		dep := job.Dependency
-		etag := pm.Etag.get(dep.Name)
-
-		data, etag, err := pm.downloadPackage(dep.Name, dep.Version, pm.packagesPath, etag, job.ParentName)
-		dep.Etag = etag
-
-		result := JobResult{
-			Dependency: dep,
-			ParentName: job.ParentName,
-			Error:      err,
-		}
-
-		if err == nil && data != nil {
-			result.NewDependencies = data.Dependencies
-		}
-
-		job.ResultChan <- result
-	}
-}
-
-func (pm *PackageManager) downloadDependencies() error {
-	if !pm.isAdd {
-		if err := os.RemoveAll(pm.extractedPath); err != nil {
-			return fmt.Errorf("failed to remove existing node_modules: %v", err)
-		}
-	}
-
-	for i := 0; i < pm.workerCount; i++ {
-		pm.wg.Add(1)
-		go pm.worker()
-	}
-
-	type QueueItem struct {
-		Dep        Dependency
-		ParentName string
-	}
-
-	queue := make([]QueueItem, 0)
-
-	for name, version := range pm.dependencies {
-		queue = append(queue, QueueItem{
-			Dep:        Dependency{Name: name, Version: version},
-			ParentName: "package.json",
-		})
-	}
-
-	activeJobs := 0
-	done := make(chan struct{})
-
-	go func() {
-		defer close(done)
-
-		for len(queue) > 0 || activeJobs > 0 {
-			if len(queue) > 0 && activeJobs < pm.workerCount {
-				item := queue[0]
-				queue = queue[1:]
-
-				dep := item.Dep
-				depKey := createDepKey(dep.Name, dep.Version, item.ParentName)
-
-				pm.processedMutex.Lock()
-
-				if _, exists := pm.processedPackages[depKey]; exists {
-					pm.processedMutex.Unlock()
-					// fmt.Printf("Skipping already processed: %s\n", depKey)
-					continue
-				}
-				pm.processedPackages[depKey] = dep
-				pm.processedMutex.Unlock()
-
-				job := Job{
-					Dependency: dep,
-					ParentName: item.ParentName,
-					ResultChan: pm.resultChan,
-				}
-
-				pm.jobChan <- job
-				activeJobs++
-			} else if activeJobs > 0 {
-				result := <-pm.resultChan
-				activeJobs--
-
-				if result.Error != nil {
-					fmt.Printf("Error processing %s@%s: %v\n", result.Dependency.Name, result.Dependency.Version, result.Error)
-					os.Exit(1)
-				}
-
-				_, ok := pm.processedPackages[result.Dependency.Name]
-				if ok {
-					pm.processedPackages[result.Dependency.Name] = result.Dependency
-				}
-
-				// Add new dependencies to queue
-				for depName, depVersion := range result.NewDependencies {
-
-					pm.processedMutex.Lock()
-					if _, exists := pm.processedPackages[createDepKey(depName, depVersion, result.Dependency.Name)]; !exists {
-						// fmt.Printf("  Found sub-dependency: %s: %s\n", depName, depVersion)
-						queue = append(queue, QueueItem{
-							Dep:        Dependency{Name: depName, Version: depVersion},
-							ParentName: result.Dependency.Name,
-						})
-					}
-					pm.processedMutex.Unlock()
-				}
-			}
-		}
-	}()
-
-	<-done
-
-	close(pm.jobChan)
-	pm.wg.Wait()
-
-	// Detect and report version conflicts
-	// pm.detectVersionConflicts()
-
-	pc := newPackageCopy(pm.packagesPath, pm.extractedPath, pm.packages)
-	err := pc.copyPackages()
-	if err != nil {
-		return fmt.Errorf("failed to copy packages: %v", err)
-	}
-
-	pm.Etag.setPackages(pm.processedPackages)
-	if err := pm.Etag.save(); err != nil {
-		return fmt.Errorf("failed to save etag data: %v", err)
-	}
-
-	return nil
-}
-
 func (pm *PackageManager) parsePackageJSONLock() error {
-	packageJSON := newPackageJSONParser("")
+	packageJSON := newPackageJSONParser()
 
 	data, err := packageJSON.parseLockFile()
 	if err != nil {
@@ -406,7 +281,13 @@ func (pm *PackageManager) parsePackageJSONLock() error {
 	return nil
 }
 
-func (pm *PackageManager) download2() error {
+func (pm *PackageManager) downloadFromPackageLock() error {
+	// Remove node_modules
+	err := os.RemoveAll(pm.extractedPath)
+	if err != nil {
+		return fmt.Errorf("failed to remove existing node_modules: %v", err)
+	}
+
 	var wg sync.WaitGroup
 	errChan := make(chan error, len(pm.packageLock.Packages))
 
@@ -419,14 +300,17 @@ func (pm *PackageManager) download2() error {
 		go func(name string, item PackageItem) {
 			defer wg.Done()
 
+			// Extract the package name (last part after the last /node_modules/)
 			namePkg := strings.TrimPrefix(name, "node_modules/")
+			pkgName := namePkg
 			if strings.Contains(namePkg, "/node_modules/") {
 				parts := strings.Split(namePkg, "/node_modules/")
-				namePkg = parts[len(parts)-1]
+				pkgName = parts[len(parts)-1]
 			}
 
-			pathPkg := path.Join(pm.packagesPath, namePkg+"@"+item.Version)
-			fmt.Println(namePkg, pathPkg)
+			// Use the cache path with package@version
+			pathPkg := path.Join(pm.packagesPath, pkgName+"@"+item.Version)
+			fmt.Println(pkgName, pathPkg)
 
 			exists := folderExists(pathPkg)
 			if !exists {
@@ -447,7 +331,10 @@ func (pm *PackageManager) download2() error {
 				}
 			}
 
-			err := pm.packageCopy.copyDirectory(pathPkg, path.Join(pm.extractedPath, namePkg))
+			// Preserve the nested structure by using the full path
+			// e.g., node_modules/body-parser/node_modules/debug
+			targetPath := path.Join(pm.extractedPath, namePkg)
+			err := pm.packageCopy.copyDirectory(pathPkg, targetPath)
 			if err != nil {
 				errChan <- err
 				return
@@ -490,12 +377,7 @@ func main() {
 		// if version package exist in config,  copy to node_modules
 		// if not download tarball and extract in cache and copy
 
-		// if err := packageManager.parsePackageJSON(); err != nil {
-		// 	fmt.Println("Error parsing package.json:", err)
-		// 	return
-		// }
-
-		if err := packageManager.parsePackageJSONLock(); err != nil {
+		if err := packageManager.parsePackageJSON(); err != nil {
 			fmt.Println("Error parsing package.json:", err)
 			return
 		}
@@ -527,7 +409,7 @@ func main() {
 	// 	return
 	// }
 
-	if err := packageManager.download2(); err != nil {
+	if err := packageManager.downloadFromPackageLock(); err != nil {
 		fmt.Println("Error downloading dependencies:", err)
 		return
 	}

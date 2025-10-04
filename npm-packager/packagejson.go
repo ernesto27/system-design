@@ -35,23 +35,22 @@ type Funding struct {
 }
 
 type PackageJSONParser struct {
-	filePath string
 }
 
-func newPackageJSONParser(path string) *PackageJSONParser {
-	return &PackageJSONParser{filePath: path}
+func newPackageJSONParser() *PackageJSONParser {
+	return &PackageJSONParser{}
 }
 
-func (p *PackageJSONParser) parse() (*PackageJSON, error) {
-	file, err := os.Open(p.filePath)
+func (p *PackageJSONParser) parse(filePath string) (*PackageJSON, error) {
+	file, err := os.Open(filePath)
 	if err != nil {
-		return nil, fmt.Errorf("failed to open file %s: %w", p.filePath, err)
+		return nil, fmt.Errorf("failed to open file %s: %w", filePath, err)
 	}
 	defer file.Close()
 
 	var packageJSON PackageJSON
 	if err := json.NewDecoder(file).Decode(&packageJSON); err != nil {
-		return nil, fmt.Errorf("failed to parse JSON from file %s: %w", p.filePath, err)
+		return nil, fmt.Errorf("failed to parse JSON from file %s: %w", filePath, err)
 	}
 
 	return &packageJSON, nil

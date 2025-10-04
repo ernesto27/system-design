@@ -7,33 +7,27 @@ import (
 )
 
 type VersionInfo struct {
-	version    string
-	npmPackage *NPMPackage
 }
 
-func newVersionInfo(version string, npmPackage *NPMPackage) *VersionInfo {
-	return &VersionInfo{
-		version:    version,
-		npmPackage: npmPackage,
-	}
+func newVersionInfo() *VersionInfo {
+	return &VersionInfo{}
 }
 
-func (v *VersionInfo) getVersion() string {
-	version := v.version
+func (v *VersionInfo) getVersion(version string, npmPackage *NPMPackage) string {
 
 	if version == "" {
-		return v.npmPackage.DistTags.Latest
+		return npmPackage.DistTags.Latest
 	}
 
 	switch {
 	case strings.HasPrefix(version, "^"):
-		caretVersion := v.getVersionCaret()
+		caretVersion := v.getVersionCaret(version, npmPackage)
 		return caretVersion
 	case strings.HasPrefix(version, "~"):
-		tildeVersion := v.getVersionTilde()
+		tildeVersion := v.getVersionTilde(version, npmPackage)
 		return tildeVersion
 	case strings.Contains(version, ">=") && (strings.Contains(version, "<") || strings.Contains(version, "<=")):
-		complexVersion := v.getVersionComplexRange()
+		complexVersion := v.getVersionComplexRange(version, npmPackage)
 		return complexVersion
 	case strings.HasPrefix(version, ">="):
 		return ""
@@ -48,30 +42,30 @@ func (v *VersionInfo) getVersion() string {
 	case strings.Contains(version, "||"):
 		return ""
 	case version == "*" || version == "latest":
-		return v.npmPackage.DistTags.Latest
+		return npmPackage.DistTags.Latest
 	case strings.Contains(version, "x") || strings.Contains(version, "X"):
 		return ""
 	default:
 		parts := strings.Split(version, ".")
 		if len(parts) == 3 {
-			npmVersion, exists := v.npmPackage.Versions[version]
+			npmVersion, exists := npmPackage.Versions[version]
 			if exists && npmVersion.Version == version {
 				return npmVersion.Version
 			}
 
 		}
-		return v.npmPackage.DistTags.Latest
+		return npmPackage.DistTags.Latest
 	}
 }
 
-func (v *VersionInfo) getVersionCaret() string {
-	baseVersion := strings.Replace(v.version, "^", "", 1)
+func (v *VersionInfo) getVersionCaret(version string, npmPackage *NPMPackage) string {
+	baseVersion := strings.Replace(version, "^", "", 1)
 	v1 := "v" + baseVersion
 
 	var bestVersion string
 	var bestSemver string
 
-	for k := range v.npmPackage.Versions {
+	for k := range npmPackage.Versions {
 		v2 := "v" + k
 		if semver.Compare(v2, v1) >= 0 {
 			majorBase := semver.Major(v1)
@@ -89,14 +83,14 @@ func (v *VersionInfo) getVersionCaret() string {
 	return bestVersion
 }
 
-func (v *VersionInfo) getVersionTilde() string {
-	baseVersion := strings.Replace(v.version, "~", "", 1)
+func (v *VersionInfo) getVersionTilde(version string, npmPackage *NPMPackage) string {
+	baseVersion := strings.Replace(version, "~", "", 1)
 	v1 := "v" + baseVersion
 
 	var bestVersion string
 	var bestSemver string
 
-	for k := range v.npmPackage.Versions {
+	for k := range npmPackage.Versions {
 		v2 := "v" + k
 		if semver.Compare(v2, v1) >= 0 {
 			// For tilde, we need to match the major and minor versions exactly
@@ -119,8 +113,7 @@ func (v *VersionInfo) getVersionTilde() string {
 	return bestVersion
 }
 
-func (v *VersionInfo) getVersionComplexRange() string {
-	version := v.version
+func (v *VersionInfo) getVersionComplexRange(version string, npmPackage *NPMPackage) string {
 
 	var lowerBound, upperBound string
 	var lowerInclusive, upperInclusive bool
@@ -151,7 +144,7 @@ func (v *VersionInfo) getVersionComplexRange() string {
 	var bestVersion string
 	var bestSemver string
 
-	for k := range v.npmPackage.Versions {
+	for k := range npmPackage.Versions {
 		vCandidate := "v" + k
 
 		// Check lower bound
