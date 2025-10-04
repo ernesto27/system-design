@@ -404,6 +404,10 @@ func main() {
 	switch param {
 	case "i":
 
+		// If pakcage.json lock exists read that file
+		// if version package exist in config,  copy to node_modules
+		// if not download tarball and extract in cache and copy
+
 		if err := packageManager.parsePackageJSON(); err != nil {
 			fmt.Println("Error parsing package.json:", err)
 			return

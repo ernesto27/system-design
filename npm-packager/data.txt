@@ -21,6 +21,9 @@ TODO
 [] - manifest download if new version exists   
 [X] - donwload packages in parallel
 [] - if package exists in config,  prevent download 
+[] - Fix race condition downloas same pakcage name verions but for different parent package
+
+[] - Creat tutorial
 
 
 
