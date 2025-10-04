@@ -44,6 +44,10 @@ type PackageManager struct {
 	Etag              Etag
 	isAdd             bool
 	packages          Packages
+	packageLock       *PackageLock
+	downloadTarball   *DownloadTarball
+	extractor         *TGZExtractor
+	packageCopy       *PackageCopy
 
 	processedMutex sync.Mutex
 	packagesMutex  sync.Mutex
@@ -94,6 +98,13 @@ func newPackageManager() (*PackageManager, error) {
 	}
 
 	etag := newEtag(etagPath)
+	donwloadtarball, err := newDownloadTarball(configPath)
+	if err != nil {
+		return nil, err
+	}
+
+	extractor := newTGZExtractor()
+	packageCopy := newPackageCopy("", "", make(Packages))
 
 	return &PackageManager{
 		dependencies:      make(map[string]string),
@@ -107,6 +118,9 @@ func newPackageManager() (*PackageManager, error) {
 		Etag:              *etag,
 		isAdd:             false,
 		packages:          make(Packages),
+		downloadTarball:   donwloadtarball,
+		extractor:         extractor,
+		packageCopy:       packageCopy,
 
 		// Initialize concurrency fields
 		jobChan:     make(chan Job, 100),
@@ -224,14 +238,13 @@ func (pm *PackageManager) downloadPackage(
 
 		tarballURL := fmt.Sprintf("%s%s/-/%s-%s.tgz", npmResgistryURL, pkg, tarballName, pkgVersion)
 
-		tarball := newDownloadTarball(tarballURL, pm.tarballPath)
-		if err := tarball.download(); err != nil {
+		if err := pm.downloadTarball.download(tarballURL); err != nil {
 			return nil, "", err
 		}
 
 		tarballFile := filepath.Join(pm.tarballPath, path.Base(tarballURL))
-		extractor := newTGZExtractor(tarballFile, extractedPath)
-		if err := extractor.extract(); err != nil {
+
+		if err := pm.extractor.extract(tarballFile, extractedPath); err != nil {
 			return nil, "", err
 		}
 	}
@@ -380,11 +393,80 @@ func (pm *PackageManager) downloadDependencies() error {
 	return nil
 }
 
-func main() {
+func (pm *PackageManager) parsePackageJSONLock() error {
+	packageJSON := newPackageJSONParser("")
 
-	// etag, _ := downloadFile("https://registry.npmjs.org/express", "/tmp/express.json", "W/\"b8dd7dcd28522e9c7b03891e5602b80f\"")
-	// fmt.Println("ETag:", etag)
-	// return
+	data, err := packageJSON.parseLockFile()
+	if err != nil {
+		return err
+	}
+
+	fmt.Println(data)
+	pm.packageLock = data
+	return nil
+}
+
+func (pm *PackageManager) download2() error {
+	var wg sync.WaitGroup
+	errChan := make(chan error, len(pm.packageLock.Packages))
+
+	for name, item := range pm.packageLock.Packages {
+		if name == "" {
+			continue
+		}
+
+		wg.Add(1)
+		go func(name string, item PackageItem) {
+			defer wg.Done()
+
+			namePkg := strings.TrimPrefix(name, "node_modules/")
+			if strings.Contains(namePkg, "/node_modules/") {
+				parts := strings.Split(namePkg, "/node_modules/")
+				namePkg = parts[len(parts)-1]
+			}
+
+			pathPkg := path.Join(pm.packagesPath, namePkg+"@"+item.Version)
+			fmt.Println(namePkg, pathPkg)
+
+			exists := folderExists(pathPkg)
+			if !exists {
+				// Download tarball
+				err := pm.downloadTarball.download(item.Resolved)
+				if err != nil {
+					errChan <- err
+					return
+				}
+
+				err = pm.extractor.extract(
+					filepath.Join(pm.tarballPath, path.Base(item.Resolved)),
+					pathPkg,
+				)
+				if err != nil {
+					errChan <- err
+					return
+				}
+			}
+
+			err := pm.packageCopy.copyDirectory(pathPkg, path.Join(pm.extractedPath, namePkg))
+			if err != nil {
+				errChan <- err
+				return
+			}
+		}(name, item)
+	}
+
+	wg.Wait()
+	close(errChan)
+
+	// Return first error if any
+	for err := range errChan {
+		return err
+	}
+
+	return nil
+}
+
+func main() {
 
 	startTime := time.Now()
 
@@ -408,7 +490,12 @@ func main() {
 		// if version package exist in config,  copy to node_modules
 		// if not download tarball and extract in cache and copy
 
-		if err := packageManager.parsePackageJSON(); err != nil {
+		// if err := packageManager.parsePackageJSON(); err != nil {
+		// 	fmt.Println("Error parsing package.json:", err)
+		// 	return
+		// }
+
+		if err := packageManager.parsePackageJSONLock(); err != nil {
 			fmt.Println("Error parsing package.json:", err)
 			return
 		}
@@ -435,7 +522,12 @@ func main() {
 		os.Exit(1)
 	}
 
-	if err := packageManager.downloadDependencies(); err != nil {
+	// if err := packageManager.downloadDependencies(); err != nil {
+	// 	fmt.Println("Error downloading dependencies:", err)
+	// 	return
+	// }
+
+	if err := packageManager.download2(); err != nil {
 		fmt.Println("Error downloading dependencies:", err)
 		return
 	}

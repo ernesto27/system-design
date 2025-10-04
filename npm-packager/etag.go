@@ -18,6 +18,7 @@ type EtagEntry struct {
 }
 
 func newEtag(etagPath string) *Etag {
+
 	etagData := make(map[string]EtagEntry)
 	etagFilePath := filepath.Join(etagPath, "etag.json")
 

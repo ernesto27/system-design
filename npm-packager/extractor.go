@@ -12,23 +12,19 @@ import (
 )
 
 type TGZExtractor struct {
-	srcPath    string
-	destPath   string
 	bufferSize int
 }
 
-func newTGZExtractor(srcPath, destPath string) *TGZExtractor {
+func newTGZExtractor() *TGZExtractor {
 	return &TGZExtractor{
-		srcPath:    srcPath,
-		destPath:   destPath,
 		bufferSize: 32 * 1024,
 	}
 }
 
-func (e *TGZExtractor) extract() error {
-	file, err := os.Open(e.srcPath)
+func (e *TGZExtractor) extract(srcPath, destPath string) error {
+	file, err := os.Open(srcPath)
 	if err != nil {
-		return fmt.Errorf("failed to open file %s: %w", e.srcPath, err)
+		return fmt.Errorf("failed to open file %s: %w", srcPath, err)
 	}
 	defer file.Close()
 
@@ -57,9 +53,9 @@ func (e *TGZExtractor) extract() error {
 		if relativePath == "" {
 			continue
 		}
-		target := filepath.Join(e.destPath, relativePath)
+		target := filepath.Join(destPath, relativePath)
 
-		if !e.isValidPath(target) {
+		if !e.isValidPath(target, destPath) {
 			fmt.Printf("Skipping unsafe path: %s\n", header.Name)
 			continue
 		}
@@ -77,8 +73,8 @@ func (e *TGZExtractor) extract() error {
 	return nil
 }
 
-func (e *TGZExtractor) isValidPath(target string) bool {
-	cleanDest := filepath.Clean(e.destPath) + string(os.PathSeparator)
+func (e *TGZExtractor) isValidPath(target string, destPath string) bool {
+	cleanDest := filepath.Clean(destPath) + string(os.PathSeparator)
 	cleanTarget := filepath.Clean(target)
 	return strings.HasPrefix(cleanTarget, cleanDest)
 }

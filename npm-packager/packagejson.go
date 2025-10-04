@@ -56,3 +56,36 @@ func (p *PackageJSONParser) parse() (*PackageJSON, error) {
 
 	return &packageJSON, nil
 }
+
+func (p *PackageJSONParser) parseLockFile() (*PackageLock, error) {
+	file, err := os.Open("package-lock.json")
+	if err != nil {
+		return nil, fmt.Errorf("failed to open file package-lock.json: %w", err)
+	}
+	defer file.Close()
+
+	var packageLock PackageLock
+
+	if err := json.NewDecoder(file).Decode(&packageLock); err != nil {
+		return nil, fmt.Errorf("failed to parse JSON from file package-lock.json: %w", err)
+	}
+
+	return &packageLock, nil
+}
+
+type PackageLock struct {
+	Name            string                 `json:"name"`
+	Version         string                 `json:"version"`
+	LockfileVersion int                    `json:"lockfileVersion"`
+	Requires        bool                   `json:"requires"`
+	Packages        map[string]PackageItem `json:"packages"`
+}
+
+type PackageItem struct {
+	Name         string            `json:"name,omitempty"`
+	Version      string            `json:"version,omitempty"`
+	Resolved     string            `json:"resolved,omitempty"`
+	Integrity    string            `json:"integrity,omitempty"`
+	License      string            `json:"license,omitempty"`
+	Dependencies map[string]string `json:"dependencies,omitempty"`
+}

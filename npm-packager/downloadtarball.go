@@ -6,18 +6,21 @@ import (
 )
 
 type DownloadTarball struct {
-	url         string
 	tarballPath string
 }
 
-func newDownloadTarball(url string, tarballPath string) *DownloadTarball {
-	return &DownloadTarball{url: url, tarballPath: tarballPath}
+func newDownloadTarball(configPath string) (*DownloadTarball, error) {
+	tarballPath := filepath.Join(configPath, "tarball")
+	if err := createDir(tarballPath); err != nil {
+		return nil, err
+	}
+	return &DownloadTarball{tarballPath: tarballPath}, nil
 }
 
-func (d *DownloadTarball) download() error {
-	filename := path.Base(d.url)
+func (d *DownloadTarball) download(url string) error {
+	filename := path.Base(url)
 	filePath := filepath.Join(d.tarballPath, filename)
 
-	_, _, err := downloadFile(d.url, filePath, "")
+	_, _, err := downloadFile(url, filePath, "")
 	return err
 }

@@ -14,7 +14,8 @@ TODO
 [X] - Cache tarball,  do  not download if file exits
 [X] - if dependecies in package.json update 
 [X] - add tests
-[] - read package-lock.json
+[X] - read package-lock.json
+[] - Create package-go-lock.json 
 [] - Remove tarball file after decompress
 [X] - add command -install
 [] - Manage conflig differe lib version of packages
@@ -22,7 +23,6 @@ TODO
 [X] - donwload packages in parallel
 [] - if package exists in config,  prevent download 
 [] - Fix race condition downloas same pakcage name verions but for different parent package
-
 [] - Creat tutorial
 
 
