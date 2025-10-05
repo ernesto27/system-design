@@ -1,4 +1,4 @@
-package main
+package utils
 
 import (
 	"fmt"
@@ -8,7 +8,7 @@ import (
 	"path/filepath"
 )
 
-func downloadFile(url, filename string, etag string) (string, int, error) {
+func DownloadFile(url, filename string, etag string) (string, int, error) {
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
 		return "", 0, fmt.Errorf("failed to create request: %w", err)
@@ -54,7 +54,7 @@ func downloadFile(url, filename string, etag string) (string, int, error) {
 	return resp.Header.Get("ETag"), resp.StatusCode, nil
 }
 
-func createDir(dirPath string) error {
+func CreateDir(dirPath string) error {
 	if _, err := os.Stat(dirPath); os.IsNotExist(err) {
 		if err := os.Mkdir(dirPath, 0755); err != nil {
 			return fmt.Errorf("failed to create directory %s: %w", dirPath, err)
@@ -64,11 +64,11 @@ func createDir(dirPath string) error {
 	return nil
 }
 
-func createDepKey(name, version, parentName string) string {
+func CreateDepKey(name, version, parentName string) string {
 	return name + "@" + version + "@" + parentName
 }
 
-func folderExists(dirPath string) bool {
+func FolderExists(dirPath string) bool {
 	info, err := os.Stat(dirPath)
 	if os.IsNotExist(err) {
 		return false

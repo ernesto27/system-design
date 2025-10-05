@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"io"
+	"npm-packager/utils"
 	"os"
 	"path/filepath"
 	"sync"
@@ -23,7 +24,7 @@ func newPackageCopy(sourcePath, targetPath string, packages Packages) *PackageCo
 }
 
 func (pc *PackageCopy) copyPackages() error {
-	if err := createDir(pc.targetPath); err != nil {
+	if err := utils.CreateDir(pc.targetPath); err != nil {
 		return fmt.Errorf("failed to create node_modules directory: %v", err)
 	}
 
@@ -72,7 +73,7 @@ func (pc *PackageCopy) handleNestedDependencies(pkgName string, pkg Package, tar
 	for _, dep := range pkg.Dependencies {
 		if dep.Nested {
 			nestedNodeModules := filepath.Join(targetPkgPath, "node_modules")
-			if err := createDir(nestedNodeModules); err != nil {
+			if err := utils.CreateDir(nestedNodeModules); err != nil {
 				return fmt.Errorf("failed to create nested node_modules: %v", err)
 			}
 

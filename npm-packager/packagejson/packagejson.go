@@ -1,10 +1,17 @@
-package main
+package packagejson
 
 import (
 	"encoding/json"
 	"fmt"
 	"os"
 )
+
+type Dependency struct {
+	Name    string
+	Version string
+	Etag    string
+	Nested  bool
+}
 
 type PackageJSON struct {
 	Name         string            `json:"name"`
@@ -35,16 +42,16 @@ type Funding struct {
 }
 
 type PackageJSONParser struct {
-	lockFileName string
+	LockFileName string
 }
 
-func newPackageJSONParser() *PackageJSONParser {
+func NewPackageJSONParser() *PackageJSONParser {
 	return &PackageJSONParser{
-		lockFileName: "go-package-lock.json",
+		LockFileName: "go-package-lock.json",
 	}
 }
 
-func (p *PackageJSONParser) parse(filePath string) (*PackageJSON, error) {
+func (p *PackageJSONParser) Parse(filePath string) (*PackageJSON, error) {
 	file, err := os.Open(filePath)
 	if err != nil {
 		return nil, fmt.Errorf("failed to open file %s: %w", filePath, err)
@@ -59,8 +66,8 @@ func (p *PackageJSONParser) parse(filePath string) (*PackageJSON, error) {
 	return &packageJSON, nil
 }
 
-func (p *PackageJSONParser) parseLockFile() (*PackageLock, error) {
-	file, err := os.Open(p.lockFileName)
+func (p *PackageJSONParser) ParseLockFile() (*PackageLock, error) {
+	file, err := os.Open(p.LockFileName)
 	if err != nil {
 		return nil, fmt.Errorf("failed to open file package-lock.json: %w", err)
 	}
@@ -75,8 +82,8 @@ func (p *PackageJSONParser) parseLockFile() (*PackageLock, error) {
 	return &packageLock, nil
 }
 
-func (p *PackageJSONParser) createLockFile(data *PackageLock) error {
-	file, err := os.Create(p.lockFileName)
+func (p *PackageJSONParser) CreateLockFile(data *PackageLock) error {
+	file, err := os.Create(p.LockFileName)
 
 	if err != nil {
 		return fmt.Errorf("failed to create file package-lock.json: %w", err)

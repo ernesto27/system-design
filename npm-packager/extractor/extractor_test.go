@@ -1,4 +1,4 @@
-package main
+package extractor
 
 import (
 	"archive/tar"
@@ -50,33 +50,30 @@ func createTestTarball(t *testing.T, path string, entries map[string]string) {
 func TestTGZExtractorStripPackagePrefix(t *testing.T) {
 	testCases := []struct {
 		name        string
-		setupFunc   func(t *testing.T) (*TGZExtractor, string)
+		inputPath   string
 		expectedVal string
 	}{
 		{
-			name: "Strip package prefix successfully",
-			setupFunc: func(t *testing.T) (*TGZExtractor, string) {
-				srcDir, destDir := setupTestExtractorDirs(t)
-				extractor := newTGZExtractor(srcDir, destDir)
-				return extractor, "package/index.js"
-			},
+			name:        "Strip package prefix successfully",
+			inputPath:   "package/index.js",
 			expectedVal: "index.js",
 		},
 		{
-			name: "Strip package prefix from nested path",
-			setupFunc: func(t *testing.T) (*TGZExtractor, string) {
-				srcDir, destDir := setupTestExtractorDirs(t)
-				extractor := newTGZExtractor(srcDir, destDir)
-				return extractor, "package/lib/utils.js"
-			},
+			name:        "Strip package prefix from nested path",
+			inputPath:   "package/lib/utils.js",
 			expectedVal: "lib/utils.js",
+		},
+		{
+			name:        "No package prefix - return as is",
+			inputPath:   "index.js",
+			expectedVal: "index.js",
 		},
 	}
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			extractor, path := tc.setupFunc(t)
-			result := extractor.stripPackagePrefix(path)
+			extractor := NewTGZExtractor()
+			result := extractor.stripPackagePrefix(tc.inputPath)
 			assert.Equal(t, tc.expectedVal, result)
 		})
 	}
@@ -85,13 +82,13 @@ func TestTGZExtractorStripPackagePrefix(t *testing.T) {
 func TestTGZExtractorExtract(t *testing.T) {
 	testCases := []struct {
 		name        string
-		setupFunc   func(t *testing.T) (string, string, string)
+		setupFunc   func(t *testing.T) (string, string)
 		expectError bool
 		validate    func(t *testing.T, destDir string, err error)
 	}{
 		{
 			name: "Extract tarball with package prefix successfully",
-			setupFunc: func(t *testing.T) (string, string, string) {
+			setupFunc: func(t *testing.T) (string, string) {
 				srcDir, destDir := setupTestExtractorDirs(t)
 				tarballPath := filepath.Join(srcDir, "test.tgz")
 
@@ -102,7 +99,7 @@ func TestTGZExtractorExtract(t *testing.T) {
 				}
 				createTestTarball(t, tarballPath, entries)
 
-				return tarballPath, destDir, srcDir
+				return tarballPath, destDir
 			},
 			expectError: false,
 			validate: func(t *testing.T, destDir string, err error) {
@@ -124,7 +121,7 @@ func TestTGZExtractorExtract(t *testing.T) {
 		},
 		{
 			name: "Extract tarball without package prefix",
-			setupFunc: func(t *testing.T) (string, string, string) {
+			setupFunc: func(t *testing.T) (string, string) {
 				srcDir, destDir := setupTestExtractorDirs(t)
 				tarballPath := filepath.Join(srcDir, "test.tgz")
 
@@ -134,7 +131,7 @@ func TestTGZExtractorExtract(t *testing.T) {
 				}
 				createTestTarball(t, tarballPath, entries)
 
-				return tarballPath, destDir, srcDir
+				return tarballPath, destDir
 			},
 			expectError: false,
 			validate: func(t *testing.T, destDir string, err error) {
@@ -149,10 +146,10 @@ func TestTGZExtractorExtract(t *testing.T) {
 		},
 		{
 			name: "Error with non-existent tarball file",
-			setupFunc: func(t *testing.T) (string, string, string) {
+			setupFunc: func(t *testing.T) (string, string) {
 				srcDir, destDir := setupTestExtractorDirs(t)
 				tarballPath := filepath.Join(srcDir, "nonexistent.tgz")
-				return tarballPath, destDir, srcDir
+				return tarballPath, destDir
 			},
 			expectError: true,
 			validate: func(t *testing.T, destDir string, err error) {
@@ -164,9 +161,9 @@ func TestTGZExtractorExtract(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			tarballPath, destDir, _ := tc.setupFunc(t)
-			extractor := newTGZExtractor(tarballPath, destDir)
-			err := extractor.extract()
+			tarballPath, destDir := tc.setupFunc(t)
+			extractor := NewTGZExtractor()
+			err := extractor.Extract(tarballPath, destDir)
 
 			if tc.expectError {
 				assert.Error(t, err, "Expected an error")

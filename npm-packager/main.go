@@ -2,6 +2,12 @@ package main
 
 import (
 	"fmt"
+	"npm-packager/etag"
+	"npm-packager/extractor"
+	"npm-packager/manifest"
+	"npm-packager/packagejson"
+	"npm-packager/tarball"
+	"npm-packager/utils"
 	"os"
 	"path"
 	"path/filepath"
@@ -12,21 +18,14 @@ import (
 
 const npmResgistryURL = "https://registry.npmjs.org/"
 
-type Dependency struct {
-	Name    string
-	Version string
-	Etag    string
-	Nested  bool
-}
-
 type Job struct {
-	Dependency Dependency
+	Dependency packagejson.Dependency
 	ParentName string // Name of the parent package requesting this dependency
 	ResultChan chan<- JobResult
 }
 
 type JobResult struct {
-	Dependency      Dependency
+	Dependency      packagejson.Dependency
 	ParentName      string
 	NewDependencies map[string]string
 	Error           error
@@ -35,36 +34,26 @@ type JobResult struct {
 type PackageManager struct {
 	dependencies      map[string]string
 	extractedPath     string
-	processedPackages map[string]Dependency
+	processedPackages map[string]packagejson.Dependency
 	configPath        string
-	manifestPath      string
-	tarballPath       string
-	etagPath          string
 	packagesPath      string
-	Etag              Etag
+	Etag              etag.Etag
 	isAdd             bool
 	packages          Packages
-	packageLock       *PackageLock
-	downloadManifest  *DownloadManifest
-	downloadTarball   *DownloadTarball
-	extractor         *TGZExtractor
+	packageLock       *packagejson.PackageLock
+	manifest          *manifest.Manifest
+	tarball           *tarball.Tarball
+	extractor         *extractor.TGZExtractor
 	packageCopy       *PackageCopy
 	parseJsonManifest *ParseJsonManifest
 	versionInfo       *VersionInfo
-	packageJsonParse  *PackageJSONParser
-
-	processedMutex sync.Mutex
-	packagesMutex  sync.Mutex
-	jobChan        chan Job
-	resultChan     chan JobResult
-	workerCount    int
-	wg             sync.WaitGroup
+	packageJsonParse  *packagejson.PackageJSONParser
 }
 
 type Package struct {
 	Version            string `json:"version"`
 	Nested             bool
-	Dependencies       []Dependency `json:"dependencies"`
+	Dependencies       []packagejson.Dependency `json:"dependencies"`
 	ParentDependencies []string
 }
 
@@ -77,68 +66,57 @@ func newPackageManager() (*PackageManager, error) {
 	}
 
 	configPath := filepath.Join(homeDir, ".config", "go-npm")
-	if err := createDir(configPath); err != nil {
-		return nil, err
-	}
-
-	etagPath := filepath.Join(configPath, "etag")
-	if err := createDir(etagPath); err != nil {
+	if err := utils.CreateDir(configPath); err != nil {
 		return nil, err
 	}
 
 	packagePath := filepath.Join(configPath, "packages")
-	if err := createDir(packagePath); err != nil {
+	if err := utils.CreateDir(packagePath); err != nil {
 		return nil, err
 	}
 
-	donwloadtarball := newDownloadTarball()
-
-	downloadManifest, err := newDownloadManifest(configPath)
+	manifest, err := manifest.NewManifest(configPath, npmResgistryURL)
+	if err != nil {
+		return nil, err
+	}
+	etag, err := etag.NewEtag(configPath)
 	if err != nil {
 		return nil, err
 	}
 
-	extractor := newTGZExtractor()
+	donwloadtarball := tarball.NewTarball()
+	extractor := extractor.NewTGZExtractor()
 	packageCopy := newPackageCopy("", "", make(Packages))
-	etag := newEtag(etagPath)
 	parseJsonManifest := newParseJsonManifest()
 	versionInfo := newVersionInfo()
-	packageJsonParse := newPackageJSONParser()
+	packageJsonParse := packagejson.NewPackageJSONParser()
 
 	return &PackageManager{
 		dependencies:      make(map[string]string),
 		extractedPath:     "./node_modules/",
-		processedPackages: make(map[string]Dependency),
+		processedPackages: make(map[string]packagejson.Dependency),
 		configPath:        configPath,
-		manifestPath:      downloadManifest.manifestPath,
-		tarballPath:       donwloadtarball.tarballPath,
-		etagPath:          etagPath,
 		packagesPath:      packagePath,
 		Etag:              *etag,
 		isAdd:             false,
 		packages:          make(Packages),
-		downloadTarball:   donwloadtarball,
+		tarball:           donwloadtarball,
 		extractor:         extractor,
 		packageCopy:       packageCopy,
-		downloadManifest:  downloadManifest,
+		manifest:          manifest,
 		parseJsonManifest: parseJsonManifest,
 		versionInfo:       versionInfo,
 		packageJsonParse:  packageJsonParse,
-
-		// Initialize concurrency fields
-		jobChan:     make(chan Job, 100),
-		resultChan:  make(chan JobResult, 100),
-		workerCount: 5,
 	}, nil
 }
 
 type QueueItem struct {
-	Dep        Dependency
+	Dep        packagejson.Dependency
 	ParentName string
 }
 
 func (pm *PackageManager) parsePackageJSON() error {
-	// _, err := os.Stat(pm.packageJsonParse.lockFileName)
+	//_, err := os.Stat(pm.packageJsonParse.LockFileName)
 	_, err := os.Stat("")
 	if err == nil {
 		return pm.parsePackageJSONLock()
@@ -149,10 +127,7 @@ func (pm *PackageManager) parsePackageJSON() error {
 		return fmt.Errorf("package.json not found in the current directory")
 
 	}
-
-	// // Get package json dependencies
-	packageJSON := newPackageJSONParser()
-	data, err := packageJSON.parse("package.json")
+	data, err := pm.packageJsonParse.Parse("package.json")
 	if err != nil {
 		return err
 	}
@@ -161,22 +136,21 @@ func (pm *PackageManager) parsePackageJSON() error {
 
 	for name, version := range data.Dependencies {
 		queue = append(queue, QueueItem{
-			Dep:        Dependency{Name: name, Version: version},
+			Dep:        packagejson.Dependency{Name: name, Version: version},
 			ParentName: "package.json",
 		})
 	}
 
-	packageLock := PackageLock{}
-	packageLock.Packages = make(map[string]PackageItem)
+	packageLock := packagejson.PackageLock{}
+	packageLock.Packages = make(map[string]packagejson.PackageItem)
 	packagesVersion := make(map[string]QueueItem)
 
 	var (
-		wg              sync.WaitGroup
-		mapMutex        sync.Mutex
-		activeWorkers   int
-		workerMutex     sync.Mutex
-		processingPkgs  = make(map[string]bool)
-		processingMutex sync.Mutex
+		wg             sync.WaitGroup
+		mapMutex       sync.Mutex
+		activeWorkers  int
+		workerMutex    sync.Mutex
+		processingPkgs = make(map[string]bool)
 	)
 
 	errChan := make(chan error, 1)
@@ -187,7 +161,6 @@ func (pm *PackageManager) parsePackageJSON() error {
 		workChan <- item
 	}
 
-	// Process work items
 	for {
 		workerMutex.Lock()
 		workers := activeWorkers
@@ -217,32 +190,14 @@ func (pm *PackageManager) parsePackageJSON() error {
 					return
 				}
 
-				// Check if error occurred
 				select {
 				case <-done:
 					return
 				default:
 				}
 
-				// Check if package is already being processed
-				// Fix this for nested node_modules
-				processingMutex.Lock()
-				if processingPkgs[item.Dep.Name] {
-					processingMutex.Unlock()
-					return
-				}
-				processingPkgs[item.Dep.Name] = true
-				processingMutex.Unlock()
-
-				// Ensure we mark processing as complete
-				defer func() {
-					processingMutex.Lock()
-					delete(processingPkgs, item.Dep.Name)
-					processingMutex.Unlock()
-				}()
-
-				etag := pm.Etag.get(item.Dep.Name)
-				currentEtag, _, err := pm.downloadManifest.download(item.Dep.Name, etag)
+				etag := pm.Etag.Get(item.Dep.Name)
+				currentEtag, _, err := pm.manifest.Download(item.Dep.Name, etag)
 				if err != nil {
 					select {
 					case errChan <- err:
@@ -252,7 +207,7 @@ func (pm *PackageManager) parsePackageJSON() error {
 					return
 				}
 
-				npmPackage, err := pm.parseJsonManifest.parse(filepath.Join(pm.manifestPath, item.Dep.Name+".json"))
+				npmPackage, err := pm.parseJsonManifest.parse(filepath.Join(pm.manifest.Path, item.Dep.Name+".json"))
 				if err != nil {
 					select {
 					case errChan <- err:
@@ -262,28 +217,59 @@ func (pm *PackageManager) parsePackageJSON() error {
 					return
 				}
 
-				var packageResolved string
 				version := pm.versionInfo.getVersion(item.Dep.Version, npmPackage)
+				packageKey := item.Dep.Name + "@" + version
+
+				// Determine the resolved path based on version conflicts
+				var packageResolved string
+				var shouldProcessDeps bool
 
 				mapMutex.Lock()
 				if existingPkg, ok := packagesVersion[item.Dep.Name]; ok {
+					// Package name already processed
 					if existingPkg.Dep.Version != version {
+						// Different version needed - install in nested node_modules
 						fmt.Println("Package Repeated:", item.Dep.Name)
 						fmt.Println("Resolved version:", version)
 						packageResolved = "node_modules/" + item.ParentName + "/node_modules/" + item.Dep.Name
+
+						// Check if this exact version@package combo was already processed
+						if _, processed := processingPkgs[packageKey]; processed {
+							// Already downloaded/extracted this version, just add to lock
+							shouldProcessDeps = false
+						} else {
+							// Need to download this version
+							processingPkgs[packageKey] = true
+							shouldProcessDeps = true
+						}
 					} else {
+						// Same version already resolved at top level, skip
 						mapMutex.Unlock()
 						return
 					}
 				} else {
+					// First time seeing this package name - install at top level
 					packageResolved = "node_modules/" + item.Dep.Name
+					packagesVersion[item.Dep.Name] = QueueItem{
+						Dep:        packagejson.Dependency{Name: item.Dep.Name, Version: version},
+						ParentName: item.ParentName,
+					}
+
+					if _, processed := processingPkgs[packageKey]; processed {
+						shouldProcessDeps = false
+					} else {
+						processingPkgs[packageKey] = true
+						shouldProcessDeps = true
+					}
 				}
 				mapMutex.Unlock()
 
 				configPackageVersion := filepath.Join(pm.packagesPath, item.Dep.Name+"@"+version)
 				tarballURL := fmt.Sprintf("%s%s/-/%s-%s.tgz", npmResgistryURL, item.Dep.Name, item.Dep.Name, version)
-				if !folderExists(configPackageVersion) {
-					err = pm.downloadTarball.download(tarballURL)
+
+				// Download and extract only if we haven't processed this exact version yet
+				if shouldProcessDeps && !utils.FolderExists(configPackageVersion) {
+					err = pm.tarball.Download(tarballURL)
 					if err != nil {
 						select {
 						case errChan <- err:
@@ -293,8 +279,8 @@ func (pm *PackageManager) parsePackageJSON() error {
 						return
 					}
 
-					err = pm.extractor.extract(
-						filepath.Join(pm.tarballPath, path.Base(tarballURL)),
+					err = pm.extractor.Extract(
+						filepath.Join(pm.tarball.TarballPath, path.Base(tarballURL)),
 						configPackageVersion,
 					)
 
@@ -308,23 +294,9 @@ func (pm *PackageManager) parsePackageJSON() error {
 					}
 				}
 
-				data, err := pm.packageJsonParse.parse(filepath.Join(pm.packagesPath, item.Dep.Name+"@"+version, "package.json"))
-				if err != nil {
-					select {
-					case errChan <- err:
-						close(done)
-					default:
-					}
-					return
-				}
-
-				// Mark package as processed
+				// Add to package lock
 				mapMutex.Lock()
-				packagesVersion[item.Dep.Name] = QueueItem{
-					Dep:        Dependency{Name: item.Dep.Name, Version: version},
-					ParentName: item.ParentName,
-				}
-				pckItem := PackageItem{
+				pckItem := packagejson.PackageItem{
 					Version:  version,
 					Resolved: tarballURL,
 					Etag:     currentEtag,
@@ -332,10 +304,23 @@ func (pm *PackageManager) parsePackageJSON() error {
 				packageLock.Packages[packageResolved] = pckItem
 				mapMutex.Unlock()
 
-				for name, version := range data.Dependencies {
-					workChan <- QueueItem{
-						Dep:        Dependency{Name: name, Version: version},
-						ParentName: item.Dep.Name,
+				// Only process dependencies if this is the first time we see this version
+				if shouldProcessDeps {
+					data, err := pm.packageJsonParse.Parse(filepath.Join(pm.packagesPath, item.Dep.Name+"@"+version, "package.json"))
+					if err != nil {
+						select {
+						case errChan <- err:
+							close(done)
+						default:
+						}
+						return
+					}
+
+					for name, version := range data.Dependencies {
+						workChan <- QueueItem{
+							Dep:        packagejson.Dependency{Name: name, Version: version},
+							ParentName: item.Dep.Name,
+						}
 					}
 				}
 			}(item)
@@ -359,7 +344,7 @@ func (pm *PackageManager) parsePackageJSON() error {
 
 	pm.packageLock = &packageLock
 
-	err = pm.packageJsonParse.createLockFile(&packageLock)
+	err = pm.packageJsonParse.CreateLockFile(&packageLock)
 	if err != nil {
 		return err
 	}
@@ -373,9 +358,9 @@ func (pm *PackageManager) setDependencies(pkg string, version string) {
 }
 
 func (pm *PackageManager) parsePackageJSONLock() error {
-	packageJSON := newPackageJSONParser()
+	packageJSON := packagejson.NewPackageJSONParser()
 
-	data, err := packageJSON.parseLockFile()
+	data, err := packageJSON.ParseLockFile()
 	if err != nil {
 		return err
 	}
@@ -400,7 +385,7 @@ func (pm *PackageManager) downloadFromPackageLock() error {
 		}
 
 		wg.Add(1)
-		go func(name string, item PackageItem) {
+		go func(name string, item packagejson.PackageItem) {
 			defer wg.Done()
 
 			namePkg := strings.TrimPrefix(name, "node_modules/")
@@ -412,17 +397,17 @@ func (pm *PackageManager) downloadFromPackageLock() error {
 
 			pathPkg := path.Join(pm.packagesPath, pkgName+"@"+item.Version)
 
-			exists := folderExists(pathPkg)
+			exists := utils.FolderExists(pathPkg)
 			if !exists {
 				// Download tarball
-				err := pm.downloadTarball.download(item.Resolved)
+				err := pm.tarball.Download(item.Resolved)
 				if err != nil {
 					errChan <- err
 					return
 				}
 
-				err = pm.extractor.extract(
-					filepath.Join(pm.tarballPath, path.Base(item.Resolved)),
+				err = pm.extractor.Extract(
+					filepath.Join(pm.tarball.TarballPath, path.Base(item.Resolved)),
 					pathPkg,
 				)
 				if err != nil {

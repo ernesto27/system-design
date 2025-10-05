@@ -1,14 +1,16 @@
-package main
+package etag
 
 import (
 	"encoding/json"
 	"fmt"
+	"npm-packager/packagejson"
+	"npm-packager/utils"
 	"os"
 	"path/filepath"
 )
 
 type Etag struct {
-	packages map[string]Dependency
+	packages map[string]packagejson.Dependency
 	etagPath string
 	etagData map[string]EtagEntry
 }
@@ -17,7 +19,11 @@ type EtagEntry struct {
 	Etag string `json:"etag"`
 }
 
-func newEtag(etagPath string) *Etag {
+func NewEtag(configPath string) (*Etag, error) {
+	etagPath := filepath.Join(configPath, "etag")
+	if err := utils.CreateDir(etagPath); err != nil {
+		return nil, err
+	}
 
 	etagData := make(map[string]EtagEntry)
 	etagFilePath := filepath.Join(etagPath, "etag.json")
@@ -31,21 +37,21 @@ func newEtag(etagPath string) *Etag {
 	return &Etag{
 		etagPath: etagPath,
 		etagData: etagData,
-	}
+	}, nil
 }
 
-func (e *Etag) setPackages(packages map[string]Dependency) {
+func (e *Etag) setPackages(packages map[string]packagejson.Dependency) {
 	e.packages = packages
 }
 
-func (e *Etag) get(packageName string) string {
+func (e *Etag) Get(packageName string) string {
 	if entry, ok := e.etagData[packageName]; ok {
 		return entry.Etag
 	}
 	return ""
 }
 
-func (e *Etag) save() error {
+func (e *Etag) Save() error {
 	etagFilePath := filepath.Join(e.etagPath, "etag.json")
 
 	for pkgName, dep := range e.packages {

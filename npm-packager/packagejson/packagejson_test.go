@@ -1,4 +1,4 @@
-package main
+package packagejson
 
 import (
 	"encoding/json"
@@ -98,8 +98,8 @@ func TestPackageJSONParser_Parse(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			filePath := tc.setupFile(t)
-			parser := newPackageJSONParser(filePath)
-			result, err := parser.parse()
+			parser := NewPackageJSONParser()
+			result, err := parser.Parse(filePath)
 
 			if tc.expectError {
 				assert.Error(t, err, "Expected an error")

@@ -1,4 +1,4 @@
-package main
+package extractor
 
 import (
 	"archive/tar"
@@ -15,13 +15,13 @@ type TGZExtractor struct {
 	bufferSize int
 }
 
-func newTGZExtractor() *TGZExtractor {
+func NewTGZExtractor() *TGZExtractor {
 	return &TGZExtractor{
 		bufferSize: 32 * 1024,
 	}
 }
 
-func (e *TGZExtractor) extract(srcPath, destPath string) error {
+func (e *TGZExtractor) Extract(srcPath, destPath string) error {
 	file, err := os.Open(srcPath)
 	if err != nil {
 		return fmt.Errorf("failed to open file %s: %w", srcPath, err)

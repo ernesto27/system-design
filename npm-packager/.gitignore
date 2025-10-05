@@ -4,3 +4,6 @@ extracted
 express
 manifest
 tests
+package-lock.json
+go-package-lock.json
+bun.lock 
