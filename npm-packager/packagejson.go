@@ -35,10 +35,13 @@ type Funding struct {
 }
 
 type PackageJSONParser struct {
+	lockFileName string
 }
 
 func newPackageJSONParser() *PackageJSONParser {
-	return &PackageJSONParser{}
+	return &PackageJSONParser{
+		lockFileName: "go-package-lock.json",
+	}
 }
 
 func (p *PackageJSONParser) parse(filePath string) (*PackageJSON, error) {
@@ -57,7 +60,7 @@ func (p *PackageJSONParser) parse(filePath string) (*PackageJSON, error) {
 }
 
 func (p *PackageJSONParser) parseLockFile() (*PackageLock, error) {
-	file, err := os.Open("package-lock.json")
+	file, err := os.Open(p.lockFileName)
 	if err != nil {
 		return nil, fmt.Errorf("failed to open file package-lock.json: %w", err)
 	}
@@ -70,6 +73,24 @@ func (p *PackageJSONParser) parseLockFile() (*PackageLock, error) {
 	}
 
 	return &packageLock, nil
+}
+
+func (p *PackageJSONParser) createLockFile(data *PackageLock) error {
+	file, err := os.Create(p.lockFileName)
+
+	if err != nil {
+		return fmt.Errorf("failed to create file package-lock.json: %w", err)
+	}
+	defer file.Close()
+
+	encoder := json.NewEncoder(file)
+	encoder.SetIndent("", "  ")
+
+	if err := encoder.Encode(data); err != nil {
+		return fmt.Errorf("failed to write JSON to file package-lock.json: %w", err)
+	}
+
+	return nil
 }
 
 type PackageLock struct {

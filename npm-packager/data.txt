@@ -15,7 +15,7 @@ TODO
 [X] - if dependecies in package.json update 
 [X] - add tests
 [X] - read package-lock.json
-[] - Create package-go-lock.json 
+[X] - Create package-go-lock.json 
 [] - Replace ETag when change 
 [] Run first downloadi n parallel
 [] - Remove tarball file after decompress
