@@ -81,16 +81,6 @@ func newPackageManager() (*PackageManager, error) {
 		return nil, err
 	}
 
-	manifestPath := filepath.Join(configPath, "manifest")
-	if err := createDir(manifestPath); err != nil {
-		return nil, err
-	}
-
-	tarballPath := filepath.Join(configPath, "tarball")
-	if err := createDir(tarballPath); err != nil {
-		return nil, err
-	}
-
 	etagPath := filepath.Join(configPath, "etag")
 	if err := createDir(etagPath); err != nil {
 		return nil, err
@@ -101,15 +91,19 @@ func newPackageManager() (*PackageManager, error) {
 		return nil, err
 	}
 
-	etag := newEtag(etagPath)
 	donwloadtarball, err := newDownloadTarball(configPath)
+	if err != nil {
+		return nil, err
+	}
+
+	downloadManifest, err := newDownloadManifest(configPath)
 	if err != nil {
 		return nil, err
 	}
 
 	extractor := newTGZExtractor()
 	packageCopy := newPackageCopy("", "", make(Packages))
-	downloadManifest := newDownloadManifest(manifestPath)
+	etag := newEtag(etagPath)
 	parseJsonManifest := newParseJsonManifest()
 	versionInfo := newVersionInfo()
 
@@ -118,8 +112,8 @@ func newPackageManager() (*PackageManager, error) {
 		extractedPath:     "./node_modules/",
 		processedPackages: make(map[string]Dependency),
 		configPath:        configPath,
-		manifestPath:      manifestPath,
-		tarballPath:       tarballPath,
+		manifestPath:      downloadManifest.manifestPath,
+		tarballPath:       donwloadtarball.tarballPath,
 		etagPath:          etagPath,
 		packagesPath:      packagePath,
 		Etag:              *etag,
@@ -186,7 +180,7 @@ func (pm *PackageManager) parsePackageJSON() error {
 		}
 
 		etag := pm.Etag.get(item.Dep.Name)
-		_, _, err := pm.downloadManifest.download(item.Dep.Name, etag)
+		currentEtag, _, err := pm.downloadManifest.download(item.Dep.Name, etag)
 		if err != nil {
 			return err
 		}
@@ -210,21 +204,23 @@ func (pm *PackageManager) parsePackageJSON() error {
 			packageResolved = "node_modules/" + item.Dep.Name
 		}
 
-		// Todo check if packge exists in .cache
+		configPackageVersion := filepath.Join(pm.packagesPath, item.Dep.Name+"@"+version)
 		tarballURL := fmt.Sprintf("%s%s/-/%s-%s.tgz", npmResgistryURL, item.Dep.Name, item.Dep.Name, version)
+		if !folderExists(configPackageVersion) {
 
-		err = pm.downloadTarball.download(tarballURL)
-		if err != nil {
-			return err
-		}
+			err = pm.downloadTarball.download(tarballURL)
+			if err != nil {
+				return err
+			}
 
-		err = pm.extractor.extract(
-			filepath.Join(pm.tarballPath, path.Base(tarballURL)),
-			filepath.Join(pm.packagesPath, item.Dep.Name+"@"+version),
-		)
+			err = pm.extractor.extract(
+				filepath.Join(pm.tarballPath, path.Base(tarballURL)),
+				configPackageVersion,
+			)
 
-		if err != nil {
-			return err
+			if err != nil {
+				return err
+			}
 		}
 
 		data, err := pm.packageJsonParse.parse(filepath.Join(pm.packagesPath, item.Dep.Name+"@"+version, "package.json"))
@@ -240,6 +236,7 @@ func (pm *PackageManager) parsePackageJSON() error {
 		pckItem := PackageItem{
 			Version:  version,
 			Resolved: tarballURL,
+			Etag:     currentEtag,
 		}
 		packageLock.Packages[packageResolved] = pckItem
 
@@ -276,7 +273,6 @@ func (pm *PackageManager) parsePackageJSONLock() error {
 		return err
 	}
 
-	fmt.Println(data)
 	pm.packageLock = data
 	return nil
 }
@@ -300,7 +296,6 @@ func (pm *PackageManager) downloadFromPackageLock() error {
 		go func(name string, item PackageItem) {
 			defer wg.Done()
 
-			// Extract the package name (last part after the last /node_modules/)
 			namePkg := strings.TrimPrefix(name, "node_modules/")
 			pkgName := namePkg
 			if strings.Contains(namePkg, "/node_modules/") {
@@ -308,7 +303,6 @@ func (pm *PackageManager) downloadFromPackageLock() error {
 				pkgName = parts[len(parts)-1]
 			}
 
-			// Use the cache path with package@version
 			pathPkg := path.Join(pm.packagesPath, pkgName+"@"+item.Version)
 			fmt.Println(pkgName, pathPkg)
 

@@ -8,10 +8,15 @@ type DownloadManifest struct {
 	manifestPath string
 }
 
-func newDownloadManifest(manifestPath string) *DownloadManifest {
+func newDownloadManifest(configPath string) (*DownloadManifest, error) {
+	manifestPath := filepath.Join(configPath, "manifest")
+	if err := createDir(manifestPath); err != nil {
+		return nil, err
+	}
+
 	return &DownloadManifest{
 		manifestPath: manifestPath,
-	}
+	}, nil
 }
 
 func (d *DownloadManifest) download(pkg string, currentEtag string) (string, int, error) {

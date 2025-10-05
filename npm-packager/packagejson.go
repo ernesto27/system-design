@@ -86,5 +86,6 @@ type PackageItem struct {
 	Resolved     string            `json:"resolved,omitempty"`
 	Integrity    string            `json:"integrity,omitempty"`
 	License      string            `json:"license,omitempty"`
+	Etag         string            `json:"etag,omitempty"`
 	Dependencies map[string]string `json:"dependencies,omitempty"`
 }
