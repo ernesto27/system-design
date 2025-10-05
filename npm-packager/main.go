@@ -91,10 +91,7 @@ func newPackageManager() (*PackageManager, error) {
 		return nil, err
 	}
 
-	donwloadtarball, err := newDownloadTarball(configPath)
-	if err != nil {
-		return nil, err
-	}
+	donwloadtarball := newDownloadTarball()
 
 	downloadManifest, err := newDownloadManifest(configPath)
 	if err != nil {
