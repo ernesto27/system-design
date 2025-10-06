@@ -17,6 +17,7 @@ TODO
 [X] - read package-lock.json
 [X] - Create package-go-lock.json 
 [ ] - Replace ETag when change 
+[ ] - Manage this kind of packages  .config/go-npm/packages/@types/triple-beam@1.3.5/package.json:
 [ ] Run first downloadi n parallel
 [ ] Fix tests 
 [ ] - Manage dev dependecies
