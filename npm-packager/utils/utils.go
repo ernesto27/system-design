@@ -30,7 +30,7 @@ func DownloadFile(url, filename string, etag string) (string, int, error) {
 	}
 
 	if resp.StatusCode != http.StatusOK {
-		return "", resp.StatusCode, fmt.Errorf("HTTP error: %d %s", resp.StatusCode, resp.Status)
+		return "", resp.StatusCode, fmt.Errorf("HTTP error: %s, %d %s", url, resp.StatusCode, resp.Status)
 	}
 
 	dir := filepath.Dir(filename)

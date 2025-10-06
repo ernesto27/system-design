@@ -18,7 +18,8 @@ TODO
 [X] - Create package-go-lock.json 
 [ ] - Replace ETag when change 
 [ ] Run first downloadi n parallel
-[ ] Fix tests
+[ ] Fix tests 
+[ ] - Manage dev dependecies
 [X] - Remove tarball file after decompress
 [X] - add command -install
 [ ] - Manage conflig differe lib version of packages

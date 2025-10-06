@@ -48,6 +48,8 @@ type PackageManager struct {
 	parseJsonManifest *ParseJsonManifest
 	versionInfo       *VersionInfo
 	packageJsonParse  *packagejson.PackageJSONParser
+	downloadMu        sync.Mutex
+	downloadLocks     map[string]*sync.Mutex
 }
 
 type Package struct {
@@ -107,6 +109,7 @@ func newPackageManager() (*PackageManager, error) {
 		parseJsonManifest: parseJsonManifest,
 		versionInfo:       versionInfo,
 		packageJsonParse:  packageJsonParse,
+		downloadLocks:     make(map[string]*sync.Mutex),
 	}, nil
 }
 
@@ -196,8 +199,49 @@ func (pm *PackageManager) parsePackageJSON() error {
 				default:
 				}
 
-				etag := pm.Etag.Get(item.Dep.Name)
-				currentEtag, _, err := pm.manifest.Download(item.Dep.Name, etag)
+				if item.Dep.Name == "debug" {
+					fmt.Println("Debug package requested by:", item.ParentName)
+				}
+
+				// Get or create a lock for this package's manifest
+				pm.downloadMu.Lock()
+				pkgLock, exists := pm.downloadLocks[item.Dep.Name]
+				if !exists {
+					pkgLock = &sync.Mutex{}
+					pm.downloadLocks[item.Dep.Name] = pkgLock
+				}
+				pm.downloadMu.Unlock()
+
+				// Lock only for manifest download and parse (not for tarball downloads)
+				pkgLock.Lock()
+
+				manifestPath := filepath.Join(pm.manifest.Path, item.Dep.Name+".json")
+				var currentEtag string
+
+				// Check if manifest already exists (inside lock to avoid race)
+				if _, err := os.Stat(manifestPath); err == nil {
+					// Manifest already downloaded by another goroutine, skip download
+					currentEtag = pm.Etag.Get(item.Dep.Name)
+				} else {
+					// First goroutine to process this package, download the manifest
+					etag := pm.Etag.Get(item.Dep.Name)
+					var downloadErr error
+					currentEtag, _, downloadErr = pm.manifest.Download(item.Dep.Name, etag)
+					if downloadErr != nil {
+						pkgLock.Unlock()
+						select {
+						case errChan <- downloadErr:
+							close(done)
+						default:
+						}
+						return
+					}
+				}
+
+				npmPackage, err := pm.parseJsonManifest.parse(manifestPath)
+				pkgLock.Unlock()
+				// Unlock immediately after parsing - different versions can now download tarballs in parallel
+
 				if err != nil {
 					select {
 					case errChan <- err:
@@ -207,18 +251,16 @@ func (pm *PackageManager) parsePackageJSON() error {
 					return
 				}
 
-				npmPackage, err := pm.parseJsonManifest.parse(filepath.Join(pm.manifest.Path, item.Dep.Name+".json"))
-				if err != nil {
-					select {
-					case errChan <- err:
-						close(done)
-					default:
-					}
-					return
+				if item.Dep.Name == "whatwg-url" {
+					fmt.Println(item.Dep.Name, item.Dep.Version)
 				}
 
 				version := pm.versionInfo.getVersion(item.Dep.Version, npmPackage)
 				packageKey := item.Dep.Name + "@" + version
+
+				if version == "" {
+					fmt.Println("Version not found for package:", item.Dep.Name, "with constraint:", item.Dep.Version)
+				}
 
 				// Determine the resolved path based on version conflicts
 				var packageResolved string
@@ -265,7 +307,15 @@ func (pm *PackageManager) parsePackageJSON() error {
 				mapMutex.Unlock()
 
 				configPackageVersion := filepath.Join(pm.packagesPath, item.Dep.Name+"@"+version)
-				tarballURL := fmt.Sprintf("%s%s/-/%s-%s.tgz", npmResgistryURL, item.Dep.Name, item.Dep.Name, version)
+
+				// Extract tarball name for scoped packages (@scope/package -> package)
+				tarballName := item.Dep.Name
+				if strings.HasPrefix(item.Dep.Name, "@") && strings.Contains(item.Dep.Name, "/") {
+					parts := strings.Split(item.Dep.Name, "/")
+					tarballName = parts[1]
+				}
+
+				tarballURL := fmt.Sprintf("%s%s/-/%s-%s.tgz", npmResgistryURL, item.Dep.Name, tarballName, version)
 
 				// Download and extract only if we haven't processed this exact version yet
 				if shouldProcessDeps && !utils.FolderExists(configPackageVersion) {

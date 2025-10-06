@@ -19,7 +19,7 @@ type NPMPackage struct {
 	Keywords       any                `json:"keywords"`
 	Repository     Repository         `json:"repository"`
 	Description    string             `json:"description"`
-	Contributors   []Contributor      `json:"contributors"`
+	Contributors   any                `json:"contributors"`
 	Maintainers    []Maintainer       `json:"maintainers"`
 	Readme         string             `json:"readme"`
 	ReadmeFilename string             `json:"readmeFilename"`
@@ -56,7 +56,7 @@ type Version struct {
 	DevDependencies        map[string]string      `json:"devDependencies"`
 	HasShrinkwrap          bool                   `json:"_hasShrinkwrap"`
 	Keywords               any                    `json:"keywords"`
-	Contributors           []Contributor          `json:"contributors"`
+	Contributors           any                    `json:"contributors"`
 	Files                  []string               `json:"files"`
 	NPMOperationalInternal NPMOperationalInternal `json:"_npmOperationalInternal"`
 	NPMSignature           string                 `json:"npm-signature"`
