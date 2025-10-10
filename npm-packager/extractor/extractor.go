@@ -99,8 +99,8 @@ func (e *TGZExtractor) extractFile(tr *tar.Reader, target string, header *tar.He
 }
 
 func (e *TGZExtractor) stripPackagePrefix(path string) string {
-	if after, ok := strings.CutPrefix(path, "package/"); ok {
-		return after
+	if idx := strings.Index(path, "/"); idx != -1 {
+		return path[idx+1:]
 	}
-	return path
+	return ""
 }

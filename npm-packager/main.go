@@ -251,10 +251,6 @@ func (pm *PackageManager) parsePackageJSON() error {
 					return
 				}
 
-				if item.Dep.Name == "whatwg-url" {
-					fmt.Println(item.Dep.Name, item.Dep.Version)
-				}
-
 				version := pm.versionInfo.getVersion(item.Dep.Version, npmPackage)
 				packageKey := item.Dep.Name + "@" + version
 
@@ -262,25 +258,19 @@ func (pm *PackageManager) parsePackageJSON() error {
 					fmt.Println("Version not found for package:", item.Dep.Name, "with constraint:", item.Dep.Version)
 				}
 
-				// Determine the resolved path based on version conflicts
 				var packageResolved string
 				var shouldProcessDeps bool
 
 				mapMutex.Lock()
 				if existingPkg, ok := packagesVersion[item.Dep.Name]; ok {
-					// Package name already processed
 					if existingPkg.Dep.Version != version {
-						// Different version needed - install in nested node_modules
 						fmt.Println("Package Repeated:", item.Dep.Name)
 						fmt.Println("Resolved version:", version)
 						packageResolved = "node_modules/" + item.ParentName + "/node_modules/" + item.Dep.Name
 
-						// Check if this exact version@package combo was already processed
 						if _, processed := processingPkgs[packageKey]; processed {
-							// Already downloaded/extracted this version, just add to lock
 							shouldProcessDeps = false
 						} else {
-							// Need to download this version
 							processingPkgs[packageKey] = true
 							shouldProcessDeps = true
 						}
@@ -356,7 +346,9 @@ func (pm *PackageManager) parsePackageJSON() error {
 
 				// Only process dependencies if this is the first time we see this version
 				if shouldProcessDeps {
-					data, err := pm.packageJsonParse.Parse(filepath.Join(pm.packagesPath, item.Dep.Name+"@"+version, "package.json"))
+					packageJsonPath := filepath.Join(pm.packagesPath, item.Dep.Name+"@"+version, "package.json")
+
+					data, err := pm.packageJsonParse.Parse(packageJsonPath)
 					if err != nil {
 						select {
 						case errChan <- err:
