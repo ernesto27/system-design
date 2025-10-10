@@ -31,6 +31,15 @@ TODO
 [ ] - Creat tutorial
 
 
+npm add 
+if package exists in package json,  continue 
+if not donwload package with dependencies, 
+update package.json 
+updat npm-go.lock.jgon
+if package in add have a different version,  download new version
+
+
+
 	pm.Etag.setPackages(pm.processedPackages)
 	if err := pm.Etag.save(); err != nil {
 		return fmt.Errorf("failed to save etag data: %v", err)

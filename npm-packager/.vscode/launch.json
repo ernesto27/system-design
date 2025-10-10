@@ -12,7 +12,8 @@
             "mode": "auto",
             "program": "${fileDirname}",
             // "args": ["add", "axios"],
-            "args": ["i"],
+            // "args": ["add", "body-parser@2.2.0"],
+            "args": ["add", "loadash"],
         }
     ]
 }

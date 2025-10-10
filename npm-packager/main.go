@@ -135,9 +135,142 @@ func (pm *PackageManager) parsePackageJSON() error {
 		return err
 	}
 
+	err = pm.download(*data)
+	if err != nil {
+		return err
+	}
+
+	err = pm.packageJsonParse.CreateLockFile(pm.packageLock)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (pm *PackageManager) parsePackageJSONLock() error {
+	packageJSON := packagejson.NewPackageJSONParser()
+
+	data, err := packageJSON.ParseLockFile()
+	if err != nil {
+		return err
+	}
+
+	pm.packageLock = data
+	return nil
+}
+
+func (pm *PackageManager) downloadFromPackageLock() error {
+	// Remove node_modules
+	err := os.RemoveAll(pm.extractedPath)
+	if err != nil {
+		return fmt.Errorf("failed to remove existing node_modules: %v", err)
+	}
+
+	var wg sync.WaitGroup
+	errChan := make(chan error, len(pm.packageLock.Packages))
+
+	for name, item := range pm.packageLock.Packages {
+		if name == "" {
+			continue
+		}
+
+		wg.Add(1)
+		go func(name string, item packagejson.PackageItem) {
+			defer wg.Done()
+
+			namePkg := strings.TrimPrefix(name, "node_modules/")
+			pkgName := namePkg
+			if strings.Contains(namePkg, "/node_modules/") {
+				parts := strings.Split(namePkg, "/node_modules/")
+				pkgName = parts[len(parts)-1]
+			}
+
+			pathPkg := path.Join(pm.packagesPath, pkgName+"@"+item.Version)
+
+			exists := utils.FolderExists(pathPkg)
+			if !exists {
+				// Download tarball
+				err := pm.tarball.Download(item.Resolved)
+				if err != nil {
+					errChan <- err
+					return
+				}
+
+				err = pm.extractor.Extract(
+					filepath.Join(pm.tarball.TarballPath, path.Base(item.Resolved)),
+					pathPkg,
+				)
+				if err != nil {
+					errChan <- err
+					return
+				}
+			}
+
+			// Preserve the nested structure by using the full path
+			// e.g., node_modules/body-parser/node_modules/debug
+			targetPath := path.Join(pm.extractedPath, namePkg)
+			err := pm.packageCopy.copyDirectory(pathPkg, targetPath)
+			if err != nil {
+				errChan <- err
+				return
+			}
+		}(name, item)
+	}
+
+	wg.Wait()
+	close(errChan)
+
+	// Return first error if any
+	for err := range errChan {
+		return err
+	}
+
+	return nil
+}
+
+func (pm *PackageManager) add(pkgName string, version string) error {
+	packageJson, err := pm.packageJsonParse.Parse("package.json")
+	if err != nil {
+		return err
+	}
+	fmt.Println(packageJson)
+
+	// Check if pkgName exists
+	if _, exists := packageJson.Dependencies[pkgName]; exists {
+		if version != "" && packageJson.Dependencies[pkgName] == version {
+			fmt.Println("Package", pkgName, "already exists in dependencies with the same version", version)
+			return nil
+		}
+	}
+
+	// Download package and its dependencies
+
+	packageJsonAdd := packagejson.PackageJSON{
+		Dependencies: map[string]string{
+			pkgName: version,
+		},
+	}
+	err = pm.download(packageJsonAdd)
+	if err != nil {
+		return err
+	}
+
+	// New package or update add in package.json
+	err = pm.packageJsonParse.AddOrUpdateDependency(pkgName, version)
+	if err != nil {
+		return err
+	}
+
+	// update package.json lock file
+
+	return nil
+}
+
+func (pm *PackageManager) download(packageJson packagejson.PackageJSON) error {
 	queue := make([]QueueItem, 0)
 
-	for name, version := range data.Dependencies {
+	for name, version := range packageJson.Dependencies {
 		queue = append(queue, QueueItem{
 			Dep:        packagejson.Dependency{Name: name, Version: version},
 			ParentName: "package.json",
@@ -197,10 +330,6 @@ func (pm *PackageManager) parsePackageJSON() error {
 				case <-done:
 					return
 				default:
-				}
-
-				if item.Dep.Name == "debug" {
-					fmt.Println("Debug package requested by:", item.ParentName)
 				}
 
 				// Get or create a lock for this package's manifest
@@ -383,99 +512,7 @@ func (pm *PackageManager) parsePackageJSON() error {
 	if err := <-errChan; err != nil {
 		return err
 	}
-
 	pm.packageLock = &packageLock
-
-	err = pm.packageJsonParse.CreateLockFile(&packageLock)
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func (pm *PackageManager) setDependencies(pkg string, version string) {
-	pm.isAdd = true
-	pm.dependencies[pkg] = version
-}
-
-func (pm *PackageManager) parsePackageJSONLock() error {
-	packageJSON := packagejson.NewPackageJSONParser()
-
-	data, err := packageJSON.ParseLockFile()
-	if err != nil {
-		return err
-	}
-
-	pm.packageLock = data
-	return nil
-}
-
-func (pm *PackageManager) downloadFromPackageLock() error {
-	// Remove node_modules
-	err := os.RemoveAll(pm.extractedPath)
-	if err != nil {
-		return fmt.Errorf("failed to remove existing node_modules: %v", err)
-	}
-
-	var wg sync.WaitGroup
-	errChan := make(chan error, len(pm.packageLock.Packages))
-
-	for name, item := range pm.packageLock.Packages {
-		if name == "" {
-			continue
-		}
-
-		wg.Add(1)
-		go func(name string, item packagejson.PackageItem) {
-			defer wg.Done()
-
-			namePkg := strings.TrimPrefix(name, "node_modules/")
-			pkgName := namePkg
-			if strings.Contains(namePkg, "/node_modules/") {
-				parts := strings.Split(namePkg, "/node_modules/")
-				pkgName = parts[len(parts)-1]
-			}
-
-			pathPkg := path.Join(pm.packagesPath, pkgName+"@"+item.Version)
-
-			exists := utils.FolderExists(pathPkg)
-			if !exists {
-				// Download tarball
-				err := pm.tarball.Download(item.Resolved)
-				if err != nil {
-					errChan <- err
-					return
-				}
-
-				err = pm.extractor.Extract(
-					filepath.Join(pm.tarball.TarballPath, path.Base(item.Resolved)),
-					pathPkg,
-				)
-				if err != nil {
-					errChan <- err
-					return
-				}
-			}
-
-			// Preserve the nested structure by using the full path
-			// e.g., node_modules/body-parser/node_modules/debug
-			targetPath := path.Join(pm.extractedPath, namePkg)
-			err := pm.packageCopy.copyDirectory(pathPkg, targetPath)
-			if err != nil {
-				errChan <- err
-				return
-			}
-		}(name, item)
-	}
-
-	wg.Wait()
-	close(errChan)
-
-	// Return first error if any
-	for err := range errChan {
-		return err
-	}
 
 	return nil
 }
@@ -525,16 +562,16 @@ func main() {
 		fmt.Println("pkg:", pkg)
 		fmt.Println("version:", version)
 
-		packageManager.setDependencies(pkg, version)
+		// packageManager.setDependencies(pkg, version)
+		err = packageManager.add(pkg, version)
+		if err != nil {
+			fmt.Println("Error adding package:", err)
+			return
+		}
 
 	default:
 		os.Exit(1)
 	}
-
-	// if err := packageManager.downloadDependencies(); err != nil {
-	// 	fmt.Println("Error downloading dependencies:", err)
-	// 	return
-	// }
 
 	if err := packageManager.downloadFromPackageLock(); err != nil {
 		fmt.Println("Error downloading dependencies:", err)

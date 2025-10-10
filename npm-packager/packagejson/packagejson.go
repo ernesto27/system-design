@@ -4,6 +4,10 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"strings"
+
+	"github.com/tidwall/gjson"
+	"github.com/tidwall/sjson"
 )
 
 type Dependency struct {
@@ -42,7 +46,10 @@ type Funding struct {
 }
 
 type PackageJSONParser struct {
-	LockFileName string
+	LockFileName    string
+	PackageJSON     *PackageJSON
+	FilePath        string
+	OriginalContent []byte
 }
 
 func NewPackageJSONParser() *PackageJSONParser {
@@ -52,16 +59,21 @@ func NewPackageJSONParser() *PackageJSONParser {
 }
 
 func (p *PackageJSONParser) Parse(filePath string) (*PackageJSON, error) {
-	file, err := os.Open(filePath)
+	// Read the file content
+	fileContent, err := os.ReadFile(filePath)
 	if err != nil {
-		return nil, fmt.Errorf("failed to open file %s: %w", filePath, err)
+		return nil, fmt.Errorf("failed to read file %s: %w", filePath, err)
 	}
-	defer file.Close()
 
 	var packageJSON PackageJSON
-	if err := json.NewDecoder(file).Decode(&packageJSON); err != nil {
+	if err := json.Unmarshal(fileContent, &packageJSON); err != nil {
 		return nil, fmt.Errorf("failed to parse JSON from file %s: %w", filePath, err)
 	}
+
+	// Store the parsed package.json, file path, and original content for later use
+	p.PackageJSON = &packageJSON
+	p.FilePath = filePath
+	p.OriginalContent = fileContent
 
 	return &packageJSON, nil
 }
@@ -96,6 +108,54 @@ func (p *PackageJSONParser) CreateLockFile(data *PackageLock) error {
 	if err := encoder.Encode(data); err != nil {
 		return fmt.Errorf("failed to write JSON to file package-lock.json: %w", err)
 	}
+
+	return nil
+}
+
+func (p *PackageJSONParser) AddOrUpdateDependency(name, version string) error {
+	if p.PackageJSON == nil {
+		return fmt.Errorf("package.json not loaded, call Parse() first")
+	}
+
+	if p.FilePath == "" {
+		return fmt.Errorf("file path not set, call Parse() first")
+	}
+
+	if p.OriginalContent == nil {
+		return fmt.Errorf("original content not cached, call Parse() first")
+	}
+
+	if p.PackageJSON.Dependencies == nil {
+		p.PackageJSON.Dependencies = make(map[string]string)
+	}
+	p.PackageJSON.Dependencies[name] = version
+
+	// Check if dependency already exists (using cached content)
+	jsonStr := string(p.OriginalContent)
+	existingValue := gjson.Get(jsonStr, "dependencies."+name)
+	isNewDependency := !existingValue.Exists()
+
+	// Use sjson to update the dependency
+	var err error
+	jsonStr, err = sjson.SetRaw(jsonStr, "dependencies."+name, fmt.Sprintf(`"%s"`, version))
+	if err != nil {
+		return fmt.Errorf("failed to update dependency: %w", err)
+	}
+
+	// Fix formatting if it's a new dependency (sjson adds it incorrectly)
+	if isNewDependency {
+		malformed := "\n  ,\"" + name + `":"` + version + `"}`
+		wellFormed := `,` + "\n" + `    "` + name + `": "` + version + `"` + "\n  }"
+		jsonStr = strings.Replace(jsonStr, malformed, wellFormed, 1)
+	}
+
+	// Write back to file
+	if err := os.WriteFile(p.FilePath, []byte(jsonStr), 0644); err != nil {
+		return fmt.Errorf("failed to write file %s: %w", p.FilePath, err)
+	}
+
+	// Update cached content for subsequent calls
+	p.OriginalContent = []byte(jsonStr)
 
 	return nil
 }

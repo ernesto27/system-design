@@ -34,7 +34,7 @@ type DistTags struct {
 type Version struct {
 	Name                   string                 `json:"name"`
 	Version                string                 `json:"version"`
-	Author                 Author                 `json:"author"`
+	Author                 any                    `json:"author"`
 	License                any                    `json:"license"`
 	ID                     string                 `json:"_id"`
 	Maintainers            []Maintainer           `json:"maintainers"`
