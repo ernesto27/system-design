@@ -3,6 +3,6 @@ extracted
 *.tgz
 express
 tests
-package-lock.json
+
 go-package-lock.json
 bun.lock 
