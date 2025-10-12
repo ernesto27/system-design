@@ -120,3 +120,4 @@ All package downloads use: `https://registry.npmjs.org/`
 - Tarball: `https://registry.npmjs.org/<package>/-/<tarball-name>-<version>.tgz`
 
 Note: Scoped packages (e.g., `@types/node`) require special tarball name handling - extract the part after `/` for the tarball filename.
+- add comments only if logic is too complex

@@ -31,12 +31,10 @@ TODO
 [ ] - Creat tutorial
 
 
-npm add 
-if package exists in package json,  continue 
-if not donwload package with dependencies, 
-update package.json 
-updat npm-go.lock.jgon
-if package in add have a different version,  download new version
+ADD 
+[X] - if downlaod success,  update go package json lock 
+[] - Check packages conflicts 
+
 
 
 

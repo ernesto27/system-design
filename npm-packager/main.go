@@ -245,7 +245,6 @@ func (pm *PackageManager) add(pkgName string, version string) error {
 	}
 
 	// Download package and its dependencies
-
 	packageJsonAdd := packagejson.PackageJSON{
 		Dependencies: map[string]string{
 			pkgName: version,
@@ -263,6 +262,12 @@ func (pm *PackageManager) add(pkgName string, version string) error {
 	}
 
 	// update package.json lock file
+	err = pm.packageJsonParse.UpdateLockFile(pm.packageLock)
+	if err != nil {
+		return err
+	}
+
+	pm.packageLock = pm.packageJsonParse.PackageLock
 
 	return nil
 }

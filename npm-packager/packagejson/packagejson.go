@@ -48,8 +48,10 @@ type Funding struct {
 type PackageJSONParser struct {
 	LockFileName    string
 	PackageJSON     *PackageJSON
+	PackageLock     *PackageLock
 	FilePath        string
 	OriginalContent []byte
+	LockFileContent []byte
 }
 
 func NewPackageJSONParser() *PackageJSONParser {
@@ -59,7 +61,6 @@ func NewPackageJSONParser() *PackageJSONParser {
 }
 
 func (p *PackageJSONParser) Parse(filePath string) (*PackageJSON, error) {
-	// Read the file content
 	fileContent, err := os.ReadFile(filePath)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read file %s: %w", filePath, err)
@@ -70,10 +71,18 @@ func (p *PackageJSONParser) Parse(filePath string) (*PackageJSON, error) {
 		return nil, fmt.Errorf("failed to parse JSON from file %s: %w", filePath, err)
 	}
 
-	// Store the parsed package.json, file path, and original content for later use
 	p.PackageJSON = &packageJSON
 	p.FilePath = filePath
 	p.OriginalContent = fileContent
+
+	lockFileContent, err := os.ReadFile(p.LockFileName)
+	if err == nil {
+		var packageLock PackageLock
+		if err := json.Unmarshal(lockFileContent, &packageLock); err == nil {
+			p.PackageLock = &packageLock
+			p.LockFileContent = lockFileContent
+		}
+	}
 
 	return &packageJSON, nil
 }
@@ -108,6 +117,39 @@ func (p *PackageJSONParser) CreateLockFile(data *PackageLock) error {
 	if err := encoder.Encode(data); err != nil {
 		return fmt.Errorf("failed to write JSON to file package-lock.json: %w", err)
 	}
+
+	return nil
+}
+
+func (p *PackageJSONParser) UpdateLockFile(data *PackageLock) error {
+	if p.LockFileContent == nil {
+		return fmt.Errorf("lock file content not cached, call Parse() first")
+	}
+
+	var existingLock PackageLock
+	if err := json.Unmarshal(p.LockFileContent, &existingLock); err != nil {
+		return fmt.Errorf("failed to parse existing lock file: %w", err)
+	}
+
+	if existingLock.Packages == nil {
+		existingLock.Packages = make(map[string]PackageItem)
+	}
+
+	for key, packageItem := range data.Packages {
+		existingLock.Packages[key] = packageItem
+	}
+
+	updatedContent, err := json.MarshalIndent(existingLock, "", "  ")
+	if err != nil {
+		return fmt.Errorf("failed to marshal updated lock file: %w", err)
+	}
+
+	if err := os.WriteFile(p.LockFileName, updatedContent, 0644); err != nil {
+		return fmt.Errorf("failed to write lock file: %w", err)
+	}
+
+	p.PackageLock = &existingLock
+	p.LockFileContent = updatedContent
 
 	return nil
 }
