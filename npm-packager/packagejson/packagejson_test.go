@@ -45,7 +45,7 @@ func TestPackageJSONParser_Parse(t *testing.T) {
 
 				data, _ := json.MarshalIndent(packageData, "", "  ")
 				os.WriteFile(tmpFile, data, 0644)
-				return tmpFile
+				return tmpDir
 			},
 			expectError: false,
 			validate: func(t *testing.T, result *PackageJSON) {
@@ -66,7 +66,7 @@ func TestPackageJSONParser_Parse(t *testing.T) {
 		{
 			name: "Non-existent file",
 			setupFile: func(t *testing.T) string {
-				return "/nonexistent/path/package.json"
+				return t.TempDir()
 			},
 			expectError: true,
 			validate: func(t *testing.T, result *PackageJSON) {
@@ -86,7 +86,7 @@ func TestPackageJSONParser_Parse(t *testing.T) {
 				}`)
 
 				os.WriteFile(tmpFile, invalidJSON, 0644)
-				return tmpFile
+				return tmpDir
 			},
 			expectError: true,
 			validate: func(t *testing.T, result *PackageJSON) {
@@ -97,9 +97,19 @@ func TestPackageJSONParser_Parse(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			filePath := tc.setupFile(t)
+			tmpDir := tc.setupFile(t)
+
+			// Save current directory
+			originalDir, err := os.Getwd()
+			assert.NoError(t, err)
+			defer os.Chdir(originalDir)
+
+			// Change to temp directory
+			err = os.Chdir(tmpDir)
+			assert.NoError(t, err)
+
 			parser := NewPackageJSONParser()
-			result, err := parser.Parse(filePath)
+			result, err := parser.Parse("package.json")
 
 			if tc.expectError {
 				assert.Error(t, err, "Expected an error")

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"npm-packager/etag"
 	"npm-packager/extractor"
@@ -130,7 +131,7 @@ func (pm *PackageManager) parsePackageJSON() error {
 		return fmt.Errorf("package.json not found in the current directory")
 
 	}
-	data, err := pm.packageJsonParse.Parse("package.json")
+	data, err := pm.packageJsonParse.ParseDefault()
 	if err != nil {
 		return err
 	}
@@ -230,7 +231,7 @@ func (pm *PackageManager) downloadFromPackageLock() error {
 }
 
 func (pm *PackageManager) add(pkgName string, version string) error {
-	packageJson, err := pm.packageJsonParse.Parse("package.json")
+	packageJson, err := pm.packageJsonParse.ParseDefault()
 	if err != nil {
 		return err
 	}

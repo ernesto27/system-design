@@ -87,6 +87,10 @@ func (p *PackageJSONParser) Parse(filePath string) (*PackageJSON, error) {
 	return &packageJSON, nil
 }
 
+func (p *PackageJSONParser) ParseDefault() (*PackageJSON, error) {
+	return p.Parse("package.json")
+}
+
 func (p *PackageJSONParser) ParseLockFile() (*PackageLock, error) {
 	file, err := os.Open(p.LockFileName)
 	if err != nil {
