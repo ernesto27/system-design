@@ -60,7 +60,8 @@ func NewPackageJSONParser() *PackageJSONParser {
 	}
 }
 
-func (p *PackageJSONParser) Parse(filePath string) (*PackageJSON, error) {
+func (p *PackageJSONParser) Parse() (*PackageJSON, error) {
+	filePath := "package.json"
 	fileContent, err := os.ReadFile(filePath)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read file %s: %w", filePath, err)
