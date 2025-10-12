@@ -60,8 +60,7 @@ func NewPackageJSONParser() *PackageJSONParser {
 	}
 }
 
-func (p *PackageJSONParser) Parse() (*PackageJSON, error) {
-	filePath := "package.json"
+func (p *PackageJSONParser) Parse(filePath string) (*PackageJSON, error) {
 	fileContent, err := os.ReadFile(filePath)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read file %s: %w", filePath, err)
@@ -86,6 +85,10 @@ func (p *PackageJSONParser) Parse() (*PackageJSON, error) {
 	}
 
 	return &packageJSON, nil
+}
+
+func (p *PackageJSONParser) ParseDefault() (*PackageJSON, error) {
+	return p.Parse("package.json")
 }
 
 func (p *PackageJSONParser) ParseLockFile() (*PackageLock, error) {

@@ -109,7 +109,7 @@ func TestPackageJSONParser_Parse(t *testing.T) {
 			assert.NoError(t, err)
 
 			parser := NewPackageJSONParser()
-			result, err := parser.Parse()
+			result, err := parser.Parse("package.json")
 
 			if tc.expectError {
 				assert.Error(t, err, "Expected an error")

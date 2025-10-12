@@ -131,7 +131,7 @@ func (pm *PackageManager) parsePackageJSON() error {
 		return fmt.Errorf("package.json not found in the current directory")
 
 	}
-	data, err := pm.packageJsonParse.Parse()
+	data, err := pm.packageJsonParse.ParseDefault()
 	if err != nil {
 		return err
 	}
@@ -231,7 +231,7 @@ func (pm *PackageManager) downloadFromPackageLock() error {
 }
 
 func (pm *PackageManager) add(pkgName string, version string) error {
-	packageJson, err := pm.packageJsonParse.Parse()
+	packageJson, err := pm.packageJsonParse.ParseDefault()
 	if err != nil {
 		return err
 	}
@@ -483,20 +483,10 @@ func (pm *PackageManager) download(packageJson packagejson.PackageJSON) error {
 				if shouldProcessDeps {
 					packageJsonPath := filepath.Join(pm.packagesPath, item.Dep.Name+"@"+version, "package.json")
 
-					fileContent, err := os.ReadFile(packageJsonPath)
+					data, err := pm.packageJsonParse.Parse(packageJsonPath)
 					if err != nil {
 						select {
-						case errChan <- fmt.Errorf("failed to read file %s: %w", packageJsonPath, err):
-							close(done)
-						default:
-						}
-						return
-					}
-
-					var data packagejson.PackageJSON
-					if err := json.Unmarshal(fileContent, &data); err != nil {
-						select {
-						case errChan <- fmt.Errorf("failed to parse JSON from file %s: %w", packageJsonPath, err):
+						case errChan <- err:
 							close(done)
 						default:
 						}
