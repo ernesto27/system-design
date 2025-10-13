@@ -1,11 +1,11 @@
 package main
 
 import (
-	"encoding/json"
 	"fmt"
 	"npm-packager/etag"
 	"npm-packager/extractor"
 	"npm-packager/manifest"
+	"npm-packager/packagecopy"
 	"npm-packager/packagejson"
 	"npm-packager/tarball"
 	"npm-packager/utils"
@@ -45,7 +45,7 @@ type PackageManager struct {
 	manifest          *manifest.Manifest
 	tarball           *tarball.Tarball
 	extractor         *extractor.TGZExtractor
-	packageCopy       *PackageCopy
+	packageCopy       *packagecopy.PackageCopy
 	parseJsonManifest *ParseJsonManifest
 	versionInfo       *VersionInfo
 	packageJsonParse  *packagejson.PackageJSONParser
@@ -89,7 +89,7 @@ func newPackageManager() (*PackageManager, error) {
 
 	donwloadtarball := tarball.NewTarball()
 	extractor := extractor.NewTGZExtractor()
-	packageCopy := newPackageCopy("", "", make(Packages))
+	packageCopy := packagecopy.NewPackageCopy()
 	parseJsonManifest := newParseJsonManifest()
 	versionInfo := newVersionInfo()
 	packageJsonParse := packagejson.NewPackageJSONParser()
@@ -211,7 +211,7 @@ func (pm *PackageManager) downloadFromPackageLock() error {
 			// Preserve the nested structure by using the full path
 			// e.g., node_modules/body-parser/node_modules/debug
 			targetPath := path.Join(pm.extractedPath, namePkg)
-			err := pm.packageCopy.copyDirectory(pathPkg, targetPath)
+			err := pm.packageCopy.CopyDirectory(pathPkg, targetPath)
 			if err != nil {
 				errChan <- err
 				return
