@@ -580,7 +580,7 @@ func main() {
 	}
 
 	if err := packageManager.downloadFromPackageLock(); err != nil {
-		fmt.Println("Error downloading dependencies:", err)
+		fmt.Println(err)
 		return
 	}
 

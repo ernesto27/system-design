@@ -52,6 +52,13 @@ func (pc *PackageCopy) CopyDirectory(src, dst string) error {
 }
 
 func (pc *PackageCopy) copyFile(src, dst string) error {
+	// Try hardlink first (fast, no copy, works with Node.js resolution)
+	err := os.Link(src, dst)
+	if err == nil {
+		return nil
+	}
+
+	// Fallback to regular copy if hardlink fails (e.g., cross-device)
 	srcFile, err := os.Open(src)
 	if err != nil {
 		return fmt.Errorf("failed to open source file: %v", err)
