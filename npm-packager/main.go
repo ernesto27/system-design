@@ -120,20 +120,25 @@ type QueueItem struct {
 }
 
 func (pm *PackageManager) parsePackageJSON() error {
-	//_, err := os.Stat(pm.packageJsonParse.LockFileName)
-	_, err := os.Stat("")
-	if err == nil {
-		return pm.parsePackageJSONLock()
-	}
-
-	_, err = os.Stat("package.json")
-	if err != nil {
-		return fmt.Errorf("package.json not found in the current directory")
-
-	}
 	data, err := pm.packageJsonParse.ParseDefault()
 	if err != nil {
 		return err
+	}
+
+	//if false {
+	if pm.packageJsonParse.PackageLock != nil {
+		packagesToAdd := pm.packageJsonParse.ResolveDependencies()
+		fmt.Println(packagesToAdd)
+
+		for _, pkg := range packagesToAdd {
+			err = pm.add(pkg.Name, pkg.Version, true)
+			if err != nil {
+				return err
+			}
+		}
+
+		pm.packageLock = pm.packageJsonParse.PackageLock
+		return nil
 	}
 
 	err = pm.download(*data)
@@ -150,9 +155,7 @@ func (pm *PackageManager) parsePackageJSON() error {
 }
 
 func (pm *PackageManager) parsePackageJSONLock() error {
-	packageJSON := packagejson.NewPackageJSONParser()
-
-	data, err := packageJSON.ParseLockFile()
+	data, err := pm.packageJsonParse.ParseLockFile()
 	if err != nil {
 		return err
 	}
@@ -230,18 +233,19 @@ func (pm *PackageManager) downloadFromPackageLock() error {
 	return nil
 }
 
-func (pm *PackageManager) add(pkgName string, version string) error {
+func (pm *PackageManager) add(pkgName string, version string, isInstall bool) error {
 	packageJson, err := pm.packageJsonParse.ParseDefault()
 	if err != nil {
 		return err
 	}
-	fmt.Println(packageJson)
 
-	// Check if pkgName exists
-	if _, exists := packageJson.Dependencies[pkgName]; exists {
-		if version != "" && packageJson.Dependencies[pkgName] == version {
-			fmt.Println("Package", pkgName, "already exists in dependencies with the same version", version)
-			return nil
+	if !isInstall {
+		// Check if pkgName exists
+		if _, exists := packageJson.Dependencies[pkgName]; exists {
+			if version != "" && packageJson.Dependencies[pkgName] == version {
+				fmt.Println("Package", pkgName, "already exists in dependencies with the same version", version)
+				return nil
+			}
 		}
 	}
 
@@ -285,6 +289,7 @@ func (pm *PackageManager) download(packageJson packagejson.PackageJSON) error {
 
 	packageLock := packagejson.PackageLock{}
 	packageLock.Packages = make(map[string]packagejson.PackageItem)
+	packageLock.Dependencies = make(map[string]string)
 	packagesVersion := make(map[string]QueueItem)
 
 	var (
@@ -300,6 +305,7 @@ func (pm *PackageManager) download(packageJson packagejson.PackageJSON) error {
 
 	workChan := make(chan QueueItem, len(queue))
 	for _, item := range queue {
+		packageLock.Dependencies[item.Dep.Name] = item.Dep.Version
 		workChan <- item
 	}
 
@@ -569,7 +575,7 @@ func main() {
 		fmt.Println("version:", version)
 
 		// packageManager.setDependencies(pkg, version)
-		err = packageManager.add(pkg, version)
+		err = packageManager.add(pkg, version, false)
 		if err != nil {
 			fmt.Println("Error adding package:", err)
 			return

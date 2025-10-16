@@ -206,11 +206,28 @@ func (p *PackageJSONParser) AddOrUpdateDependency(name, version string) error {
 	return nil
 }
 
+func (p *PackageJSONParser) ResolveDependencies() []Dependency {
+	differences := []Dependency{}
+
+	for name, versionInJSON := range p.PackageJSON.Dependencies {
+		versionInLock, exists := p.PackageLock.Dependencies[name]
+		if !exists || versionInJSON != versionInLock {
+			differences = append(differences, Dependency{
+				Name:    name,
+				Version: versionInJSON,
+			})
+		}
+	}
+
+	return differences
+}
+
 type PackageLock struct {
 	Name            string                 `json:"name"`
 	Version         string                 `json:"version"`
 	LockfileVersion int                    `json:"lockfileVersion"`
 	Requires        bool                   `json:"requires"`
+	Dependencies    map[string]string      `json:"dependencies"`
 	Packages        map[string]PackageItem `json:"packages"`
 }
 
