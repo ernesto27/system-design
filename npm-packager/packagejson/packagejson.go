@@ -135,6 +135,10 @@ func (p *PackageJSONParser) UpdateLockFile(data *PackageLock) error {
 		return fmt.Errorf("failed to parse existing lock file: %w", err)
 	}
 
+	for key, version := range data.Dependencies {
+		existingLock.Dependencies[key] = version
+	}
+
 	if existingLock.Packages == nil {
 		existingLock.Packages = make(map[string]PackageItem)
 	}

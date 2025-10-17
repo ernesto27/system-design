@@ -500,6 +500,13 @@ func (pm *PackageManager) download(packageJson packagejson.PackageJSON) error {
 					}
 
 					for name, version := range data.Dependencies {
+						pkgItem := packageLock.Packages[packageResolved]
+						if pkgItem.Dependencies == nil {
+							pkgItem.Dependencies = make(map[string]string)
+						}
+						pkgItem.Dependencies[name] = version
+						packageLock.Packages[packageResolved] = pkgItem
+
 						workChan <- QueueItem{
 							Dep:        packagejson.Dependency{Name: name, Version: version},
 							ParentName: item.Dep.Name,

@@ -16,8 +16,9 @@ TODO
 [X] - add tests
 [X] - read package-lock.json
 [X] - Create package-go-lock.json 
-[ ] - when udate package.json and lock exists , update that too and install new package
+[X] - when udate package.json and lock exists , update that too and install new package
 [ ] - Add symlink instead of copy packages
+[] - when add package install a package that existist but with a diff version,  nested in node_modules
 [ ] - Replace ETag when change 
 [X] - Manage this kind of packages  .config/go-npm/packages/@types/triple-beam@1.3.5/package.json:
 [ ] Run first downloadi n parallel
@@ -31,11 +32,6 @@ TODO
 [ ] - Fix race condition downloas same pakcage name verions but for different parent package
 [ ] - Creat tutorial
 
-ADD IN PACKAGE JSON 
-when create lockfile , save also package dependencies .
-when run install,  compare packge with lock , check if new packages is added 
-if true download and update lockfile
-when update is true, update main dependecies lockfile
 
 
 
