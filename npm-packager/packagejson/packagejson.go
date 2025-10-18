@@ -144,6 +144,10 @@ func (p *PackageJSONParser) UpdateLockFile(data *PackageLock) error {
 	}
 
 	for key, packageItem := range data.Packages {
+		_, ok := existingLock.Packages[key]
+		if ok {
+			p.resolveVersionMismatch(&existingLock, key, packageItem)
+		}
 		existingLock.Packages[key] = packageItem
 	}
 
@@ -162,7 +166,21 @@ func (p *PackageJSONParser) UpdateLockFile(data *PackageLock) error {
 	return nil
 }
 
-func (p *PackageJSONParser) AddOrUpdateDependency(name, version string) error {
+func (p *PackageJSONParser) resolveVersionMismatch(existingLock *PackageLock, key string, packageItem PackageItem) {
+	for keyp, p := range existingLock.Packages {
+		if p.Dependencies != nil {
+			for depName := range p.Dependencies {
+				if depName == packageItem.Name {
+					nestedKey := keyp + "/node_modules/" + packageItem.Name
+					existingLock.Packages[nestedKey] = existingLock.Packages[key]
+					delete(existingLock.Packages, key)
+				}
+			}
+		}
+	}
+}
+
+func (p *PackageJSONParser) AddOrUpdateDependency(name string, version string) error {
 	if p.PackageJSON == nil {
 		return fmt.Errorf("package.json not loaded, call Parse() first")
 	}

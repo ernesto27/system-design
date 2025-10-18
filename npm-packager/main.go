@@ -125,10 +125,8 @@ func (pm *PackageManager) parsePackageJSON() error {
 		return err
 	}
 
-	//if false {
 	if pm.packageJsonParse.PackageLock != nil {
 		packagesToAdd := pm.packageJsonParse.ResolveDependencies()
-		fmt.Println(packagesToAdd)
 
 		for _, pkg := range packagesToAdd {
 			err = pm.add(pkg.Name, pkg.Version, true)
@@ -151,16 +149,6 @@ func (pm *PackageManager) parsePackageJSON() error {
 		return err
 	}
 
-	return nil
-}
-
-func (pm *PackageManager) parsePackageJSONLock() error {
-	data, err := pm.packageJsonParse.ParseLockFile()
-	if err != nil {
-		return err
-	}
-
-	pm.packageLock = data
 	return nil
 }
 
@@ -478,6 +466,7 @@ func (pm *PackageManager) download(packageJson packagejson.PackageJSON) error {
 				// Add to package lock
 				mapMutex.Lock()
 				pckItem := packagejson.PackageItem{
+					Name:     item.Dep.Name,
 					Version:  version,
 					Resolved: tarballURL,
 					Etag:     currentEtag,
