@@ -264,11 +264,40 @@ func (p *PackageJSONParser) ResolveDependencies() []Dependency {
 }
 
 func (p *PackageJSONParser) ResolveDependenciesToRemove(pkg string) []string {
-	// Search dependencies from pkg in lock file using BFS
-	visited := make(map[string]bool)
+	pkgToKeep := make(map[string]bool)
+
+	for directDep := range p.PackageLock.Dependencies {
+		if directDep == pkg {
+			continue
+		}
+
+		visited := make(map[string]bool)
+		queue := []string{directDep}
+
+		for len(queue) > 0 {
+			current := queue[0]
+			queue = queue[1:]
+
+			if visited[current] {
+				continue
+			}
+			visited[current] = true
+			pkgToKeep[current] = true
+
+			pkgPath := "node_modules/" + current
+			pkgItem := p.PackageLock.Packages[pkgPath]
+
+			for childDep := range pkgItem.Dependencies {
+				if !visited[childDep] {
+					queue = append(queue, childDep)
+				}
+			}
+		}
+	}
+
 	pkgToRemove := []string{}
+	visited := make(map[string]bool)
 	queue := []string{pkg}
-	pkgToMantain := map[string]bool{}
 
 	for len(queue) > 0 {
 		current := queue[0]
@@ -279,45 +308,19 @@ func (p *PackageJSONParser) ResolveDependenciesToRemove(pkg string) []string {
 		}
 		visited[current] = true
 
-		// fmt.Println("check for ", current)
-
 		pkgPath := "node_modules/" + current
 		pkgItem := p.PackageLock.Packages[pkgPath]
 
-		if current == "body-parser" || current == "http-errors" {
-			fmt.Println("fddff")
-		}
-
-		mantainPkg := false
-		if current != pkg {
-			_, okParent := p.PackageLock.Dependencies[current]
-			_, okChild := pkgToMantain[current]
-			if okParent || okChild {
-				fmt.Println("do not remove this ", current)
-				mantainPkg = true
-			}
-
-			if !mantainPkg && !okParent && !okChild {
-				pkgToRemove = append(pkgToRemove, current)
-			}
-
+		if !pkgToKeep[current] {
+			pkgToRemove = append(pkgToRemove, current)
 		}
 
 		for childDep := range pkgItem.Dependencies {
-			if !mantainPkg {
-				if !visited[childDep] {
-					queue = append(queue, childDep)
-				}
-			} else {
-				pkgToMantain[childDep] = true
+			if !visited[childDep] {
+				queue = append(queue, childDep)
 			}
 		}
 	}
-
-	// TODO
-	// check if parent package json depend on lib mark to remove
-	// For any dependency search if other package depend of that version of lib
-	// If not found other dep,  remove entry in  lock.Packages
 
 	return pkgToRemove
 }
