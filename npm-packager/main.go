@@ -221,6 +221,34 @@ func (pm *PackageManager) downloadFromPackageLock() error {
 	return nil
 }
 
+func (pm *PackageManager) removePackagesFromNodeModules(pkgList []string) error {
+	var wg sync.WaitGroup
+	errChan := make(chan error, len(pkgList))
+
+	for _, pkg := range pkgList {
+		wg.Add(1)
+		go func(pkgName string) {
+			defer wg.Done()
+
+			pkgPath := filepath.Join(pm.extractedPath, pkgName)
+
+			if err := os.RemoveAll(pkgPath); err != nil {
+				errChan <- fmt.Errorf("failed to remove package %s: %w", pkgName, err)
+			}
+		}(pkg)
+	}
+
+	wg.Wait()
+	close(errChan)
+
+	// Return first error if any
+	for err := range errChan {
+		return err
+	}
+
+	return nil
+}
+
 func (pm *PackageManager) add(pkgName string, version string, isInstall bool) error {
 	packageJson, err := pm.packageJsonParse.ParseDefault()
 	if err != nil {
@@ -261,6 +289,29 @@ func (pm *PackageManager) add(pkgName string, version string, isInstall bool) er
 	}
 
 	pm.packageLock = pm.packageJsonParse.PackageLock
+
+	return nil
+}
+
+func (pm *PackageManager) remove(pkg string) error {
+	packageJson, err := pm.packageJsonParse.ParseDefault()
+	if err != nil {
+		return err
+	}
+	fmt.Println(packageJson)
+
+	pkgToRemove := pm.packageJsonParse.ResolveDependenciesToRemove(pkg)
+	fmt.Println(pkgToRemove)
+
+	err = pm.removePackagesFromNodeModules(pkgToRemove)
+	if err != nil {
+		return err
+	}
+
+	// err = pm.packageJsonParse.RemoveDependencies(pkg)
+	// if err != nil {
+	// 	return err
+	// }
 
 	return nil
 }
@@ -529,8 +580,6 @@ func main() {
 
 	startTime := time.Now()
 
-	fmt.Println("All args:", os.Args)
-
 	var param string
 	if len(os.Args) > 1 {
 		param = os.Args[1]
@@ -544,11 +593,6 @@ func main() {
 
 	switch param {
 	case "i":
-
-		// If pakcage.json lock exists read that file
-		// if version package exist in config,  copy to node_modules
-		// if not download tarball and extract in cache and copy
-
 		if err := packageManager.parsePackageJSON(); err != nil {
 			fmt.Println("Error parsing package.json:", err)
 			return
@@ -576,6 +620,12 @@ func main() {
 			fmt.Println("Error adding package:", err)
 			return
 		}
+	case "rm":
+		err := packageManager.remove(os.Args[2])
+		if err != nil {
+			panic(err)
+		}
+		return
 
 	default:
 		os.Exit(1)

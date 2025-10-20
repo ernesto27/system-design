@@ -54,6 +54,25 @@ type PackageJSONParser struct {
 	LockFileContent []byte
 }
 
+type PackageLock struct {
+	Name            string                 `json:"name"`
+	Version         string                 `json:"version"`
+	LockfileVersion int                    `json:"lockfileVersion"`
+	Requires        bool                   `json:"requires"`
+	Dependencies    map[string]string      `json:"dependencies"`
+	Packages        map[string]PackageItem `json:"packages"`
+}
+
+type PackageItem struct {
+	Name         string            `json:"name,omitempty"`
+	Version      string            `json:"version,omitempty"`
+	Resolved     string            `json:"resolved,omitempty"`
+	Integrity    string            `json:"integrity,omitempty"`
+	License      string            `json:"license,omitempty"`
+	Etag         string            `json:"etag,omitempty"`
+	Dependencies map[string]string `json:"dependencies,omitempty"`
+}
+
 func NewPackageJSONParser() *PackageJSONParser {
 	return &PackageJSONParser{
 		LockFileName: "go-package-lock.json",
@@ -244,21 +263,72 @@ func (p *PackageJSONParser) ResolveDependencies() []Dependency {
 	return differences
 }
 
-type PackageLock struct {
-	Name            string                 `json:"name"`
-	Version         string                 `json:"version"`
-	LockfileVersion int                    `json:"lockfileVersion"`
-	Requires        bool                   `json:"requires"`
-	Dependencies    map[string]string      `json:"dependencies"`
-	Packages        map[string]PackageItem `json:"packages"`
+func (p *PackageJSONParser) ResolveDependenciesToRemove(pkg string) []string {
+	// Search dependencies from pkg in lock file using BFS
+	visited := make(map[string]bool)
+	pkgToRemove := []string{}
+	queue := []string{pkg}
+
+	for len(queue) > 0 {
+		current := queue[0]
+		queue = queue[1:]
+
+		if visited[current] {
+			continue
+		}
+		visited[current] = true
+
+		fmt.Println("check for ", current)
+
+		pkgToRemove = append(pkgToRemove, current)
+
+		pkgPath := "node_modules/" + current
+		pkgItem := p.PackageLock.Packages[pkgPath]
+
+		for childDep := range pkgItem.Dependencies {
+			if !visited[childDep] {
+				queue = append(queue, childDep)
+			}
+		}
+	}
+
+	// TODO
+	// check if parent package json depend on lib mark to remove
+	// For any dependency search if other package depend of that version of lib
+	// If not found other dep,  remove entry in  lock.Packages
+
+	return pkgToRemove
 }
 
-type PackageItem struct {
-	Name         string            `json:"name,omitempty"`
-	Version      string            `json:"version,omitempty"`
-	Resolved     string            `json:"resolved,omitempty"`
-	Integrity    string            `json:"integrity,omitempty"`
-	License      string            `json:"license,omitempty"`
-	Etag         string            `json:"etag,omitempty"`
-	Dependencies map[string]string `json:"dependencies,omitempty"`
+func (p *PackageJSONParser) RemoveDependencies(pkg string) error {
+	if p.PackageJSON == nil {
+		return fmt.Errorf("package.json not loaded, call Parse() first")
+	}
+
+	if p.PackageJSON.Dependencies == nil {
+		return fmt.Errorf("no dependencies found in package.json")
+	}
+
+	_, exists := p.PackageJSON.Dependencies[pkg]
+	if !exists {
+		return fmt.Errorf("dependency '%s' not found in package.json", pkg)
+	}
+
+	// Remove from package.json file
+	// TODO DO THIS AFTER REMOVE NODE_MODULES SUCCESS
+	jsonStr := string(p.OriginalContent)
+	var err error
+	jsonStr, err = sjson.Delete(jsonStr, "dependencies."+pkg)
+	if err != nil {
+		return fmt.Errorf("failed to remove dependency from package.json: %w", err)
+	}
+
+	if err := os.WriteFile(p.FilePath, []byte(jsonStr), 0644); err != nil {
+		return fmt.Errorf("failed to write file %s: %w", p.FilePath, err)
+	}
+
+	delete(p.PackageJSON.Dependencies, pkg)
+	p.OriginalContent = []byte(jsonStr)
+
+	return nil
 }
