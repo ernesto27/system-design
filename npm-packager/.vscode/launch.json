@@ -11,9 +11,10 @@
             "request": "launch",
             "mode": "auto",
             "program": "${fileDirname}",
-            // "args": ["add", "axios"],
+            //  "args": ["i",],
+             "args": ["rm", "express"],
             // "args": ["add", "body-parser@2.2.0"],
-            "args": ["add", "loadash"],
+           // "args": ["add", "axios"],
         }
     ]
 }

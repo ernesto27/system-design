@@ -32,7 +32,18 @@ TODO
 [ ] - Creat tutorial
 
 
+REMOVE PACKAGE 
+Check if package exists in packge.json 
+if exists check dependencies from lock file 
+resolve which packages are safe to delete - first check without resolved
+remove from node_modules 
+update package.json and lock file
 
+
+check in lock file 
+dependicies for packakge 
+check if other package depend on same parent nodule,  if true do not remove
+check if parent package.json depend on that lib
 
 
 

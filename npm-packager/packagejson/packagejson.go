@@ -268,6 +268,7 @@ func (p *PackageJSONParser) ResolveDependenciesToRemove(pkg string) []string {
 	visited := make(map[string]bool)
 	pkgToRemove := []string{}
 	queue := []string{pkg}
+	pkgToMantain := map[string]bool{}
 
 	for len(queue) > 0 {
 		current := queue[0]
@@ -278,16 +279,37 @@ func (p *PackageJSONParser) ResolveDependenciesToRemove(pkg string) []string {
 		}
 		visited[current] = true
 
-		fmt.Println("check for ", current)
-
-		pkgToRemove = append(pkgToRemove, current)
+		// fmt.Println("check for ", current)
 
 		pkgPath := "node_modules/" + current
 		pkgItem := p.PackageLock.Packages[pkgPath]
 
+		if current == "body-parser" || current == "http-errors" {
+			fmt.Println("fddff")
+		}
+
+		mantainPkg := false
+		if current != pkg {
+			_, okParent := p.PackageLock.Dependencies[current]
+			_, okChild := pkgToMantain[current]
+			if okParent || okChild {
+				fmt.Println("do not remove this ", current)
+				mantainPkg = true
+			}
+
+			if !mantainPkg && !okParent && !okChild {
+				pkgToRemove = append(pkgToRemove, current)
+			}
+
+		}
+
 		for childDep := range pkgItem.Dependencies {
-			if !visited[childDep] {
-				queue = append(queue, childDep)
+			if !mantainPkg {
+				if !visited[childDep] {
+					queue = append(queue, childDep)
+				}
+			} else {
+				pkgToMantain[childDep] = true
 			}
 		}
 	}
