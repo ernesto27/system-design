@@ -539,6 +539,7 @@ func (pm *PackageManager) download(packageJson packagejson.PackageJSON) error {
 						return
 					}
 
+					mapMutex.Lock()
 					for name, version := range data.Dependencies {
 						pkgItem := packageLock.Packages[packageResolved]
 						if pkgItem.Dependencies == nil {
@@ -552,6 +553,7 @@ func (pm *PackageManager) download(packageJson packagejson.PackageJSON) error {
 							ParentName: item.Dep.Name,
 						}
 					}
+					mapMutex.Unlock()
 				}
 			}(item)
 		default:

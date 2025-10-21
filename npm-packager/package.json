@@ -14,7 +14,6 @@
   },
   "keywords": [
     "express",
-    "express5",
     "typescript",
     "nodejs",
     "backend",
@@ -27,20 +26,7 @@
   "license": "MIT",
   "dependencies": {
     "express": "^5.0.1",
-    "cors": "^2.8.5",
-    "compression": "^1.7.4",
-    "cookie-parser": "^1.4.6",
-    "helmet": "^7.2.0",
-    "express-rate-limit": "^7.5.0",
-    "dotenv": "^16.4.5",
-    "bcryptjs": "^2.4.3",
-    "jsonwebtoken": "^9.0.2",
-    "mongoose": "^8.6.1",
-    "redis": "^5.0.1",
-    "morgan": "^1.10.0",
-    "uuid": "^9.0.1",
-    "winston": "^3.13.0",
-    "node-cron": "^3.0.3"
+    "body-parser": "2.2.0"
   },
   "engines": {
     "node": ">=18.0.0"
