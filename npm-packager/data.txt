@@ -30,7 +30,10 @@ TODO
 [ ] - Creat tutorial
 
 
-DO NOT DELETE NODE_MODULES WITH INSTALL OR update 
+DO NOT DELETE NODE_MODULES WITH INSTALL OR update
+check from lock path if folder exists in path, if not add to packages to create  
+validate checksum,  for invalid libs in node_modules  
+resolve libs ,  remove or add 
 
 
 

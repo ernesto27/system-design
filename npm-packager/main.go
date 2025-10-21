@@ -153,16 +153,17 @@ func (pm *PackageManager) parsePackageJSON() error {
 }
 
 func (pm *PackageManager) downloadFromPackageLock() error {
-	// Remove node_modules
-	err := os.RemoveAll(pm.extractedPath)
-	if err != nil {
-		return fmt.Errorf("failed to remove existing node_modules: %v", err)
+	packagesToInstall := make(map[string]packagejson.PackageItem)
+	for pkgPath := range pm.packageLock.Packages {
+		exists := utils.FolderExists(pkgPath)
+		if !exists {
+			packagesToInstall[pkgPath] = pm.packageLock.Packages[pkgPath]
+		}
 	}
 
 	var wg sync.WaitGroup
-	errChan := make(chan error, len(pm.packageLock.Packages))
-
-	for name, item := range pm.packageLock.Packages {
+	errChan := make(chan error, len(packagesToInstall))
+	for name, item := range packagesToInstall {
 		if name == "" {
 			continue
 		}
