@@ -308,10 +308,15 @@ func (pm *PackageManager) remove(pkg string) error {
 		return err
 	}
 
-	// err = pm.packageJsonParse.RemoveDependencies(pkg)
-	// if err != nil {
-	// 	return err
-	// }
+	err = pm.packageJsonParse.RemoveDependencies(pkg)
+	if err != nil {
+		return err
+	}
+
+	err = pm.packageJsonParse.RemoveFromLockFile(pkg, pkgToRemove)
+	if err != nil {
+		return err
+	}
 
 	return nil
 }

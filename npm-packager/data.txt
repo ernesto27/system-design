@@ -19,17 +19,20 @@ TODO
 [X] - when udate package.json and lock exists , update that too and install new package
 [X] - when add package install a package that existist but with a diff version,  nested in node_modules
 [ ] - Replace ETag when change 
+[ ] - Prevent delete all node_modules when install or update packages
 [X] - Manage this kind of packages  .config/go-npm/packages/@types/triple-beam@1.3.5/package.json:
-[ ] Run first downloadi n parallel
 [ ] Fix tests 
 [ ] - Manage dev dependecies
 [X] - Remove tarball file after decompress
 [] - update add command -install
 [ ] - Manage conflig differe lib version of packages
 [ ] - manifest download if new version exists   
-[ ] - if package exists in config,  prevent download 
-[ ] - Fix race condition downloas same pakcage name verions but for different parent package
 [ ] - Creat tutorial
+
+
+DO NOT DELETE NODE_MODULES WITH INSTALL OR update 
+
+
 
 
 REMOVE PACKAGE 

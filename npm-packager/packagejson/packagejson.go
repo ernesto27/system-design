@@ -339,8 +339,6 @@ func (p *PackageJSONParser) RemoveDependencies(pkg string) error {
 		return fmt.Errorf("dependency '%s' not found in package.json", pkg)
 	}
 
-	// Remove from package.json file
-	// TODO DO THIS AFTER REMOVE NODE_MODULES SUCCESS
 	jsonStr := string(p.OriginalContent)
 	var err error
 	jsonStr, err = sjson.Delete(jsonStr, "dependencies."+pkg)
@@ -354,6 +352,37 @@ func (p *PackageJSONParser) RemoveDependencies(pkg string) error {
 
 	delete(p.PackageJSON.Dependencies, pkg)
 	p.OriginalContent = []byte(jsonStr)
+
+	return nil
+}
+
+func (p *PackageJSONParser) RemoveFromLockFile(pkg string, pkgToRemove []string) error {
+	if p.PackageLock == nil {
+		return fmt.Errorf("package lock not loaded")
+	}
+
+	delete(p.PackageLock.Dependencies, pkg)
+
+	for _, pkgName := range pkgToRemove {
+		delete(p.PackageLock.Packages, "node_modules/"+pkgName)
+	}
+
+	packagesToDelete := []string{}
+	for key := range p.PackageLock.Packages {
+		for _, pkgName := range pkgToRemove {
+			if strings.Contains(key, "/node_modules/"+pkgName) {
+				packagesToDelete = append(packagesToDelete, key)
+			}
+		}
+	}
+	for _, key := range packagesToDelete {
+		delete(p.PackageLock.Packages, key)
+	}
+
+	err := p.CreateLockFile(p.PackageLock)
+	if err != nil {
+		return err
+	}
 
 	return nil
 }
