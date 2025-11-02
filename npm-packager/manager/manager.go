@@ -2,6 +2,7 @@ package manager
 
 import (
 	"fmt"
+	"npm-packager/binlink"
 	"npm-packager/etag"
 	"npm-packager/extractor"
 	"npm-packager/manifest"
@@ -48,12 +49,13 @@ type PackageManager struct {
 	parseJsonManifest *ParseJsonManifest
 	versionInfo       *VersionInfo
 	packageJsonParse  *packagejson.PackageJSONParser
+	binLinker         *binlink.BinLinker
 	downloadMu        sync.Mutex
 	downloadLocks     map[string]*sync.Mutex
 }
 
 type Package struct {
-	Version            string                   `json:"version"`
+	Version            string `json:"version"`
 	Nested             bool
 	Dependencies       []packagejson.Dependency `json:"dependencies"`
 	ParentDependencies []string
@@ -97,6 +99,7 @@ func New() (*PackageManager, error) {
 	parseJsonManifest := newParseJsonManifest()
 	versionInfo := newVersionInfo()
 	packageJsonParse := packagejson.NewPackageJSONParser()
+	binLinker := binlink.NewBinLinker("./node_modules/")
 
 	return &PackageManager{
 		dependencies:      make(map[string]string),
@@ -114,6 +117,7 @@ func New() (*PackageManager, error) {
 		parseJsonManifest: parseJsonManifest,
 		versionInfo:       versionInfo,
 		packageJsonParse:  packageJsonParse,
+		binLinker:         binLinker,
 		downloadLocks:     make(map[string]*sync.Mutex),
 	}, nil
 }
@@ -182,6 +186,10 @@ func (pm *PackageManager) DownloadFromPackageLock() error {
 
 			exists := utils.FolderExists(pathPkg)
 			if !exists {
+				if item.Resolved == "" {
+					fmt.Printf("Skipping package %s - empty resolved URL in lock file\n", item.Name)
+					return
+				}
 				err := pm.tarball.Download(item.Resolved)
 				if err != nil {
 					errChan <- err
@@ -212,6 +220,11 @@ func (pm *PackageManager) DownloadFromPackageLock() error {
 
 	for err := range errChan {
 		return err
+	}
+
+	// Link bin executables
+	if err := pm.binLinker.LinkAllPackages(); err != nil {
+		return fmt.Errorf("failed to link bin executables: %w", err)
 	}
 
 	return nil
@@ -316,6 +329,13 @@ func (pm *PackageManager) download(packageJson packagejson.PackageJSON) error {
 	queue := make([]QueueItem, 0)
 
 	for name, version := range packageJson.Dependencies {
+		queue = append(queue, QueueItem{
+			Dep:        packagejson.Dependency{Name: name, Version: version},
+			ParentName: "package.json",
+		})
+	}
+
+	for name, version := range packageJson.DevDependencies {
 		queue = append(queue, QueueItem{
 			Dep:        packagejson.Dependency{Name: name, Version: version},
 			ParentName: "package.json",
@@ -475,6 +495,10 @@ func (pm *PackageManager) download(packageJson packagejson.PackageJSON) error {
 				tarballURL := fmt.Sprintf("%s%s/-/%s-%s.tgz", npmRegistryURL, item.Dep.Name, tarballName, version)
 
 				if shouldProcessDeps && !utils.FolderExists(configPackageVersion) {
+					if tarballURL == "" || version == "" {
+						fmt.Printf("Skipping download for %s - invalid URL or empty version\n", item.Dep.Name)
+						return
+					}
 					err = pm.tarball.Download(tarballURL)
 					if err != nil {
 						select {

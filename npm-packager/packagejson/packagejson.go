@@ -18,26 +18,27 @@ type Dependency struct {
 }
 
 type PackageJSON struct {
-	Name         string            `json:"name"`
-	Description  string            `json:"description"`
-	Version      any               `json:"version"`
-	Author       any               `json:"author"`
-	Contributors any               `json:"contributors"`
-	License      string            `json:"license"`
-	Repository   any               `json:"repository"`
-	Homepage     string            `json:"homepage"`
-	Funding      any               `json:"funding"`
-	Keywords     any               `json:"keywords"`
-	Dependencies map[string]string `json:"dependencies"`
-	Engines      any               `json:"engines"`
-	Files        []string          `json:"files"`
-	Scripts      map[string]string `json:"scripts"`
-	Main         any               `json:"main"`
-	Bin          any               `json:"bin"`
-	Types        string            `json:"types"`
-	Exports      any               `json:"exports"`
-	Private      bool              `json:"private"`
-	Workspaces   []string          `json:"workspaces"`
+	Name            string            `json:"name"`
+	Description     string            `json:"description"`
+	Version         any               `json:"version"`
+	Author          any               `json:"author"`
+	Contributors    any               `json:"contributors"`
+	License         string            `json:"license"`
+	Repository      any               `json:"repository"`
+	Homepage        string            `json:"homepage"`
+	Funding         any               `json:"funding"`
+	Keywords        any               `json:"keywords"`
+	Dependencies    map[string]string `json:"dependencies"`
+	DevDependencies map[string]string `json:"devDependencies"`
+	Engines         any               `json:"engines"`
+	Files           []string          `json:"files"`
+	Scripts         map[string]string `json:"scripts"`
+	Main            any               `json:"main"`
+	Bin             any               `json:"bin"`
+	Types           string            `json:"types"`
+	Exports         any               `json:"exports"`
+	Private         bool              `json:"private"`
+	Workspaces      []string          `json:"workspaces"`
 }
 
 type Funding struct {
@@ -251,6 +252,16 @@ func (p *PackageJSONParser) ResolveDependencies() []Dependency {
 	differences := []Dependency{}
 
 	for name, versionInJSON := range p.PackageJSON.Dependencies {
+		versionInLock, exists := p.PackageLock.Dependencies[name]
+		if !exists || versionInJSON != versionInLock {
+			differences = append(differences, Dependency{
+				Name:    name,
+				Version: versionInJSON,
+			})
+		}
+	}
+
+	for name, versionInJSON := range p.PackageJSON.DevDependencies {
 		versionInLock, exists := p.PackageLock.Dependencies[name]
 		if !exists || versionInJSON != versionInLock {
 			differences = append(differences, Dependency{
