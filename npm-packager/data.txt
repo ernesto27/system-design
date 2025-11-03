@@ -18,17 +18,22 @@ TODO
 [X] - Create package-go-lock.json 
 [X] - when udate package.json and lock exists , update that too and install new package
 [X] - when add package install a package that existist but with a diff version,  nested in node_modules
-[ ] - Replace ETag when change 
 [x] - Prevent delete all node_modules when install or update packages
 [X] - Manage this kind of packages  .config/go-npm/packages/@types/triple-beam@1.3.5/package.json:
-[ ] Fix tests 
-[ ] - Manage dev dependecies
+[x] - Manage dev dependecies
 [X] - Remove tarball file after decompress
+[x] - Manage conflig differe lib version of packages
+[ ] - Replace ETag when change 
 [] - update add command -install
-[ ] - Manage conflig differe lib version of packages
-[ ] - manifest download if new version exists   
+[] - manifest download if new version exists   
 [] - when run npm i check if lib is remove from package json and remove from node_modules
-[ ] - Creat tutorial
+[] Fix tests 
+[] - Creat tutorial
+[] - Add flag to skip devDependencies in production mode (--production)
+[] - npm update https://chatgpt.com/c/6907d956-a35c-8330-bc95-d21d5a7d5205
+[] - install packages globally
+[] - init command
+[] - prune command 
 
 
 DO NOT DELETE NODE_MODULES WITH INSTALL OR update
