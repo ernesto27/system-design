@@ -64,9 +64,9 @@ func TestTGZExtractorStripPackagePrefix(t *testing.T) {
 			expectedVal: "lib/utils.js",
 		},
 		{
-			name:        "No package prefix - return as is",
+			name:        "No package prefix - return empty string",
 			inputPath:   "index.js",
-			expectedVal: "index.js",
+			expectedVal: "",
 		},
 	}
 
@@ -120,7 +120,7 @@ func TestTGZExtractorExtract(t *testing.T) {
 			},
 		},
 		{
-			name: "Extract tarball without package prefix",
+			name: "Skip files without directory prefix",
 			setupFunc: func(t *testing.T) (string, string) {
 				srcDir, destDir := setupTestExtractorDirs(t)
 				tarballPath := filepath.Join(srcDir, "test.tgz")
@@ -138,10 +138,10 @@ func TestTGZExtractorExtract(t *testing.T) {
 				assert.NoError(t, err)
 
 				indexPath := filepath.Join(destDir, "index.js")
-				assert.FileExists(t, indexPath)
+				assert.NoFileExists(t, indexPath, "Files without directory prefix should be skipped")
 
 				readmePath := filepath.Join(destDir, "README.md")
-				assert.FileExists(t, readmePath)
+				assert.NoFileExists(t, readmePath, "Files without directory prefix should be skipped")
 			},
 		},
 		{
