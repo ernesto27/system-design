@@ -129,10 +129,17 @@ func (pm *PackageManager) ParsePackageJSON() error {
 	}
 
 	if pm.packageJsonParse.PackageLock != nil {
-		packagesToAdd := pm.packageJsonParse.ResolveDependencies()
+		packagesToAdd, packagesToRemove := pm.packageJsonParse.ResolveDependencies()
 
 		for _, pkg := range packagesToAdd {
 			err = pm.Add(pkg.Name, pkg.Version, true)
+			if err != nil {
+				return err
+			}
+		}
+
+		for _, pkg := range packagesToRemove {
+			err = pm.Remove(pkg.Name, false)
 			if err != nil {
 				return err
 			}
@@ -297,7 +304,7 @@ func (pm *PackageManager) Add(pkgName string, version string, isInstall bool) er
 	return nil
 }
 
-func (pm *PackageManager) Remove(pkg string) error {
+func (pm *PackageManager) Remove(pkg string, removeFromPackageJson bool) error {
 	packageJson, err := pm.packageJsonParse.ParseDefault()
 	if err != nil {
 		return err
@@ -312,16 +319,17 @@ func (pm *PackageManager) Remove(pkg string) error {
 		return err
 	}
 
-	err = pm.packageJsonParse.RemoveDependencies(pkg)
-	if err != nil {
-		return err
+	if removeFromPackageJson {
+		err = pm.packageJsonParse.RemoveDependencies(pkg)
+		if err != nil {
+			return err
+		}
 	}
 
 	err = pm.packageJsonParse.RemoveFromLockFile(pkg, pkgToRemove)
 	if err != nil {
 		return err
 	}
-
 	return nil
 }
 

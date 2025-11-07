@@ -142,6 +142,8 @@ func (p *PackageJSONParser) CreateLockFile(data *PackageLock) error {
 		return fmt.Errorf("failed to write JSON to file package-lock.json: %w", err)
 	}
 
+	p.PackageLock = data
+
 	return nil
 }
 
@@ -248,13 +250,14 @@ func (p *PackageJSONParser) AddOrUpdateDependency(name string, version string) e
 	return nil
 }
 
-func (p *PackageJSONParser) ResolveDependencies() []Dependency {
-	differences := []Dependency{}
+func (p *PackageJSONParser) ResolveDependencies() (toInstall []Dependency, toRemove []Dependency) {
+	toInstall = []Dependency{}
+	toRemove = []Dependency{}
 
 	for name, versionInJSON := range p.PackageJSON.Dependencies {
 		versionInLock, exists := p.PackageLock.Dependencies[name]
 		if !exists || versionInJSON != versionInLock {
-			differences = append(differences, Dependency{
+			toInstall = append(toInstall, Dependency{
 				Name:    name,
 				Version: versionInJSON,
 			})
@@ -264,14 +267,26 @@ func (p *PackageJSONParser) ResolveDependencies() []Dependency {
 	for name, versionInJSON := range p.PackageJSON.DevDependencies {
 		versionInLock, exists := p.PackageLock.Dependencies[name]
 		if !exists || versionInJSON != versionInLock {
-			differences = append(differences, Dependency{
+			toInstall = append(toInstall, Dependency{
 				Name:    name,
 				Version: versionInJSON,
 			})
 		}
 	}
 
-	return differences
+	for name, versionInLock := range p.PackageLock.Dependencies {
+		_, existsInDeps := p.PackageJSON.Dependencies[name]
+		_, existsInDevDeps := p.PackageJSON.DevDependencies[name]
+
+		if !existsInDeps && !existsInDevDeps {
+			toRemove = append(toRemove, Dependency{
+				Name:    name,
+				Version: versionInLock,
+			})
+		}
+	}
+
+	return toInstall, toRemove
 }
 
 func (p *PackageJSONParser) ResolveDependenciesToRemove(pkg string) []string {

@@ -56,7 +56,7 @@ func main() {
 			fmt.Println("Usage: go-npm rm <package-name>")
 			os.Exit(1)
 		}
-		err := packageManager.Remove(os.Args[2])
+		err := packageManager.Remove(os.Args[2], true)
 		if err != nil {
 			fmt.Println("Error removing package:", err)
 			return

@@ -23,10 +23,10 @@ TODO
 [x] - Manage dev dependecies
 [X] - Remove tarball file after decompress
 [x] - Manage conflig differe lib version of packages
-[ ] - Replace ETag when change 
+[] - Replace ETag when change 
 [] - update add command -install
 [] - manifest download if new version exists   
-[] - when run npm i check if lib is remove from package json and remove from node_modules
+[x] - when run npm i check if lib is remove from package json and remove from node_modules
 [] Fix tests 
 [] - Creat tutorial
 [] - Add flag to skip devDependencies in production mode (--production)
