@@ -84,3 +84,5 @@ npm run test:watch          # Run tests in watch mode
 - Use buffered I/O for performance (32KB buffers)
 - Security: Strip `package/` prefix to prevent path traversal
 - Scoped packages: Extract name after `/` for tarball URLs
+
+before make changes ,  show code diff and wait for confirmation

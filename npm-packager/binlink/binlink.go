@@ -109,7 +109,14 @@ func (bl *BinLinker) parseBinField(pkgName string, binField json.RawMessage) (ma
 	// Try parsing as string first
 	var binString string
 	if err := json.Unmarshal(binField, &binString); err == nil {
-		bins[pkgName] = binString
+		// For scoped packages (@scope/name), use only the name part after /
+		binName := pkgName
+		if pkgName[0] == '@' {
+			if idx := filepath.Base(pkgName); idx != "" {
+				binName = idx
+			}
+		}
+		bins[binName] = binString
 		return bins, nil
 	}
 
