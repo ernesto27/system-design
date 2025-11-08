@@ -17,7 +17,7 @@ type NPMPackage struct {
 	License        any                `json:"license"`
 	Homepage       string             `json:"homepage"`
 	Keywords       any                `json:"keywords"`
-	Repository     Repository         `json:"repository"`
+	Repository     any                `json:"repository"`
 	Description    string             `json:"description"`
 	Contributors   any                `json:"contributors"`
 	Maintainers    []Maintainer       `json:"maintainers"`

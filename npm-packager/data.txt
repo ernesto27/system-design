@@ -28,12 +28,15 @@ TODO
 [] - manifest download if new version exists   
 [x] - when run npm i check if lib is remove from package json and remove from node_modules
 [] Fix tests 
-[] - Creat tutorial
 [] - Add flag to skip devDependencies in production mode (--production)
 [] - npm update https://chatgpt.com/c/6907d956-a35c-8330-bc95-d21d5a7d5205
 [] - install packages globally
 [] - init command
-[] - prune command 
+[] - prune command
+[] - fix this go run . g yarn
+Installing yarn globally...
+Error installing globally: failed to download package: failed to parse JSON from file /home/ernesto/.config/go-npm/manifest/yarn.json: json: cannot unmarshal string into Go struct field Version.versions.repository of type manager.Repository 
+[] - Creat tutorial
 
 
 DO NOT DELETE NODE_MODULES WITH INSTALL OR update

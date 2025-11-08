@@ -3,6 +3,7 @@ package manager
 import (
 	"fmt"
 	"npm-packager/binlink"
+	"npm-packager/config"
 	"npm-packager/etag"
 	"npm-packager/extractor"
 	"npm-packager/manifest"
@@ -40,6 +41,8 @@ type PackageManager struct {
 	packagesPath      string
 	Etag              etag.Etag
 	isAdd             bool
+	isGlobal          bool
+	config            *config.Config
 	packages          Packages
 	packageLock       *packagejson.PackageLock
 	manifest          *manifest.Manifest
@@ -69,26 +72,25 @@ type QueueItem struct {
 }
 
 func New() (*PackageManager, error) {
-	homeDir, err := os.UserHomeDir()
+	cfg, err := config.New()
 	if err != nil {
-		return nil, fmt.Errorf("failed to get user home directory: %v", err)
+		return nil, fmt.Errorf("failed to create config: %w", err)
 	}
 
-	configPath := filepath.Join(homeDir, ".config", "go-npm")
-	if err := utils.CreateDir(configPath); err != nil {
+	// Create base directories
+	if err := utils.CreateDir(cfg.BaseDir); err != nil {
 		return nil, err
 	}
 
-	packagePath := filepath.Join(configPath, "packages")
-	if err := utils.CreateDir(packagePath); err != nil {
+	if err := utils.CreateDir(cfg.PackagesDir); err != nil {
 		return nil, err
 	}
 
-	manifest, err := manifest.NewManifest(configPath, npmRegistryURL)
+	manifest, err := manifest.NewManifest(cfg.BaseDir, npmRegistryURL)
 	if err != nil {
 		return nil, err
 	}
-	etag, err := etag.NewEtag(configPath)
+	etag, err := etag.NewEtag(cfg.BaseDir)
 	if err != nil {
 		return nil, err
 	}
@@ -99,16 +101,18 @@ func New() (*PackageManager, error) {
 	parseJsonManifest := newParseJsonManifest()
 	versionInfo := newVersionInfo()
 	packageJsonParse := packagejson.NewPackageJSONParser()
-	binLinker := binlink.NewBinLinker("./node_modules/")
+	binLinker := binlink.NewBinLinker(cfg.LocalNodeModules, false, "")
 
 	return &PackageManager{
 		dependencies:      make(map[string]string),
-		extractedPath:     "./node_modules/",
+		extractedPath:     cfg.LocalNodeModules,
 		processedPackages: make(map[string]packagejson.Dependency),
-		configPath:        configPath,
-		packagesPath:      packagePath,
+		configPath:        cfg.BaseDir,
+		packagesPath:      cfg.PackagesDir,
 		Etag:              *etag,
 		isAdd:             false,
+		isGlobal:          false,
+		config:            cfg,
 		packages:          make(Packages),
 		tarball:           downloadTarball,
 		extractor:         extractor,
@@ -120,6 +124,26 @@ func New() (*PackageManager, error) {
 		binLinker:         binLinker,
 		downloadLocks:     make(map[string]*sync.Mutex),
 	}, nil
+}
+
+func (pm *PackageManager) SetupGlobal() error {
+	// Create global directory first
+	if err := utils.CreateDir(pm.config.GlobalDir); err != nil {
+		return err
+	}
+
+	if err := utils.CreateDir(pm.config.GlobalNodeModules); err != nil {
+		return err
+	}
+	if err := utils.CreateDir(pm.config.GlobalBinDir); err != nil {
+		return err
+	}
+
+	pm.isGlobal = true
+	pm.extractedPath = pm.config.GlobalNodeModules
+	pm.binLinker = binlink.NewBinLinker(pm.config.GlobalNodeModules, true, pm.config.GlobalBinDir)
+
+	return nil
 }
 
 func (pm *PackageManager) ParsePackageJSON() error {
@@ -165,7 +189,14 @@ func (pm *PackageManager) ParsePackageJSON() error {
 func (pm *PackageManager) DownloadFromPackageLock() error {
 	packagesToInstall := make(map[string]packagejson.PackageItem)
 	for pkgPath := range pm.packageLock.Packages {
-		exists := utils.FolderExists(pkgPath)
+		namePkg := strings.TrimPrefix(pkgPath, "node_modules/")
+		if strings.Contains(namePkg, "/node_modules/") {
+			parts := strings.Split(namePkg, "/node_modules/")
+			namePkg = parts[len(parts)-1]
+		}
+
+		targetPath := path.Join(pm.extractedPath, namePkg)
+		exists := utils.FolderExists(targetPath)
 		if !exists {
 			packagesToInstall[pkgPath] = pm.packageLock.Packages[pkgPath]
 		}
@@ -229,7 +260,6 @@ func (pm *PackageManager) DownloadFromPackageLock() error {
 		return err
 	}
 
-	// Link bin executables
 	if err := pm.binLinker.LinkAllPackages(); err != nil {
 		return fmt.Errorf("failed to link bin executables: %w", err)
 	}
@@ -589,6 +619,38 @@ func (pm *PackageManager) download(packageJson packagejson.PackageJSON) error {
 		return err
 	}
 	pm.packageLock = &packageLock
+
+	return nil
+}
+
+func (pm *PackageManager) InstallGlobal(pkgName, version string) error {
+	if !pm.isGlobal {
+		return fmt.Errorf("package manager is not in global mode")
+	}
+
+	fmt.Printf("Installing %s globally...\n", pkgName)
+
+	if version == "" {
+		version = "latest"
+	}
+
+	packageJsonToInstall := packagejson.PackageJSON{
+		Dependencies: map[string]string{
+			pkgName: version,
+		},
+	}
+
+	if err := pm.download(packageJsonToInstall); err != nil {
+		return fmt.Errorf("failed to download package: %w", err)
+	}
+
+	if err := pm.DownloadFromPackageLock(); err != nil {
+		return fmt.Errorf("failed to install package: %w", err)
+	}
+
+	fmt.Printf("\n✓ Successfully installed %s globally\n", pkgName)
+	fmt.Printf("Binaries available in: %s\n", pm.config.GlobalBinDir)
+	fmt.Printf("Add to PATH: export PATH=\"%s:$PATH\"\n", pm.config.GlobalBinDir)
 
 	return nil
 }
