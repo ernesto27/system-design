@@ -26,10 +26,6 @@ func (m *Manifest) Download(pkg string, currentEtag string) (string, int, error)
 	url := m.npmResgistryURL + pkg
 	filename := filepath.Join(m.Path, pkg+".json")
 
-	// if _, err := os.Stat(filename); err == nil {
-	// 	return "", 0, nil
-	// }
-
 	eTag, statusCode, err := utils.DownloadFile(url, filename, currentEtag)
 
 	return eTag, statusCode, err

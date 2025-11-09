@@ -141,6 +141,8 @@ func (pm *PackageManager) SetupGlobal() error {
 
 	pm.isGlobal = true
 	pm.extractedPath = pm.config.GlobalNodeModules
+
+	// TODO - INSTEAD OF CREATING A NEW BINLINKER, JUST UPDATE THE EXISTING ONE
 	pm.binLinker = binlink.NewBinLinker(pm.config.GlobalNodeModules, true, pm.config.GlobalBinDir)
 
 	return nil
@@ -173,7 +175,7 @@ func (pm *PackageManager) ParsePackageJSON() error {
 		return nil
 	}
 
-	err = pm.download(*data)
+	err = pm.fetchToCache(*data)
 	if err != nil {
 		return err
 	}
@@ -186,7 +188,7 @@ func (pm *PackageManager) ParsePackageJSON() error {
 	return nil
 }
 
-func (pm *PackageManager) DownloadFromPackageLock() error {
+func (pm *PackageManager) InstallFromCache() error {
 	packagesToInstall := make(map[string]packagejson.PackageItem)
 	for pkgPath := range pm.packageLock.Packages {
 		namePkg := strings.TrimPrefix(pkgPath, "node_modules/")
@@ -314,7 +316,7 @@ func (pm *PackageManager) Add(pkgName string, version string, isInstall bool) er
 			pkgName: version,
 		},
 	}
-	err = pm.download(packageJsonAdd)
+	err = pm.fetchToCache(packageJsonAdd)
 	if err != nil {
 		return err
 	}
@@ -363,7 +365,7 @@ func (pm *PackageManager) Remove(pkg string, removeFromPackageJson bool) error {
 	return nil
 }
 
-func (pm *PackageManager) download(packageJson packagejson.PackageJSON) error {
+func (pm *PackageManager) fetchToCache(packageJson packagejson.PackageJSON) error {
 	queue := make([]QueueItem, 0)
 
 	for name, version := range packageJson.Dependencies {
@@ -623,6 +625,41 @@ func (pm *PackageManager) download(packageJson packagejson.PackageJSON) error {
 	return nil
 }
 
+func (pm *PackageManager) addBinToPath() error {
+	homeDir, err := os.UserHomeDir()
+	if err != nil {
+		return fmt.Errorf("failed to get home directory: %w", err)
+	}
+
+	bashrcPath := filepath.Join(homeDir, ".bashrc")
+	exportLine := fmt.Sprintf("export PATH=\"%s:$PATH\"", pm.config.GlobalBinDir)
+
+	content, err := os.ReadFile(bashrcPath)
+	if err != nil {
+		if os.IsNotExist(err) {
+			content = []byte{}
+		} else {
+			return fmt.Errorf("failed to read .bashrc: %w", err)
+		}
+	}
+
+	if strings.Contains(string(content), exportLine) {
+		return nil
+	}
+
+	newContent := string(content)
+	if len(content) > 0 && !strings.HasSuffix(newContent, "\n") {
+		newContent += "\n"
+	}
+	newContent += fmt.Sprintf("\n# Added by go-npm\n%s\n", exportLine)
+
+	if err := os.WriteFile(bashrcPath, []byte(newContent), 0644); err != nil {
+		return fmt.Errorf("failed to write .bashrc: %w", err)
+	}
+
+	return nil
+}
+
 func (pm *PackageManager) InstallGlobal(pkgName, version string) error {
 	if !pm.isGlobal {
 		return fmt.Errorf("package manager is not in global mode")
@@ -640,17 +677,27 @@ func (pm *PackageManager) InstallGlobal(pkgName, version string) error {
 		},
 	}
 
-	if err := pm.download(packageJsonToInstall); err != nil {
-		return fmt.Errorf("failed to download package: %w", err)
+	if err := pm.fetchToCache(packageJsonToInstall); err != nil {
+		return fmt.Errorf("failed to fetch package to cache: %w", err)
 	}
 
-	if err := pm.DownloadFromPackageLock(); err != nil {
+	if err := pm.InstallFromCache(); err != nil {
 		return fmt.Errorf("failed to install package: %w", err)
+	}
+
+	// Add bin directory to PATH in .bashrc
+	if err := pm.addBinToPath(); err != nil {
+		fmt.Printf("Warning: Failed to add bin directory to PATH: %v\n", err)
+		fmt.Printf("Please manually add to PATH: export PATH=\"%s:$PATH\"\n", pm.config.GlobalBinDir)
+	} else {
+		fmt.Printf("\n✓ Successfully installed %s globally\n", pkgName)
+		fmt.Printf("✓ Added bin directory to PATH in ~/.bashrc\n")
+		fmt.Printf("  Run 'source ~/.bashrc' to apply changes in current terminal\n")
+		return nil
 	}
 
 	fmt.Printf("\n✓ Successfully installed %s globally\n", pkgName)
 	fmt.Printf("Binaries available in: %s\n", pm.config.GlobalBinDir)
-	fmt.Printf("Add to PATH: export PATH=\"%s:$PATH\"\n", pm.config.GlobalBinDir)
 
 	return nil
 }

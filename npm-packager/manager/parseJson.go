@@ -47,7 +47,7 @@ type Version struct {
 	GitHead                string                 `json:"gitHead"`
 	Scripts                map[string]string      `json:"scripts"`
 	NPMUser                NPMUser                `json:"_npmUser"`
-	Repository             Repository             `json:"repository"`
+	Repository             any                    `json:"repository"`
 	NPMVersion             string                 `json:"_npmVersion"`
 	Description            string                 `json:"description"`
 	Directories            map[string]interface{} `json:"directories"`

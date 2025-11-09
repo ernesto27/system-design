@@ -99,7 +99,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	if err := packageManager.DownloadFromPackageLock(); err != nil {
+	if err := packageManager.InstallFromCache(); err != nil {
 		fmt.Println(err)
 		return
 	}

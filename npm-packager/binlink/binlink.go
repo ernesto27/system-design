@@ -3,7 +3,6 @@ package binlink
 import (
 	"encoding/json"
 	"fmt"
-	"io"
 	"os"
 	"path/filepath"
 )
@@ -103,14 +102,8 @@ func (bl *BinLinker) LinkPackage(pkgPath string) error {
 	}
 
 	for binName, binPath := range bins {
-		if bl.isGlobal {
-			if err := bl.copyBinary(pkgPath, binName, binPath); err != nil {
-				return err
-			}
-		} else {
-			if err := bl.createSymlink(pkgPath, binName, binPath); err != nil {
-				return err
-			}
+		if err := bl.createSymlink(pkgPath, binName, binPath); err != nil {
+			return err
 		}
 	}
 
@@ -146,16 +139,23 @@ func (bl *BinLinker) parseBinField(pkgName string, binField json.RawMessage) (ma
 func (bl *BinLinker) createSymlink(pkgPath, binName, binRelativePath string) error {
 	binRelativePath = filepath.Clean(binRelativePath)
 
-	// Get package name relative to node_modules
-	// For scoped packages: pkgPath = "node_modules/@babel/cli" -> pkgName = "@babel/cli"
-	// For normal packages: pkgPath = "node_modules/nodemon" -> pkgName = "nodemon"
-	relPath, err := filepath.Rel(bl.nodeModulesPath, pkgPath)
-	if err != nil {
-		return fmt.Errorf("failed to get relative path: %w", err)
-	}
-
-	targetPath := filepath.Join("..", relPath, binRelativePath)
+	var targetPath string
 	linkPath := filepath.Join(bl.binPath, binName)
+
+	if bl.isGlobal {
+		// For global installations, use absolute path
+		targetPath = filepath.Join(pkgPath, binRelativePath)
+	} else {
+		// For local installations, use relative path
+		// Get package name relative to node_modules
+		// For scoped packages: pkgPath = "node_modules/@babel/cli" -> pkgName = "@babel/cli"
+		// For normal packages: pkgPath = "node_modules/nodemon" -> pkgName = "nodemon"
+		relPath, err := filepath.Rel(bl.nodeModulesPath, pkgPath)
+		if err != nil {
+			return fmt.Errorf("failed to get relative path: %w", err)
+		}
+		targetPath = filepath.Join("..", relPath, binRelativePath)
+	}
 
 	// Check if symlink already exists and is correct
 	if existingTarget, err := os.Readlink(linkPath); err == nil {
@@ -172,49 +172,5 @@ func (bl *BinLinker) createSymlink(pkgPath, binName, binRelativePath string) err
 	}
 
 	fmt.Printf("Linked bin: %s -> %s\n", binName, targetPath)
-	return nil
-}
-
-func (bl *BinLinker) copyBinary(pkgPath, binName, binRelativePath string) error {
-	binRelativePath = filepath.Clean(binRelativePath)
-
-	srcPath := filepath.Join(pkgPath, binRelativePath)
-	dstPath := filepath.Join(bl.binPath, binName)
-
-	// Check if file already exists
-	if _, err := os.Stat(dstPath); err == nil {
-		if err := os.Remove(dstPath); err != nil {
-			return fmt.Errorf("failed to remove existing file %s: %w", dstPath, err)
-		}
-	}
-
-	// Copy the file
-	srcFile, err := os.Open(srcPath)
-	if err != nil {
-		return fmt.Errorf("failed to open source file: %w", err)
-	}
-	defer srcFile.Close()
-
-	srcInfo, err := srcFile.Stat()
-	if err != nil {
-		return fmt.Errorf("failed to stat source file: %w", err)
-	}
-
-	dstFile, err := os.OpenFile(dstPath, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, srcInfo.Mode())
-	if err != nil {
-		return fmt.Errorf("failed to create destination file: %w", err)
-	}
-	defer dstFile.Close()
-
-	if _, err := io.Copy(dstFile, srcFile); err != nil {
-		return fmt.Errorf("failed to copy file contents: %w", err)
-	}
-
-	// Make it executable
-	if err := os.Chmod(dstPath, 0755); err != nil {
-		return fmt.Errorf("failed to make binary executable: %w", err)
-	}
-
-	fmt.Printf("Copied bin: %s\n", binName)
 	return nil
 }
