@@ -7,23 +7,24 @@ import (
 )
 
 type NPMPackage struct {
-	ID             string             `json:"_id"`
-	Rev            string             `json:"_rev"`
-	Name           string             `json:"name"`
-	DistTags       DistTags           `json:"dist-tags"`
-	Versions       map[string]Version `json:"versions"`
-	Time           map[string]string  `json:"time"`
-	Bugs           any                `json:"bugs"`
-	License        any                `json:"license"`
-	Homepage       string             `json:"homepage"`
-	Keywords       any                `json:"keywords"`
-	Repository     any                `json:"repository"`
-	Description    string             `json:"description"`
-	Contributors   any                `json:"contributors"`
-	Maintainers    []Maintainer       `json:"maintainers"`
-	Readme         string             `json:"readme"`
-	ReadmeFilename string             `json:"readmeFilename"`
-	Users          map[string]bool    `json:"users"`
+	ID       string             `json:"_id"`
+	Rev      string             `json:"_rev"`
+	Name     string             `json:"name"`
+	DistTags DistTags           `json:"dist-tags"`
+	Versions map[string]Version `json:"versions"`
+	Time     map[string]string  `json:"time"`
+	Bugs     any                `json:"bugs"`
+	License  any                `json:"license"`
+	Homepage string             `json:"homepage"`
+	Keywords any                `json:"keywords"`
+
+	Repository     any             `json:"repository"`
+	Description    string          `json:"description"`
+	Contributors   any             `json:"contributors"`
+	Maintainers    []Maintainer    `json:"maintainers"`
+	Readme         string          `json:"readme"`
+	ReadmeFilename string          `json:"readmeFilename"`
+	Users          map[string]bool `json:"users"`
 }
 
 type DistTags struct {
