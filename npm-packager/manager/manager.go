@@ -66,12 +66,48 @@ type Package struct {
 
 type Packages map[string]Package
 
+type Dependencies struct {
+	Manifest          *manifest.Manifest
+	Etag              *etag.Etag
+	Tarball           *tarball.Tarball
+	Extractor         *extractor.TGZExtractor
+	PackageCopy       *packagecopy.PackageCopy
+	ParseJsonManifest *ParseJsonManifest
+	VersionInfo       *VersionInfo
+	PackageJsonParse  *packagejson.PackageJSONParser
+	BinLinker         *binlink.BinLinker
+}
+
 type QueueItem struct {
 	Dep        packagejson.Dependency
 	ParentName string
 }
 
-func New() (*PackageManager, error) {
+func BuildDependencies(cfg *config.Config) (*Dependencies, error) {
+	manifest, err := manifest.NewManifest(cfg.BaseDir, npmRegistryURL)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create manifest: %w", err)
+	}
+
+	etag, err := etag.NewEtag(cfg.BaseDir)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create etag: %w", err)
+	}
+
+	return &Dependencies{
+		Manifest:          manifest,
+		Etag:              etag,
+		Tarball:           tarball.NewTarball(),
+		Extractor:         extractor.NewTGZExtractor(),
+		PackageCopy:       packagecopy.NewPackageCopy(),
+		ParseJsonManifest: newParseJsonManifest(),
+		VersionInfo:       newVersionInfo(),
+		PackageJsonParse:  packagejson.NewPackageJSONParser(),
+		BinLinker:         binlink.NewBinLinker(cfg.LocalNodeModules, false, ""),
+	}, nil
+}
+
+func New(deps *Dependencies) (*PackageManager, error) {
 	cfg, err := config.New()
 	if err != nil {
 		return nil, fmt.Errorf("failed to create config: %w", err)
@@ -86,42 +122,25 @@ func New() (*PackageManager, error) {
 		return nil, err
 	}
 
-	manifest, err := manifest.NewManifest(cfg.BaseDir, npmRegistryURL)
-	if err != nil {
-		return nil, err
-	}
-	etag, err := etag.NewEtag(cfg.BaseDir)
-	if err != nil {
-		return nil, err
-	}
-
-	downloadTarball := tarball.NewTarball()
-	extractor := extractor.NewTGZExtractor()
-	packageCopy := packagecopy.NewPackageCopy()
-	parseJsonManifest := newParseJsonManifest()
-	versionInfo := newVersionInfo()
-	packageJsonParse := packagejson.NewPackageJSONParser()
-	binLinker := binlink.NewBinLinker(cfg.LocalNodeModules, false, "")
-
 	return &PackageManager{
 		dependencies:      make(map[string]string),
 		extractedPath:     cfg.LocalNodeModules,
 		processedPackages: make(map[string]packagejson.Dependency),
 		configPath:        cfg.BaseDir,
 		packagesPath:      cfg.PackagesDir,
-		Etag:              *etag,
+		Etag:              *deps.Etag,
 		isAdd:             false,
 		isGlobal:          false,
 		config:            cfg,
 		packages:          make(Packages),
-		tarball:           downloadTarball,
-		extractor:         extractor,
-		packageCopy:       packageCopy,
-		manifest:          manifest,
-		parseJsonManifest: parseJsonManifest,
-		versionInfo:       versionInfo,
-		packageJsonParse:  packageJsonParse,
-		binLinker:         binLinker,
+		tarball:           deps.Tarball,
+		extractor:         deps.Extractor,
+		packageCopy:       deps.PackageCopy,
+		manifest:          deps.Manifest,
+		parseJsonManifest: deps.ParseJsonManifest,
+		versionInfo:       deps.VersionInfo,
+		packageJsonParse:  deps.PackageJsonParse,
+		binLinker:         deps.BinLinker,
 		downloadLocks:     make(map[string]*sync.Mutex),
 	}, nil
 }
