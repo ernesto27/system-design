@@ -18,17 +18,18 @@ type PackageJSON struct {
 	Bin  json.RawMessage `json:"bin"`
 }
 
-func NewBinLinker(nodeModulesPath string, isGlobal bool, globalBinPath string) *BinLinker {
-	binPath := filepath.Join(nodeModulesPath, ".bin")
-	if isGlobal && globalBinPath != "" {
-		binPath = globalBinPath
-	}
-
+func NewBinLinker(nodeModulesPath string) *BinLinker {
 	return &BinLinker{
 		nodeModulesPath: nodeModulesPath,
-		binPath:         binPath,
-		isGlobal:        isGlobal,
+		binPath:         filepath.Join(nodeModulesPath, ".bin"),
+		isGlobal:        false,
 	}
+}
+
+func (bl *BinLinker) SetGlobalMode(nodeModulesPath string, globalBinPath string) {
+	bl.nodeModulesPath = nodeModulesPath
+	bl.binPath = globalBinPath
+	bl.isGlobal = true
 }
 
 func (bl *BinLinker) CreateBinDirectory() error {

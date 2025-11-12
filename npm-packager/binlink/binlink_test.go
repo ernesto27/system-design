@@ -64,48 +64,68 @@ func TestNewBinLinker(t *testing.T) {
 	testCases := []struct {
 		name           string
 		nodeModules    string
-		isGlobal       bool
-		globalBinPath  string
 		expectedBinDir string
 	}{
 		{
 			name:           "Local installation",
 			nodeModules:    "/home/user/project/node_modules",
-			isGlobal:       false,
-			globalBinPath:  "",
 			expectedBinDir: "/home/user/project/node_modules/.bin",
-		},
-		{
-			name:           "Global installation with custom bin path",
-			nodeModules:    "/usr/local/lib/node_modules",
-			isGlobal:       true,
-			globalBinPath:  "/usr/local/bin",
-			expectedBinDir: "/usr/local/bin",
-		},
-		{
-			name:           "Global installation without custom bin path",
-			nodeModules:    "/usr/local/lib/node_modules",
-			isGlobal:       true,
-			globalBinPath:  "",
-			expectedBinDir: "/usr/local/lib/node_modules/.bin",
 		},
 		{
 			name:           "Empty node modules path",
 			nodeModules:    "",
-			isGlobal:       false,
-			globalBinPath:  "",
 			expectedBinDir: ".bin",
 		},
 	}
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			bl := NewBinLinker(tc.nodeModules, tc.isGlobal, tc.globalBinPath)
+			bl := NewBinLinker(tc.nodeModules)
 
 			assert.NotNil(t, bl)
 			assert.Equal(t, tc.nodeModules, bl.nodeModulesPath)
-			assert.Equal(t, tc.isGlobal, bl.isGlobal)
+			assert.False(t, bl.isGlobal)
 			assert.Equal(t, tc.expectedBinDir, bl.binPath)
+		})
+	}
+}
+
+func TestSetGlobalMode(t *testing.T) {
+	testCases := []struct {
+		name               string
+		initialNodeModules string
+		globalNodeModules  string
+		globalBinPath      string
+	}{
+		{
+			name:               "Switch to global mode",
+			initialNodeModules: "/home/user/project/node_modules",
+			globalNodeModules:  "/usr/local/lib/node_modules",
+			globalBinPath:      "/usr/local/bin",
+		},
+		{
+			name:               "Switch to global mode with same path",
+			initialNodeModules: "/usr/local/lib/node_modules",
+			globalNodeModules:  "/usr/local/lib/node_modules",
+			globalBinPath:      "/usr/local/bin",
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			bl := NewBinLinker(tc.initialNodeModules)
+
+			// Verify it starts in local mode
+			assert.False(t, bl.isGlobal)
+			assert.Equal(t, tc.initialNodeModules, bl.nodeModulesPath)
+
+			// Switch to global mode
+			bl.SetGlobalMode(tc.globalNodeModules, tc.globalBinPath)
+
+			// Verify it's now in global mode
+			assert.True(t, bl.isGlobal)
+			assert.Equal(t, tc.globalNodeModules, bl.nodeModulesPath)
+			assert.Equal(t, tc.globalBinPath, bl.binPath)
 		})
 	}
 }
@@ -123,7 +143,7 @@ func TestCreateBinDirectory(t *testing.T) {
 			name: "Create .bin directory when it doesn't exist",
 			setupFunc: func(t *testing.T) *BinLinker {
 				tmpDir := t.TempDir()
-				return NewBinLinker(tmpDir, false, "")
+				return NewBinLinker(tmpDir)
 			},
 			expectError: false,
 			validate: func(t *testing.T, bl *BinLinker) {
@@ -140,7 +160,7 @@ func TestCreateBinDirectory(t *testing.T) {
 				binDir := filepath.Join(tmpDir, ".bin")
 				err := os.Mkdir(binDir, 0755)
 				assert.NoError(t, err)
-				return NewBinLinker(tmpDir, false, "")
+				return NewBinLinker(tmpDir)
 			},
 			expectError: false,
 			validate: func(t *testing.T, bl *BinLinker) {
@@ -154,7 +174,7 @@ func TestCreateBinDirectory(t *testing.T) {
 			setupFunc: func(t *testing.T) *BinLinker {
 				tmpDir := t.TempDir()
 				nodeModules := filepath.Join(tmpDir, "nested", "path", "node_modules")
-				return NewBinLinker(nodeModules, false, "")
+				return NewBinLinker(nodeModules)
 			},
 			expectError: false,
 			validate: func(t *testing.T, bl *BinLinker) {
@@ -170,7 +190,7 @@ func TestCreateBinDirectory(t *testing.T) {
 				readOnlyDir := filepath.Join(tmpDir, "readonly")
 				err := os.Mkdir(readOnlyDir, 0444)
 				assert.NoError(t, err)
-				return NewBinLinker(readOnlyDir, false, "")
+				return NewBinLinker(readOnlyDir)
 			},
 			expectError: true,
 			validate:    func(t *testing.T, bl *BinLinker) {},
@@ -294,7 +314,7 @@ func TestParseBinField(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			tmpDir := t.TempDir()
-			bl := NewBinLinker(tmpDir, false, "")
+			bl := NewBinLinker(tmpDir)
 
 			result, err := bl.parseBinField(tc.pkgName, tc.binField)
 
@@ -325,7 +345,7 @@ func TestCreateSymlink(t *testing.T) {
 				nodeModules := filepath.Join(tmpDir, "node_modules")
 				os.MkdirAll(nodeModules, 0755)
 
-				bl := NewBinLinker(nodeModules, false, "")
+				bl := NewBinLinker(nodeModules)
 				bl.CreateBinDirectory()
 
 				pkgPath := filepath.Join(nodeModules, "express")
@@ -345,7 +365,7 @@ func TestCreateSymlink(t *testing.T) {
 				nodeModules := filepath.Join(tmpDir, "node_modules")
 				os.MkdirAll(nodeModules, 0755)
 
-				bl := NewBinLinker(nodeModules, false, "")
+				bl := NewBinLinker(nodeModules)
 				bl.CreateBinDirectory()
 
 				pkgPath := filepath.Join(nodeModules, "@babel", "cli")
@@ -367,7 +387,8 @@ func TestCreateSymlink(t *testing.T) {
 				os.MkdirAll(nodeModules, 0755)
 				os.MkdirAll(binPath, 0755)
 
-				bl := NewBinLinker(nodeModules, true, binPath)
+				bl := NewBinLinker(nodeModules)
+				bl.SetGlobalMode(nodeModules, binPath)
 
 				pkgPath := filepath.Join(nodeModules, "nodemon")
 				os.MkdirAll(filepath.Join(pkgPath, "bin"), 0755)
@@ -389,7 +410,7 @@ func TestCreateSymlink(t *testing.T) {
 				nodeModules := filepath.Join(tmpDir, "node_modules")
 				os.MkdirAll(nodeModules, 0755)
 
-				bl := NewBinLinker(nodeModules, false, "")
+				bl := NewBinLinker(nodeModules)
 				bl.CreateBinDirectory()
 
 				pkgPath := filepath.Join(nodeModules, "jest")
@@ -414,7 +435,7 @@ func TestCreateSymlink(t *testing.T) {
 				nodeModules := filepath.Join(tmpDir, "node_modules")
 				os.MkdirAll(nodeModules, 0755)
 
-				bl := NewBinLinker(nodeModules, false, "")
+				bl := NewBinLinker(nodeModules)
 				bl.CreateBinDirectory()
 
 				pkgPath := filepath.Join(nodeModules, "webpack")
@@ -438,7 +459,7 @@ func TestCreateSymlink(t *testing.T) {
 				nodeModules := filepath.Join(tmpDir, "node_modules")
 				os.MkdirAll(nodeModules, 0755)
 
-				bl := NewBinLinker(nodeModules, false, "")
+				bl := NewBinLinker(nodeModules)
 				bl.CreateBinDirectory()
 
 				pkgPath := filepath.Join(nodeModules, "test-pkg")
@@ -458,7 +479,7 @@ func TestCreateSymlink(t *testing.T) {
 				nodeModules := filepath.Join(tmpDir, "node_modules")
 				os.MkdirAll(nodeModules, 0755)
 
-				bl := NewBinLinker(nodeModules, false, "")
+				bl := NewBinLinker(nodeModules)
 				bl.CreateBinDirectory()
 
 				pkgPath := filepath.Join(nodeModules, "deep-pkg")
@@ -505,7 +526,7 @@ func TestLinkPackage(t *testing.T) {
 				nodeModules := filepath.Join(tmpDir, "node_modules")
 				os.MkdirAll(nodeModules, 0755)
 
-				bl := NewBinLinker(nodeModules, false, "")
+				bl := NewBinLinker(nodeModules)
 				bl.CreateBinDirectory()
 
 				pkgPath := createTestPackage(t, nodeModules, "express", "./bin/express.js")
@@ -523,7 +544,7 @@ func TestLinkPackage(t *testing.T) {
 				nodeModules := filepath.Join(tmpDir, "node_modules")
 				os.MkdirAll(nodeModules, 0755)
 
-				bl := NewBinLinker(nodeModules, false, "")
+				bl := NewBinLinker(nodeModules)
 				bl.CreateBinDirectory()
 
 				bins := map[string]string{
@@ -546,7 +567,7 @@ func TestLinkPackage(t *testing.T) {
 				nodeModules := filepath.Join(tmpDir, "node_modules")
 				os.MkdirAll(nodeModules, 0755)
 
-				bl := NewBinLinker(nodeModules, false, "")
+				bl := NewBinLinker(nodeModules)
 				bl.CreateBinDirectory()
 
 				pkgPath := createScopedPackage(t, nodeModules, "@babel", "cli", "./bin/babel.js")
@@ -564,7 +585,7 @@ func TestLinkPackage(t *testing.T) {
 				nodeModules := filepath.Join(tmpDir, "node_modules")
 				os.MkdirAll(nodeModules, 0755)
 
-				bl := NewBinLinker(nodeModules, false, "")
+				bl := NewBinLinker(nodeModules)
 				bl.CreateBinDirectory()
 
 				pkgPath := filepath.Join(nodeModules, "no-package-json")
@@ -586,7 +607,7 @@ func TestLinkPackage(t *testing.T) {
 				nodeModules := filepath.Join(tmpDir, "node_modules")
 				os.MkdirAll(nodeModules, 0755)
 
-				bl := NewBinLinker(nodeModules, false, "")
+				bl := NewBinLinker(nodeModules)
 				bl.CreateBinDirectory()
 
 				pkgPath := filepath.Join(nodeModules, "invalid-json")
@@ -610,7 +631,7 @@ func TestLinkPackage(t *testing.T) {
 				nodeModules := filepath.Join(tmpDir, "node_modules")
 				os.MkdirAll(nodeModules, 0755)
 
-				bl := NewBinLinker(nodeModules, false, "")
+				bl := NewBinLinker(nodeModules)
 				bl.CreateBinDirectory()
 
 				pkgPath := filepath.Join(nodeModules, "no-bin")
@@ -636,7 +657,7 @@ func TestLinkPackage(t *testing.T) {
 				nodeModules := filepath.Join(tmpDir, "node_modules")
 				os.MkdirAll(nodeModules, 0755)
 
-				bl := NewBinLinker(nodeModules, false, "")
+				bl := NewBinLinker(nodeModules)
 				bl.CreateBinDirectory()
 
 				pkgPath := filepath.Join(nodeModules, "invalid-bin")
@@ -689,7 +710,7 @@ func TestLinkAllPackages(t *testing.T) {
 				createTestPackage(t, nodeModules, "jest", "./bin/jest.js")
 				createTestPackage(t, nodeModules, "webpack", "./bin/webpack.js")
 
-				return NewBinLinker(nodeModules, false, "")
+				return NewBinLinker(nodeModules)
 			},
 			expectError: false,
 			validate: func(t *testing.T, bl *BinLinker) {
@@ -708,7 +729,7 @@ func TestLinkAllPackages(t *testing.T) {
 				createScopedPackage(t, nodeModules, "@babel", "cli", "./bin/babel.js")
 				createScopedPackage(t, nodeModules, "@types", "node", "./bin/types.js")
 
-				return NewBinLinker(nodeModules, false, "")
+				return NewBinLinker(nodeModules)
 			},
 			expectError: false,
 			validate: func(t *testing.T, bl *BinLinker) {
@@ -727,7 +748,7 @@ func TestLinkAllPackages(t *testing.T) {
 				createScopedPackage(t, nodeModules, "@babel", "core", "./lib/index.js")
 				createTestPackage(t, nodeModules, "react", "./index.js")
 
-				return NewBinLinker(nodeModules, false, "")
+				return NewBinLinker(nodeModules)
 			},
 			expectError: false,
 			validate: func(t *testing.T, bl *BinLinker) {
@@ -748,7 +769,7 @@ func TestLinkAllPackages(t *testing.T) {
 				// Add a file in node_modules (should be skipped)
 				os.WriteFile(filepath.Join(nodeModules, "README.md"), []byte("readme"), 0644)
 
-				return NewBinLinker(nodeModules, false, "")
+				return NewBinLinker(nodeModules)
 			},
 			expectError: false,
 			validate: func(t *testing.T, bl *BinLinker) {
@@ -771,7 +792,7 @@ func TestLinkAllPackages(t *testing.T) {
 
 				createTestPackage(t, nodeModules, "jest", "./bin/jest.js")
 
-				return NewBinLinker(nodeModules, false, "")
+				return NewBinLinker(nodeModules)
 			},
 			expectError: false,
 			validate: func(t *testing.T, bl *BinLinker) {
@@ -788,7 +809,7 @@ func TestLinkAllPackages(t *testing.T) {
 				nodeModules := filepath.Join(tmpDir, "node_modules")
 				os.MkdirAll(nodeModules, 0755)
 
-				return NewBinLinker(nodeModules, false, "")
+				return NewBinLinker(nodeModules)
 			},
 			expectError: false,
 			validate: func(t *testing.T, bl *BinLinker) {
@@ -804,7 +825,7 @@ func TestLinkAllPackages(t *testing.T) {
 				tmpDir := t.TempDir()
 				nodeModules := filepath.Join(tmpDir, "nonexistent")
 
-				return NewBinLinker(nodeModules, false, "")
+				return NewBinLinker(nodeModules)
 			},
 			expectError: false,
 			validate: func(t *testing.T, bl *BinLinker) {
@@ -830,7 +851,7 @@ func TestLinkAllPackages(t *testing.T) {
 				data, _ := json.Marshal(pkgJSON)
 				os.WriteFile(filepath.Join(noBinPath, "package.json"), data, 0644)
 
-				return NewBinLinker(nodeModules, false, "")
+				return NewBinLinker(nodeModules)
 			},
 			expectError: false,
 			validate: func(t *testing.T, bl *BinLinker) {

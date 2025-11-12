@@ -67,6 +67,7 @@ type Package struct {
 type Packages map[string]Package
 
 type Dependencies struct {
+	Config            *config.Config
 	Manifest          *manifest.Manifest
 	Etag              *etag.Etag
 	Tarball           *tarball.Tarball
@@ -83,7 +84,12 @@ type QueueItem struct {
 	ParentName string
 }
 
-func BuildDependencies(cfg *config.Config) (*Dependencies, error) {
+func BuildDependencies() (*Dependencies, error) {
+	cfg, err := config.New()
+	if err != nil {
+		return nil, fmt.Errorf("failed to create config: %w", err)
+	}
+
 	manifest, err := manifest.NewManifest(cfg.BaseDir, npmRegistryURL)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create manifest: %w", err)
@@ -95,6 +101,7 @@ func BuildDependencies(cfg *config.Config) (*Dependencies, error) {
 	}
 
 	return &Dependencies{
+		Config:            cfg,
 		Manifest:          manifest,
 		Etag:              etag,
 		Tarball:           tarball.NewTarball(),
@@ -103,35 +110,30 @@ func BuildDependencies(cfg *config.Config) (*Dependencies, error) {
 		ParseJsonManifest: newParseJsonManifest(),
 		VersionInfo:       newVersionInfo(),
 		PackageJsonParse:  packagejson.NewPackageJSONParser(),
-		BinLinker:         binlink.NewBinLinker(cfg.LocalNodeModules, false, ""),
+		BinLinker:         binlink.NewBinLinker(cfg.LocalNodeModules),
 	}, nil
 }
 
 func New(deps *Dependencies) (*PackageManager, error) {
-	cfg, err := config.New()
-	if err != nil {
-		return nil, fmt.Errorf("failed to create config: %w", err)
-	}
-
 	// Create base directories
-	if err := utils.CreateDir(cfg.BaseDir); err != nil {
+	if err := utils.CreateDir(deps.Config.BaseDir); err != nil {
 		return nil, err
 	}
 
-	if err := utils.CreateDir(cfg.PackagesDir); err != nil {
+	if err := utils.CreateDir(deps.Config.PackagesDir); err != nil {
 		return nil, err
 	}
 
 	return &PackageManager{
 		dependencies:      make(map[string]string),
-		extractedPath:     cfg.LocalNodeModules,
+		extractedPath:     deps.Config.LocalNodeModules,
 		processedPackages: make(map[string]packagejson.Dependency),
-		configPath:        cfg.BaseDir,
-		packagesPath:      cfg.PackagesDir,
+		configPath:        deps.Config.BaseDir,
+		packagesPath:      deps.Config.PackagesDir,
 		Etag:              *deps.Etag,
 		isAdd:             false,
 		isGlobal:          false,
-		config:            cfg,
+		config:            deps.Config,
 		packages:          make(Packages),
 		tarball:           deps.Tarball,
 		extractor:         deps.Extractor,
@@ -161,8 +163,7 @@ func (pm *PackageManager) SetupGlobal() error {
 	pm.isGlobal = true
 	pm.extractedPath = pm.config.GlobalNodeModules
 
-	// TODO - INSTEAD OF CREATING A NEW BINLINKER, JUST UPDATE THE EXISTING ONE
-	pm.binLinker = binlink.NewBinLinker(pm.config.GlobalNodeModules, true, pm.config.GlobalBinDir)
+	pm.binLinker.SetGlobalMode(pm.config.GlobalNodeModules, pm.config.GlobalBinDir)
 
 	return nil
 }

@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"npm-packager/config"
 	"npm-packager/manager"
 	"os"
 	"strings"
@@ -17,13 +16,7 @@ func main() {
 		param = os.Args[1]
 	}
 
-	cfg, err := config.New()
-	if err != nil {
-		fmt.Println("Error creating config:", err)
-		return
-	}
-
-	deps, err := manager.BuildDependencies(cfg)
+	deps, err := manager.BuildDependencies()
 	if err != nil {
 		fmt.Println("Error building dependencies:", err)
 		return
