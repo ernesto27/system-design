@@ -21,6 +21,7 @@ type Config struct {
 	GlobalNodeModules string
 	GlobalBinDir      string
 	GlobalPackageJSON string
+	GlobalLockFile    string
 }
 
 func New() (*Config, error) {
@@ -45,5 +46,6 @@ func New() (*Config, error) {
 		GlobalNodeModules: filepath.Join(globalDir, "node_modules"),
 		GlobalBinDir:      filepath.Join(globalDir, "bin"),
 		GlobalPackageJSON: filepath.Join(globalDir, "package.json"),
+		GlobalLockFile:    filepath.Join(globalDir, "go-package-lock.json"),
 	}, nil
 }

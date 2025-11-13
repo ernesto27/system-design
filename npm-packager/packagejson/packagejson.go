@@ -3,6 +3,7 @@ package packagejson
 import (
 	"encoding/json"
 	"fmt"
+	"npm-packager/config"
 	"os"
 	"strings"
 
@@ -47,12 +48,14 @@ type Funding struct {
 }
 
 type PackageJSONParser struct {
-	LockFileName    string
-	PackageJSON     *PackageJSON
-	PackageLock     *PackageLock
-	FilePath        string
-	OriginalContent []byte
-	LockFileContent []byte
+	Config                *config.Config
+	LockFileName          string
+	PackageJSON           *PackageJSON
+	PackageLock           *PackageLock
+	FilePath              string
+	OriginalContent       []byte
+	LockFileContent       []byte
+	LockFileContentGlobal []byte
 }
 
 type PackageLock struct {
@@ -74,8 +77,9 @@ type PackageItem struct {
 	Dependencies map[string]string `json:"dependencies,omitempty"`
 }
 
-func NewPackageJSONParser() *PackageJSONParser {
+func NewPackageJSONParser(cfg *config.Config) *PackageJSONParser {
 	return &PackageJSONParser{
+		Config:       cfg,
 		LockFileName: "go-package-lock.json",
 	}
 }
@@ -127,8 +131,13 @@ func (p *PackageJSONParser) ParseLockFile() (*PackageLock, error) {
 	return &packageLock, nil
 }
 
-func (p *PackageJSONParser) CreateLockFile(data *PackageLock) error {
-	file, err := os.Create(p.LockFileName)
+func (p *PackageJSONParser) CreateLockFile(data *PackageLock, isGlobal bool) error {
+	lockFile := p.LockFileName
+	if isGlobal {
+		lockFile = p.Config.GlobalLockFile
+	}
+
+	file, err := os.Create(lockFile)
 
 	if err != nil {
 		return fmt.Errorf("failed to create file package-lock.json: %w", err)
@@ -147,13 +156,21 @@ func (p *PackageJSONParser) CreateLockFile(data *PackageLock) error {
 	return nil
 }
 
-func (p *PackageJSONParser) UpdateLockFile(data *PackageLock) error {
-	if p.LockFileContent == nil {
+func (p *PackageJSONParser) UpdateLockFile(data *PackageLock, isGlobal bool) error {
+	lockFileContent := p.LockFileContent
+	lockFileName := p.LockFileName
+
+	if isGlobal {
+		lockFileContent = p.LockFileContentGlobal
+		lockFileName = p.Config.GlobalLockFile
+	}
+
+	if lockFileContent == nil {
 		return fmt.Errorf("lock file content not cached, call Parse() first")
 	}
 
 	var existingLock PackageLock
-	if err := json.Unmarshal(p.LockFileContent, &existingLock); err != nil {
+	if err := json.Unmarshal(lockFileContent, &existingLock); err != nil {
 		return fmt.Errorf("failed to parse existing lock file: %w", err)
 	}
 
@@ -178,12 +195,16 @@ func (p *PackageJSONParser) UpdateLockFile(data *PackageLock) error {
 		return fmt.Errorf("failed to marshal updated lock file: %w", err)
 	}
 
-	if err := os.WriteFile(p.LockFileName, updatedContent, 0644); err != nil {
+	if err := os.WriteFile(lockFileName, updatedContent, 0644); err != nil {
 		return fmt.Errorf("failed to write lock file: %w", err)
 	}
 
 	p.PackageLock = &existingLock
-	p.LockFileContent = updatedContent
+	if isGlobal {
+		p.LockFileContentGlobal = updatedContent
+	} else {
+		p.LockFileContent = updatedContent
+	}
 
 	return nil
 }
@@ -405,7 +426,7 @@ func (p *PackageJSONParser) RemoveFromLockFile(pkg string, pkgToRemove []string)
 		delete(p.PackageLock.Packages, key)
 	}
 
-	err := p.CreateLockFile(p.PackageLock)
+	err := p.CreateLockFile(p.PackageLock, false)
 	if err != nil {
 		return err
 	}

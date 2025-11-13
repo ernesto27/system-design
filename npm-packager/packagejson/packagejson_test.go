@@ -2,6 +2,7 @@ package packagejson
 
 import (
 	"encoding/json"
+	"npm-packager/config"
 	"os"
 	"path/filepath"
 	"testing"
@@ -108,7 +109,10 @@ func TestPackageJSONParser_Parse(t *testing.T) {
 			err = os.Chdir(tmpDir)
 			assert.NoError(t, err)
 
-			parser := NewPackageJSONParser()
+			cfg, err := config.New()
+			assert.NoError(t, err)
+
+			parser := NewPackageJSONParser(cfg)
 			result, err := parser.Parse("package.json")
 
 			if tc.expectError {

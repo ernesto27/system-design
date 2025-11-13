@@ -1,6 +1,7 @@
 package manager
 
 import (
+	"encoding/json"
 	"fmt"
 	"npm-packager/binlink"
 	"npm-packager/config"
@@ -109,7 +110,7 @@ func BuildDependencies() (*Dependencies, error) {
 		PackageCopy:       packagecopy.NewPackageCopy(),
 		ParseJsonManifest: newParseJsonManifest(),
 		VersionInfo:       newVersionInfo(),
-		PackageJsonParse:  packagejson.NewPackageJSONParser(),
+		PackageJsonParse:  packagejson.NewPackageJSONParser(cfg),
 		BinLinker:         binlink.NewBinLinker(cfg.LocalNodeModules),
 	}, nil
 }
@@ -165,6 +166,33 @@ func (pm *PackageManager) SetupGlobal() error {
 
 	pm.binLinker.SetGlobalMode(pm.config.GlobalNodeModules, pm.config.GlobalBinDir)
 
+	// Load existing global lock file if it exists
+	if _, err := os.Stat(pm.config.GlobalLockFile); err == nil {
+		lockFileContent, err := os.ReadFile(pm.config.GlobalLockFile)
+		if err != nil {
+			return fmt.Errorf("failed to read global lock file: %w", err)
+		}
+
+		var lockFile packagejson.PackageLock
+		if err := json.Unmarshal(lockFileContent, &lockFile); err != nil {
+			return fmt.Errorf("failed to parse global lock file: %w", err)
+		}
+
+		pm.packageJsonParse.LockFileContentGlobal = lockFileContent
+		pm.packageJsonParse.PackageLock = &lockFile
+		pm.packageLock = &lockFile
+	} else {
+		// Initialize empty lock file structure for new global installs
+		pm.packageLock = &packagejson.PackageLock{
+			Name:            "global",
+			Version:         "1.0.0",
+			LockfileVersion: 3,
+			Requires:        true,
+			Dependencies:    make(map[string]string),
+			Packages:        make(map[string]packagejson.PackageItem),
+		}
+	}
+
 	return nil
 }
 
@@ -200,7 +228,7 @@ func (pm *PackageManager) ParsePackageJSON() error {
 		return err
 	}
 
-	err = pm.packageJsonParse.CreateLockFile(pm.packageLock)
+	err = pm.packageJsonParse.CreateLockFile(pm.packageLock, false)
 	if err != nil {
 		return err
 	}
@@ -346,7 +374,7 @@ func (pm *PackageManager) Add(pkgName string, version string, isInstall bool) er
 		return err
 	}
 
-	err = pm.packageJsonParse.UpdateLockFile(pm.packageLock)
+	err = pm.packageJsonParse.UpdateLockFile(pm.packageLock, false)
 	if err != nil {
 		return err
 	}
@@ -705,6 +733,15 @@ func (pm *PackageManager) InstallGlobal(pkgName, version string) error {
 		return fmt.Errorf("failed to install package: %w", err)
 	}
 
+	if _, err := os.Stat(pm.config.GlobalLockFile); err == nil {
+		if err := pm.packageJsonParse.UpdateLockFile(pm.packageLock, true); err != nil {
+			return fmt.Errorf("failed to update global lock file: %w", err)
+		}
+	} else {
+		if err := pm.packageJsonParse.CreateLockFile(pm.packageLock, true); err != nil {
+			return fmt.Errorf("failed to create global lock file: %w", err)
+		}
+	}
 	// Add bin directory to PATH in .bashrc
 	if err := pm.addBinToPath(); err != nil {
 		fmt.Printf("Warning: Failed to add bin directory to PATH: %v\n", err)

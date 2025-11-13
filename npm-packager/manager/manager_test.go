@@ -44,7 +44,7 @@ func createMockDependencies(t *testing.T, baseDir string) *Dependencies {
 		PackageCopy:       packagecopy.NewPackageCopy(),
 		ParseJsonManifest: newParseJsonManifest(),
 		VersionInfo:       newVersionInfo(),
-		PackageJsonParse:  packagejson.NewPackageJSONParser(),
+		PackageJsonParse:  packagejson.NewPackageJSONParser(cfg),
 		BinLinker:         binlink.NewBinLinker(cfg.LocalNodeModules),
 	}
 }

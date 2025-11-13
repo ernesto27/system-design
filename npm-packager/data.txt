@@ -38,6 +38,12 @@ TODO
 [] - Creat tutorial
 
 
+DELETE GLOBAL PACKAGE
+on install -g save packge in lock global , if not exists create or update 
+on uninstall -g remove bin and node_modules,  alos update package .lock
+
+
+
 DO NOT DELETE NODE_MODULES WITH INSTALL OR update
 check from lock path if folder exists in path, if not add to packages to create  
 validate checksum,  for invalid libs in node_modules  
