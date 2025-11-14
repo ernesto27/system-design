@@ -26,7 +26,8 @@ TODO
 [x] - when run npm i check if lib is remove from package json and remove from node_modules
 [] - manifest download if new version exists   
 [] - Replace ETag when change 
-[] - npm uninstall -g typescript
+[x] - npm uninstall -g typescript
+{} - fix remove bin globally , there are some orphan bin that not are removed
 [] - update add command -install
 [] Fix tests 
 [] - Add flag to skip devDependencies in production mode (--production)

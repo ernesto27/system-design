@@ -24,7 +24,7 @@ type PackageJSON struct {
 	Version         any               `json:"version"`
 	Author          any               `json:"author"`
 	Contributors    any               `json:"contributors"`
-	License         string            `json:"license"`
+	License         any               `json:"license"`
 	Repository      any               `json:"repository"`
 	Homepage        string            `json:"homepage"`
 	Funding         any               `json:"funding"`
@@ -72,7 +72,7 @@ type PackageItem struct {
 	Version      string            `json:"version,omitempty"`
 	Resolved     string            `json:"resolved,omitempty"`
 	Integrity    string            `json:"integrity,omitempty"`
-	License      string            `json:"license,omitempty"`
+	License      any               `json:"license,omitempty"`
 	Etag         string            `json:"etag,omitempty"`
 	Dependencies map[string]string `json:"dependencies,omitempty"`
 }
@@ -403,7 +403,7 @@ func (p *PackageJSONParser) RemoveDependencies(pkg string) error {
 	return nil
 }
 
-func (p *PackageJSONParser) RemoveFromLockFile(pkg string, pkgToRemove []string) error {
+func (p *PackageJSONParser) RemoveFromLockFile(pkg string, pkgToRemove []string, isGlobal bool) error {
 	if p.PackageLock == nil {
 		return fmt.Errorf("package lock not loaded")
 	}
@@ -426,7 +426,7 @@ func (p *PackageJSONParser) RemoveFromLockFile(pkg string, pkgToRemove []string)
 		delete(p.PackageLock.Packages, key)
 	}
 
-	err := p.CreateLockFile(p.PackageLock, false)
+	err := p.CreateLockFile(p.PackageLock, isGlobal)
 	if err != nil {
 		return err
 	}

@@ -389,7 +389,12 @@ func (pm *PackageManager) Remove(pkg string, removeFromPackageJson bool) error {
 	pkgToRemove := pm.packageJsonParse.ResolveDependenciesToRemove(pkg)
 	fmt.Println(pkgToRemove)
 
-	err := pm.removePackagesFromNodeModules(pkgToRemove)
+	err := pm.binLinker.UnlinkPackage(pkg)
+	if err != nil {
+		return err
+	}
+
+	err = pm.removePackagesFromNodeModules(pkgToRemove)
 	if err != nil {
 		return err
 	}
@@ -401,10 +406,11 @@ func (pm *PackageManager) Remove(pkg string, removeFromPackageJson bool) error {
 		}
 	}
 
-	err = pm.packageJsonParse.RemoveFromLockFile(pkg, pkgToRemove)
+	err = pm.packageJsonParse.RemoveFromLockFile(pkg, pkgToRemove, true)
 	if err != nil {
 		return err
 	}
+
 	return nil
 }
 

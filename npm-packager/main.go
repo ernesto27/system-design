@@ -114,8 +114,21 @@ func main() {
 				fmt.Println("Usage: go-npm uninstall -g <package-name>")
 				os.Exit(1)
 			}
-			fmt.Printf("Global uninstall flag (-g) detected for package: %s\n", args[0])
+
+			err := packageManager.SetupGlobal()
+			if err != nil {
+				fmt.Println("Error setting up global installation:", err)
+				return
+			}
+
+			err = packageManager.Remove(args[0], false)
+			if err != nil {
+				fmt.Println("Error removing package:", err)
+				return
+			}
+			fmt.Println("Package removed successfully")
 			return
+
 		}
 
 		args := uninstallFlags.Args()

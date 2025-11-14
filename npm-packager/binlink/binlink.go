@@ -176,7 +176,8 @@ func (bl *BinLinker) createSymlink(pkgPath, binName, binRelativePath string) err
 	return nil
 }
 
-func (bl *BinLinker) UnlinkPackage(pkgPath string) error {
+func (bl *BinLinker) UnlinkPackage(pkgName string) error {
+	pkgPath := filepath.Join(bl.nodeModulesPath, pkgName)
 	packageJSONPath := filepath.Join(pkgPath, "package.json")
 
 	data, err := os.ReadFile(packageJSONPath)
