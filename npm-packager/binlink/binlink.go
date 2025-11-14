@@ -175,3 +175,36 @@ func (bl *BinLinker) createSymlink(pkgPath, binName, binRelativePath string) err
 	fmt.Printf("Linked bin: %s -> %s\n", binName, targetPath)
 	return nil
 }
+
+func (bl *BinLinker) UnlinkPackage(pkgPath string) error {
+	packageJSONPath := filepath.Join(pkgPath, "package.json")
+
+	data, err := os.ReadFile(packageJSONPath)
+	if err != nil {
+		return nil
+	}
+
+	var pkg PackageJSON
+	if err := json.Unmarshal(data, &pkg); err != nil {
+		return nil
+	}
+
+	if len(pkg.Bin) == 0 {
+		return nil
+	}
+
+	bins, err := bl.parseBinField(pkg.Name, pkg.Bin)
+	if err != nil {
+		return err
+	}
+
+	for binName := range bins {
+		linkPath := filepath.Join(bl.binPath, binName)
+		if err := os.Remove(linkPath); err != nil && !os.IsNotExist(err) {
+			return fmt.Errorf("failed to remove symlink %s: %w", linkPath, err)
+		}
+		fmt.Printf("Unlinked bin: %s\n", binName)
+	}
+
+	return nil
+}

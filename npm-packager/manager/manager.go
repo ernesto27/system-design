@@ -385,16 +385,11 @@ func (pm *PackageManager) Add(pkgName string, version string, isInstall bool) er
 }
 
 func (pm *PackageManager) Remove(pkg string, removeFromPackageJson bool) error {
-	packageJson, err := pm.packageJsonParse.ParseDefault()
-	if err != nil {
-		return err
-	}
-	fmt.Println(packageJson)
 
 	pkgToRemove := pm.packageJsonParse.ResolveDependenciesToRemove(pkg)
 	fmt.Println(pkgToRemove)
 
-	err = pm.removePackagesFromNodeModules(pkgToRemove)
+	err := pm.removePackagesFromNodeModules(pkgToRemove)
 	if err != nil {
 		return err
 	}
