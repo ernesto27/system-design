@@ -183,7 +183,7 @@ func (pm *PackageManager) SetupGlobal() error {
 		pm.packageLock = &lockFile
 	} else {
 		// Initialize empty lock file structure for new global installs
-		pm.packageLock = &packagejson.PackageLock{
+		lockFile := &packagejson.PackageLock{
 			Name:            "global",
 			Version:         "1.0.0",
 			LockfileVersion: 3,
@@ -191,6 +191,8 @@ func (pm *PackageManager) SetupGlobal() error {
 			Dependencies:    make(map[string]string),
 			Packages:        make(map[string]packagejson.PackageItem),
 		}
+		pm.packageLock = lockFile
+		pm.packageJsonParse.PackageLock = lockFile
 	}
 
 	return nil

@@ -1211,3 +1211,128 @@ func TestAdd(t *testing.T) {
 		})
 	}
 }
+
+func TestUninstallGlobal(t *testing.T) {
+	testCases := []struct {
+		name        string
+		setupFunc   func(t *testing.T) (*PackageManager, string, string)
+		pkgToRemove string
+		expectError bool
+		validate    func(t *testing.T, pm *PackageManager, tmpDir string)
+	}{
+		{
+			name: "successfully uninstalls globally installed package",
+			setupFunc: func(t *testing.T) (*PackageManager, string, string) {
+				t.Helper()
+				pm, tmpDir, origDir := setupTestPackageManager(t)
+
+				// Override HOME environment variable to use temp directory
+				originalHome := os.Getenv("HOME")
+				err := os.Setenv("HOME", tmpDir)
+				assert.NoError(t, err)
+
+				t.Cleanup(func() {
+					os.Setenv("HOME", originalHome)
+				})
+
+				// Override global paths to use temp directory
+				pm.config.GlobalDir = filepath.Join(tmpDir, ".go-npm-global")
+				pm.config.GlobalNodeModules = filepath.Join(pm.config.GlobalDir, "node_modules")
+				pm.config.GlobalBinDir = filepath.Join(pm.config.GlobalDir, "bin")
+				pm.config.GlobalLockFile = filepath.Join(pm.config.GlobalDir, "go-package-lock.json")
+
+				// Setup global mode
+				err = pm.SetupGlobal()
+				assert.NoError(t, err)
+
+				// Install a package globally first
+				err = pm.InstallGlobal("is-odd", "3.0.1")
+				assert.NoError(t, err)
+
+				// Verify it was installed
+				pkgPath := filepath.Join(pm.extractedPath, "is-odd")
+				assert.DirExists(t, pkgPath, "package should be installed before uninstall test")
+
+				return pm, tmpDir, origDir
+			},
+			pkgToRemove: "is-odd",
+			expectError: false,
+			validate: func(t *testing.T, pm *PackageManager, tmpDir string) {
+				// Verify package was removed from global node_modules
+				pkgPath := filepath.Join(pm.config.GlobalNodeModules, "is-odd")
+				assert.NoDirExists(t, pkgPath, "package should be removed from global node_modules")
+
+				// Verify global lock file was updated
+				lockFilePath := pm.config.GlobalLockFile
+				assert.FileExists(t, lockFilePath, "global lock file should exist")
+
+				// Read lock file and verify package entry is removed
+				lockFileContent, err := os.ReadFile(lockFilePath)
+				assert.NoError(t, err)
+
+				// Lock file should not contain the removed package's node_modules entry
+				assert.NotContains(t, string(lockFileContent), "node_modules/is-odd",
+					"lock file should not contain removed package")
+
+				// Verify bin directory still exists (even if empty)
+				assert.DirExists(t, pm.config.GlobalBinDir, "bin directory should still exist")
+			},
+		},
+		{
+			name: "handles uninstalling non-existent global package gracefully",
+			setupFunc: func(t *testing.T) (*PackageManager, string, string) {
+				t.Helper()
+				pm, tmpDir, origDir := setupTestPackageManager(t)
+
+				// Override HOME environment variable
+				originalHome := os.Getenv("HOME")
+				err := os.Setenv("HOME", tmpDir)
+				assert.NoError(t, err)
+
+				t.Cleanup(func() {
+					os.Setenv("HOME", originalHome)
+				})
+
+				// Override global paths
+				pm.config.GlobalDir = filepath.Join(tmpDir, ".go-npm-global")
+				pm.config.GlobalNodeModules = filepath.Join(pm.config.GlobalDir, "node_modules")
+				pm.config.GlobalBinDir = filepath.Join(pm.config.GlobalDir, "bin")
+				pm.config.GlobalLockFile = filepath.Join(pm.config.GlobalDir, "go-package-lock.json")
+
+				err = pm.SetupGlobal()
+				assert.NoError(t, err)
+
+				return pm, tmpDir, origDir
+			},
+			pkgToRemove: "non-existent-package",
+			expectError: false,
+			validate: func(t *testing.T, pm *PackageManager, tmpDir string) {
+				pkgPath := filepath.Join(pm.config.GlobalNodeModules, "non-existent-package")
+				assert.NoDirExists(t, pkgPath)
+			},
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			pm, tmpDir, origDir := tc.setupFunc(t)
+
+			defer func() {
+				if origDir != "" {
+					os.Chdir(origDir)
+				}
+			}()
+
+			err := pm.Remove(tc.pkgToRemove, false)
+
+			if tc.expectError {
+				assert.Error(t, err)
+			} else {
+				assert.NoError(t, err)
+				if tc.validate != nil {
+					tc.validate(t, pm, tmpDir)
+				}
+			}
+		})
+	}
+}
