@@ -43,10 +43,12 @@ func main() {
 	case "i":
 		iFlags := flag.NewFlagSet("i", flag.ExitOnError)
 		globalFlag := iFlags.Bool("g", false, "Install package globally")
+		productionFlag := iFlags.Bool("production", false, "Install only production dependencies")
+
 		iFlags.Parse(os.Args[2:])
+		args := iFlags.Args()
 
 		if *globalFlag {
-			args := iFlags.Args()
 			if len(args) < 1 {
 				fmt.Println("Usage: go-npm i -g <package-name>[@version]")
 				os.Exit(1)
@@ -70,7 +72,8 @@ func main() {
 			fmt.Printf("\nExecution completed in: %v\n", executionTime)
 			return
 		}
-		if err := packageManager.ParsePackageJSON(); err != nil {
+
+		if err := packageManager.ParsePackageJSON(*productionFlag); err != nil {
 			fmt.Println("Error parsing package.json:", err)
 			return
 		}

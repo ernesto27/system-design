@@ -64,6 +64,7 @@ type PackageLock struct {
 	LockfileVersion int                    `json:"lockfileVersion"`
 	Requires        bool                   `json:"requires"`
 	Dependencies    map[string]string      `json:"dependencies"`
+	DevDependencies map[string]string      `json:"devDependencies,omitempty"`
 	Packages        map[string]PackageItem `json:"packages"`
 }
 
@@ -286,7 +287,7 @@ func (p *PackageJSONParser) ResolveDependencies() (toInstall []Dependency, toRem
 	}
 
 	for name, versionInJSON := range p.PackageJSON.DevDependencies {
-		versionInLock, exists := p.PackageLock.Dependencies[name]
+		versionInLock, exists := p.PackageLock.DevDependencies[name]
 		if !exists || versionInJSON != versionInLock {
 			toInstall = append(toInstall, Dependency{
 				Name:    name,

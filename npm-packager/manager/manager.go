@@ -83,6 +83,7 @@ type Dependencies struct {
 type QueueItem struct {
 	Dep        packagejson.Dependency
 	ParentName string
+	IsDev      bool
 }
 
 func BuildDependencies() (*Dependencies, error) {
@@ -189,6 +190,7 @@ func (pm *PackageManager) SetupGlobal() error {
 			LockfileVersion: 3,
 			Requires:        true,
 			Dependencies:    make(map[string]string),
+			DevDependencies: make(map[string]string),
 			Packages:        make(map[string]packagejson.PackageItem),
 		}
 		pm.packageLock = lockFile
@@ -198,7 +200,7 @@ func (pm *PackageManager) SetupGlobal() error {
 	return nil
 }
 
-func (pm *PackageManager) ParsePackageJSON() error {
+func (pm *PackageManager) ParsePackageJSON(isProduction bool) error {
 	data, err := pm.packageJsonParse.ParseDefault()
 	if err != nil {
 		return err
@@ -221,11 +223,16 @@ func (pm *PackageManager) ParsePackageJSON() error {
 			}
 		}
 
+		if isProduction && len(pm.packageJsonParse.PackageLock.DevDependencies) > 0 {
+			pm.removeDevOnlyPackages()
+		}
+
 		pm.packageLock = pm.packageJsonParse.PackageLock
+
 		return nil
 	}
 
-	err = pm.fetchToCache(*data)
+	err = pm.fetchToCache(*data, isProduction)
 	if err != nil {
 		return err
 	}
@@ -236,6 +243,10 @@ func (pm *PackageManager) ParsePackageJSON() error {
 	}
 
 	return nil
+}
+
+func (pm *PackageManager) removeDevOnlyPackages() {
+
 }
 
 func (pm *PackageManager) InstallFromCache() error {
@@ -366,7 +377,7 @@ func (pm *PackageManager) Add(pkgName string, version string, isInstall bool) er
 			pkgName: version,
 		},
 	}
-	err = pm.fetchToCache(packageJsonAdd)
+	err = pm.fetchToCache(packageJsonAdd, false)
 	if err != nil {
 		return err
 	}
@@ -416,26 +427,31 @@ func (pm *PackageManager) Remove(pkg string, removeFromPackageJson bool) error {
 	return nil
 }
 
-func (pm *PackageManager) fetchToCache(packageJson packagejson.PackageJSON) error {
+func (pm *PackageManager) fetchToCache(packageJson packagejson.PackageJSON, isProduction bool) error {
 	queue := make([]QueueItem, 0)
 
 	for name, version := range packageJson.Dependencies {
 		queue = append(queue, QueueItem{
 			Dep:        packagejson.Dependency{Name: name, Version: version},
 			ParentName: "package.json",
+			IsDev:      false,
 		})
 	}
 
-	for name, version := range packageJson.DevDependencies {
-		queue = append(queue, QueueItem{
-			Dep:        packagejson.Dependency{Name: name, Version: version},
-			ParentName: "package.json",
-		})
+	if !isProduction {
+		for name, version := range packageJson.DevDependencies {
+			queue = append(queue, QueueItem{
+				Dep:        packagejson.Dependency{Name: name, Version: version},
+				ParentName: "package.json",
+				IsDev:      true,
+			})
+		}
 	}
 
 	packageLock := packagejson.PackageLock{}
 	packageLock.Packages = make(map[string]packagejson.PackageItem)
 	packageLock.Dependencies = make(map[string]string)
+	packageLock.DevDependencies = make(map[string]string)
 	packagesVersion := make(map[string]QueueItem)
 
 	var (
@@ -451,7 +467,11 @@ func (pm *PackageManager) fetchToCache(packageJson packagejson.PackageJSON) erro
 
 	workChan := make(chan QueueItem, len(queue))
 	for _, item := range queue {
-		packageLock.Dependencies[item.Dep.Name] = item.Dep.Version
+		if item.IsDev {
+			packageLock.DevDependencies[item.Dep.Name] = item.Dep.Version
+		} else {
+			packageLock.Dependencies[item.Dep.Name] = item.Dep.Version
+		}
 		workChan <- item
 	}
 
@@ -650,6 +670,7 @@ func (pm *PackageManager) fetchToCache(packageJson packagejson.PackageJSON) erro
 						workChan <- QueueItem{
 							Dep:        packagejson.Dependency{Name: name, Version: version},
 							ParentName: item.Dep.Name,
+							IsDev:      item.IsDev,
 						}
 					}
 					mapMutex.Unlock()
@@ -728,7 +749,7 @@ func (pm *PackageManager) InstallGlobal(pkgName, version string) error {
 		},
 	}
 
-	if err := pm.fetchToCache(packageJsonToInstall); err != nil {
+	if err := pm.fetchToCache(packageJsonToInstall, false); err != nil {
 		return fmt.Errorf("failed to fetch package to cache: %w", err)
 	}
 

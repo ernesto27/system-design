@@ -11,8 +11,9 @@
             "request": "launch",
             "mode": "auto",
             "program": "${fileDirname}",
+            "args": ["i", "--production"],
             //  "args": ["i",],
-             "args": ["rm", "express"],
+            //  "args": ["rm", "express"],
             // "args": ["add", "body-parser@2.2.0"],
            // "args": ["add", "axios"],
         }
