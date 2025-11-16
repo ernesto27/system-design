@@ -246,7 +246,47 @@ func (pm *PackageManager) ParsePackageJSON(isProduction bool) error {
 }
 
 func (pm *PackageManager) removeDevOnlyPackages() {
+	pkgsToRemoveMap := make(map[string]bool)
 
+	for name := range pm.packageJsonParse.PackageLock.DevDependencies {
+		pkgToRemove := pm.packageJsonParse.ResolveDependenciesToRemove(name)
+
+		for _, pkg := range pkgToRemove {
+			pkgsToRemoveMap[pkg] = true
+			delete(pm.packageJsonParse.PackageLock.Dependencies, pkg)
+		}
+	}
+
+	pathsToDelete := []string{}
+	for pkgPath := range pm.packageJsonParse.PackageLock.Packages {
+		shouldDelete := false
+
+		pkgName := strings.TrimPrefix(pkgPath, "node_modules/")
+		if strings.Contains(pkgName, "/node_modules/") {
+			parts := strings.Split(pkgName, "/node_modules/")
+			pkgName = parts[len(parts)-1]
+		}
+
+		if pkgsToRemoveMap[pkgName] {
+			shouldDelete = true
+		}
+
+		for pkg := range pkgsToRemoveMap {
+			prefix := "node_modules/" + pkg + "/node_modules/"
+			if strings.HasPrefix(pkgPath, prefix) {
+				shouldDelete = true
+				break
+			}
+		}
+
+		if shouldDelete {
+			pathsToDelete = append(pathsToDelete, pkgPath)
+		}
+	}
+
+	for _, pkgPath := range pathsToDelete {
+		delete(pm.packageJsonParse.PackageLock.Packages, pkgPath)
+	}
 }
 
 func (pm *PackageManager) InstallFromCache() error {

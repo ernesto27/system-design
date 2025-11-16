@@ -590,7 +590,7 @@ func TestFetchToCache(t *testing.T) {
 				}
 			}()
 
-			err := pm.fetchToCache(tc.packageJSON)
+			err := pm.fetchToCache(tc.packageJSON, false)
 
 			if tc.expectError {
 				assert.Error(t, err)
@@ -623,7 +623,7 @@ func TestInstallFromCache(t *testing.T) {
 						"is-odd": "3.0.1",
 					},
 				}
-				err := pm.fetchToCache(packageJSON)
+				err := pm.fetchToCache(packageJSON, false)
 				assert.NoError(t, err)
 
 				// Verify package is in cache but not in node_modules yet
@@ -662,7 +662,7 @@ func TestInstallFromCache(t *testing.T) {
 						"is-even": "1.0.0",
 					},
 				}
-				err := pm.fetchToCache(packageJSON)
+				err := pm.fetchToCache(packageJSON, false)
 				assert.NoError(t, err)
 
 				return pm, origDir
@@ -694,7 +694,7 @@ func TestInstallFromCache(t *testing.T) {
 						"is-odd": "3.0.1",
 					},
 				}
-				err := pm.fetchToCache(packageJSON)
+				err := pm.fetchToCache(packageJSON, false)
 				assert.NoError(t, err)
 
 				// Install once
