@@ -1,0 +1,305 @@
+package render
+
+import (
+	"browser/dom"
+	"browser/layout"
+	"fmt"
+	"image/color"
+)
+
+// Colors
+var (
+	ColorWhite      = color.White
+	ColorBlack      = color.Black
+	ColorLink       = color.RGBA{0, 0, 238, 255}     // Blue
+	ColorBackground = color.RGBA{240, 240, 240, 255} // Light gray
+)
+
+// Font sizes
+var (
+	SizeH1     float32 = 32
+	SizeH2     float32 = 24
+	SizeH3     float32 = 18
+	SizeH4     float32 = 16
+	SizeH5     float32 = 14
+	SizeH6     float32 = 12
+	SizeNormal float32 = 16
+	SizeSmall  float32 = 12
+)
+
+// TextStyle holds inherited text styling
+type TextStyle struct {
+	Color  color.Color
+	Size   float32
+	Bold   bool
+	Italic bool
+}
+
+// DefaultStyle returns the default text style
+func DefaultStyle() TextStyle {
+	return TextStyle{
+		Color:  ColorBlack,
+		Size:   SizeNormal,
+		Bold:   false,
+		Italic: false,
+	}
+}
+
+type DisplayCommand any
+
+type DrawRect struct {
+	X, Y, Width, Height float64
+	Color               color.Color
+}
+
+type DrawText struct {
+	Text   string
+	X, Y   float64
+	Color  color.Color
+	Size   float32
+	Bold   bool
+	Italic bool
+}
+
+type DrawImage struct {
+	URL           string
+	X, Y          float64
+	Width, Height float64
+}
+
+type DrawHR struct {
+	X, Y          float64
+	Width, Height float64
+}
+
+func BuildDisplayList(root *layout.LayoutBox) []DisplayCommand {
+	var commands []DisplayCommand
+
+	// Calculate actual content height from layout tree
+	contentHeight := root.Rect.Y + root.Rect.Height
+	if contentHeight < 600 {
+		contentHeight = 600 // Minimum height
+	}
+
+	commands = append(commands, DrawRect{
+		X:      0,
+		Y:      0,
+		Width:  3000, // Wide enough for most screens
+		Height: contentHeight,
+		Color:  color.White,
+	})
+
+	paintLayoutBox(root, &commands, DefaultStyle())
+
+	return commands
+}
+
+func paintLayoutBox(box *layout.LayoutBox, commands *[]DisplayCommand, style TextStyle) {
+	currentStyle := style
+
+	// Apply inline styles from CSS
+	if box.Style.Color != nil {
+		currentStyle.Color = box.Style.Color
+	}
+	if box.Style.FontSize > 0 {
+		currentStyle.Size = float32(box.Style.FontSize)
+	}
+	if box.Style.Bold {
+		currentStyle.Bold = true
+	}
+	if box.Style.Italic {
+		currentStyle.Italic = true
+	}
+
+	// Draw background if set
+	if box.Style.BackgroundColor != nil {
+		*commands = append(*commands, DrawRect{
+			X:      box.Rect.X,
+			Y:      box.Rect.Y,
+			Width:  box.Rect.Width,
+			Height: box.Rect.Height,
+			Color:  box.Style.BackgroundColor,
+		})
+	}
+
+	// Apply tag-based styles (defaults, can be overridden by inline styles above)
+	if box.Node != nil {
+		switch box.Node.TagName {
+		case dom.TagH1:
+			if box.Style.FontSize == 0 {
+				currentStyle.Size = SizeH1
+			}
+			if !box.Style.Bold {
+				currentStyle.Bold = true
+			}
+		case dom.TagH2:
+			if box.Style.FontSize == 0 {
+				currentStyle.Size = SizeH2
+			}
+			if !box.Style.Bold {
+				currentStyle.Bold = true
+			}
+		case dom.TagH3:
+			if box.Style.FontSize == 0 {
+				currentStyle.Size = SizeH3
+			}
+			if !box.Style.Bold {
+				currentStyle.Bold = true
+			}
+		case dom.TagH4:
+			if box.Style.FontSize == 0 {
+				currentStyle.Size = SizeH4
+			}
+			if !box.Style.Bold {
+				currentStyle.Bold = true
+			}
+		case dom.TagH5:
+			if box.Style.FontSize == 0 {
+				currentStyle.Size = SizeH5
+			}
+			if !box.Style.Bold {
+				currentStyle.Bold = true
+			}
+		case dom.TagH6:
+			if box.Style.FontSize == 0 {
+				currentStyle.Size = SizeH6
+			}
+			if !box.Style.Bold {
+				currentStyle.Bold = true
+			}
+		case dom.TagA:
+			if box.Style.Color == nil {
+				currentStyle.Color = ColorLink
+			}
+		case dom.TagStrong, dom.TagB:
+			currentStyle.Bold = true
+		case dom.TagEm, dom.TagI:
+			currentStyle.Italic = true
+		case dom.TagSmall:
+			if box.Style.FontSize == 0 {
+				currentStyle.Size = SizeSmall
+			}
+		case dom.TagTH:
+			currentStyle.Bold = true
+		}
+	}
+
+	// Draw text
+	if box.Type == layout.TextBox && box.Text != "" {
+		text := box.Text
+
+		// Add bullet or number for list items
+		if isListItem, isOrdered, index := getListInfo(box); isListItem {
+			if isOrdered {
+				text = fmt.Sprintf("%d. %s", index, text)
+			} else {
+				text = "• " + text
+			}
+		}
+
+		*commands = append(*commands, DrawText{
+			Text:   text,
+			X:      box.Rect.X,
+			Y:      box.Rect.Y,
+			Size:   currentStyle.Size,
+			Color:  currentStyle.Color,
+			Bold:   currentStyle.Bold,
+			Italic: currentStyle.Italic,
+		})
+	}
+
+	// Draw image
+	if box.Type == layout.ImageBox && box.Node != nil {
+		src := box.Node.Attributes["src"]
+		if src != "" {
+			*commands = append(*commands, DrawImage{
+				URL:    src,
+				X:      box.Rect.X,
+				Y:      box.Rect.Y,
+				Width:  box.Rect.Width,
+				Height: box.Rect.Height,
+			})
+		}
+	}
+
+	if box.Type == layout.HRBox {
+		*commands = append(*commands, DrawHR{
+			X:      box.Rect.X,
+			Y:      box.Rect.Y,
+			Width:  box.Rect.Width,
+			Height: box.Rect.Height,
+		})
+	}
+
+	// Draw table cell border
+	if box.Type == layout.TableCellBox {
+		borderColor := color.Gray{Y: 180}
+		// Top border
+		*commands = append(*commands, DrawRect{
+			X: box.Rect.X, Y: box.Rect.Y,
+			Width: box.Rect.Width, Height: 1,
+			Color: borderColor,
+		})
+		// Bottom border
+		*commands = append(*commands, DrawRect{
+			X: box.Rect.X, Y: box.Rect.Y + box.Rect.Height - 1,
+			Width: box.Rect.Width, Height: 1,
+			Color: borderColor,
+		})
+		// Left border
+		*commands = append(*commands, DrawRect{
+			X: box.Rect.X, Y: box.Rect.Y,
+			Width: 1, Height: box.Rect.Height,
+			Color: borderColor,
+		})
+		// Right border
+		*commands = append(*commands, DrawRect{
+			X: box.Rect.X + box.Rect.Width - 1, Y: box.Rect.Y,
+			Width: 1, Height: box.Rect.Height,
+			Color: borderColor,
+		})
+	}
+
+	// Paint children with inherited style
+	for _, child := range box.Children {
+		paintLayoutBox(child, commands, currentStyle)
+	}
+}
+
+// getListInfo returns (isListItem, isOrdered, itemIndex)
+func getListInfo(box *layout.LayoutBox) (bool, bool, int) {
+	// Check if parent is <li>
+	if box.Parent == nil || box.Parent.Node == nil {
+		return false, false, 0
+	}
+	if box.Parent.Node.TagName != dom.TagLI {
+		return false, false, 0
+	}
+
+	li := box.Parent
+
+	// Check if grandparent is <ul> or <ol>
+	if li.Parent == nil || li.Parent.Node == nil {
+		return false, false, 0
+	}
+
+	listTag := li.Parent.Node.TagName
+	if listTag != dom.TagUL && listTag != dom.TagOL {
+		return false, false, 0
+	}
+
+	isOrdered := listTag == dom.TagOL
+
+	// Count which <li> index this is
+	index := 1
+	for _, sibling := range li.Parent.Children {
+		if sibling == li {
+			break
+		}
+		if sibling.Node != nil && sibling.Node.TagName == dom.TagLI {
+			index++
+		}
+	}
+
+	return true, isOrdered, index
+}
