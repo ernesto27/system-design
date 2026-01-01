@@ -95,8 +95,8 @@ func computeBlockLayout(box *LayoutBox, containerWidth float64, startX, startY f
 	// Default margins for block elements
 	switch currentTag {
 	case dom.TagP:
-		box.Margin.Top = 4
-		box.Margin.Bottom = 4
+		box.Margin.Top = 12
+		box.Margin.Bottom = 12
 	case dom.TagH1:
 		box.Margin.Top = 6
 		box.Margin.Bottom = 6
@@ -146,7 +146,16 @@ func computeBlockLayout(box *LayoutBox, containerWidth float64, startX, startY f
 		innerWidth -= box.Style.PaddingRight
 	}
 
-	yOffset := startY + box.Margin.Top + box.Padding.Top
+	// Apply border widths to inner content area
+	if box.Style.BorderLeftWidth > 0 {
+		innerX += box.Style.BorderLeftWidth
+		innerWidth -= box.Style.BorderLeftWidth
+	}
+	if box.Style.BorderRightWidth > 0 {
+		innerWidth -= box.Style.BorderRightWidth
+	}
+
+	yOffset := startY + box.Margin.Top + box.Padding.Top + box.Style.BorderTopWidth
 
 	// Line state for inline flow
 	currentX := innerX
@@ -276,7 +285,7 @@ func computeBlockLayout(box *LayoutBox, containerWidth float64, startX, startY f
 		yOffset = lineStartY + lineHeight
 	}
 
-	box.Rect.Height = yOffset - startY + box.Margin.Bottom + box.Padding.Bottom
+	box.Rect.Height = yOffset - startY + box.Margin.Bottom + box.Padding.Bottom + box.Style.BorderBottomWidth
 }
 
 // applyLineAlignment repositions inline elements based on text-align

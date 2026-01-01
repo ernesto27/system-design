@@ -134,7 +134,7 @@ func (b *Browser) SetContent(layoutTree *layout.LayoutBox) {
 	// Create clickable container
 	clickable := NewClickableContainer(objects, func(x, y float32) {
 		b.handleClick(float64(x), float64(y))
-	})
+	}, b.layoutTree)
 
 	scroll := container.NewScroll(clickable)
 
@@ -290,7 +290,7 @@ func (b *Browser) Reflow(width float32) {
 	fyne.Do(func() {
 		clickable := NewClickableContainer(objects, func(x, y float32) {
 			b.handleClick(float64(x), float64(y))
-		})
+		}, b.layoutTree)
 
 		scroll := container.NewScroll(clickable)
 

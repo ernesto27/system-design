@@ -29,20 +29,34 @@ var (
 
 // TextStyle holds inherited text styling
 type TextStyle struct {
-	Color  color.Color
-	Size   float32
-	Bold   bool
-	Italic bool
+	Color          color.Color
+	Size           float32
+	Bold           bool
+	Italic         bool
+	TextDecoration string
+	Opacity        float64
+	Visibility     string
 }
 
 // DefaultStyle returns the default text style
 func DefaultStyle() TextStyle {
 	return TextStyle{
-		Color:  ColorBlack,
-		Size:   SizeNormal,
-		Bold:   false,
-		Italic: false,
+		Color:   ColorBlack,
+		Size:    SizeNormal,
+		Bold:    false,
+		Italic:  false,
+		Opacity: 1.0,
 	}
+}
+
+// applyOpacity returns a color with opacity applied to alpha channel
+func applyOpacity(c color.Color, opacity float64) color.Color {
+	if opacity >= 1.0 {
+		return c
+	}
+	r, g, b, a := c.RGBA()
+	newAlpha := uint8(float64(a>>8) * opacity)
+	return color.RGBA{uint8(r >> 8), uint8(g >> 8), uint8(b >> 8), newAlpha}
 }
 
 type DisplayCommand any
@@ -53,12 +67,15 @@ type DrawRect struct {
 }
 
 type DrawText struct {
-	Text   string
-	X, Y   float64
-	Color  color.Color
-	Size   float32
-	Bold   bool
-	Italic bool
+	Text          string
+	X, Y          float64
+	Width         float64
+	Color         color.Color
+	Size          float32
+	Bold          bool
+	Italic        bool
+	Underline     bool
+	Strikethrough bool
 }
 
 type DrawImage struct {
@@ -110,16 +127,72 @@ func paintLayoutBox(box *layout.LayoutBox, commands *[]DisplayCommand, style Tex
 	if box.Style.Italic {
 		currentStyle.Italic = true
 	}
+	if box.Style.TextDecoration != "" {
+		currentStyle.TextDecoration = box.Style.TextDecoration
+	}
+	if box.Style.Opacity > 0 {
+		currentStyle.Opacity = box.Style.Opacity
+	}
+	if box.Style.Visibility != "" {
+		currentStyle.Visibility = box.Style.Visibility
+	}
+
+	// Check visibility (hidden elements still take space but aren't drawn)
+	isHidden := currentStyle.Visibility == "hidden"
 
 	// Draw background if set
-	if box.Style.BackgroundColor != nil {
+	if box.Style.BackgroundColor != nil && !isHidden {
 		*commands = append(*commands, DrawRect{
 			X:      box.Rect.X,
 			Y:      box.Rect.Y,
 			Width:  box.Rect.Width,
 			Height: box.Rect.Height,
-			Color:  box.Style.BackgroundColor,
+			Color:  applyOpacity(box.Style.BackgroundColor, currentStyle.Opacity),
 		})
+	}
+
+	// Draw borders if set
+	if !isHidden {
+		// Top border
+		if box.Style.BorderTopWidth > 0 && box.Style.BorderTopStyle != "none" && box.Style.BorderTopColor != nil {
+			*commands = append(*commands, DrawRect{
+				X:      box.Rect.X,
+				Y:      box.Rect.Y,
+				Width:  box.Rect.Width,
+				Height: box.Style.BorderTopWidth,
+				Color:  applyOpacity(box.Style.BorderTopColor, currentStyle.Opacity),
+			})
+		}
+		// Bottom border
+		if box.Style.BorderBottomWidth > 0 && box.Style.BorderBottomStyle != "none" && box.Style.BorderBottomColor != nil {
+			*commands = append(*commands, DrawRect{
+				X:      box.Rect.X,
+				Y:      box.Rect.Y + box.Rect.Height - box.Style.BorderBottomWidth,
+				Width:  box.Rect.Width,
+				Height: box.Style.BorderBottomWidth,
+				Color:  applyOpacity(box.Style.BorderBottomColor, currentStyle.Opacity),
+			})
+		}
+		// Left border
+		if box.Style.BorderLeftWidth > 0 && box.Style.BorderLeftStyle != "none" && box.Style.BorderLeftColor != nil {
+			*commands = append(*commands, DrawRect{
+				X:      box.Rect.X,
+				Y:      box.Rect.Y,
+				Width:  box.Style.BorderLeftWidth,
+				Height: box.Rect.Height,
+				Color:  applyOpacity(box.Style.BorderLeftColor, currentStyle.Opacity),
+			})
+		}
+		// Right border
+		if box.Style.BorderRightWidth > 0 && box.Style.BorderRightStyle != "none" && box.Style.BorderRightColor != nil {
+			*commands = append(*commands, DrawRect{
+				X:      box.Rect.X + box.Rect.Width - box.Style.BorderRightWidth,
+				Y:      box.Rect.Y,
+				Width:  box.Style.BorderRightWidth,
+				Height: box.Rect.Height,
+				Color:  applyOpacity(box.Style.BorderRightColor, currentStyle.Opacity),
+			})
+		}
 	}
 
 	// Apply tag-based styles (defaults, can be overridden by inline styles above)
@@ -171,6 +244,9 @@ func paintLayoutBox(box *layout.LayoutBox, commands *[]DisplayCommand, style Tex
 			if box.Style.Color == nil {
 				currentStyle.Color = ColorLink
 			}
+			if box.Style.TextDecoration == "" {
+				currentStyle.TextDecoration = "underline"
+			}
 		case dom.TagStrong, dom.TagB:
 			currentStyle.Bold = true
 		case dom.TagEm, dom.TagI:
@@ -185,7 +261,7 @@ func paintLayoutBox(box *layout.LayoutBox, commands *[]DisplayCommand, style Tex
 	}
 
 	// Draw text
-	if box.Type == layout.TextBox && box.Text != "" {
+	if box.Type == layout.TextBox && box.Text != "" && !isHidden {
 		text := box.Text
 
 		// Add bullet or number for list items
@@ -198,18 +274,21 @@ func paintLayoutBox(box *layout.LayoutBox, commands *[]DisplayCommand, style Tex
 		}
 
 		*commands = append(*commands, DrawText{
-			Text:   text,
-			X:      box.Rect.X,
-			Y:      box.Rect.Y,
-			Size:   currentStyle.Size,
-			Color:  currentStyle.Color,
-			Bold:   currentStyle.Bold,
-			Italic: currentStyle.Italic,
+			Text:          text,
+			X:             box.Rect.X,
+			Y:             box.Rect.Y,
+			Width:         box.Rect.Width,
+			Size:          currentStyle.Size,
+			Color:         applyOpacity(currentStyle.Color, currentStyle.Opacity),
+			Bold:          currentStyle.Bold,
+			Italic:        currentStyle.Italic,
+			Underline:     currentStyle.TextDecoration == "underline",
+			Strikethrough: currentStyle.TextDecoration == "line-through",
 		})
 	}
 
 	// Draw image
-	if box.Type == layout.ImageBox && box.Node != nil {
+	if box.Type == layout.ImageBox && box.Node != nil && !isHidden {
 		src := box.Node.Attributes["src"]
 		if src != "" {
 			*commands = append(*commands, DrawImage{
@@ -222,7 +301,7 @@ func paintLayoutBox(box *layout.LayoutBox, commands *[]DisplayCommand, style Tex
 		}
 	}
 
-	if box.Type == layout.HRBox {
+	if box.Type == layout.HRBox && !isHidden {
 		*commands = append(*commands, DrawHR{
 			X:      box.Rect.X,
 			Y:      box.Rect.Y,

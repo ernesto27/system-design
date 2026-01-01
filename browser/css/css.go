@@ -21,6 +21,25 @@ type Style struct {
 	PaddingLeft     float64
 	PaddingRight    float64
 	TextAlign       string
+	Display         string
+	TextDecoration  string
+	Opacity         float64
+	Visibility      string
+	Cursor          string
+
+	// Border properties
+	BorderTopWidth    float64
+	BorderRightWidth  float64
+	BorderBottomWidth float64
+	BorderLeftWidth   float64
+	BorderTopColor    color.Color
+	BorderRightColor  color.Color
+	BorderBottomColor color.Color
+	BorderLeftColor   color.Color
+	BorderTopStyle    string
+	BorderRightStyle  string
+	BorderBottomStyle string
+	BorderLeftStyle   string
 }
 
 func DefaultStyle() Style {
@@ -30,6 +49,7 @@ func DefaultStyle() Style {
 		FontSize:        16,
 		Bold:            false,
 		Italic:          false,
+		Opacity:         1.0,
 	}
 }
 
@@ -98,9 +118,96 @@ func ParseInlineStyle(styleAttr string) Style {
 			style.PaddingRight = ParseSize(value)
 		case "text-align":
 			style.TextAlign = value
+		case "display":
+			style.Display = value
+		case "text-decoration":
+			style.TextDecoration = value
+		case "opacity":
+			if op, err := strconv.ParseFloat(value, 64); err == nil {
+				if op < 0 {
+					op = 0
+				} else if op > 1 {
+					op = 1
+				}
+				style.Opacity = op
+			}
+		case "visibility":
+			style.Visibility = value
+		case "cursor":
+			style.Cursor = value
+		case "border":
+			w, s, c := parseBorderShorthand(value)
+			style.BorderTopWidth = w
+			style.BorderRightWidth = w
+			style.BorderBottomWidth = w
+			style.BorderLeftWidth = w
+			style.BorderTopStyle = s
+			style.BorderRightStyle = s
+			style.BorderBottomStyle = s
+			style.BorderLeftStyle = s
+			style.BorderTopColor = c
+			style.BorderRightColor = c
+			style.BorderBottomColor = c
+			style.BorderLeftColor = c
+		case "border-width":
+			w := ParseSize(value)
+			style.BorderTopWidth = w
+			style.BorderRightWidth = w
+			style.BorderBottomWidth = w
+			style.BorderLeftWidth = w
+		case "border-color":
+			if c := ParseColor(value); c != nil {
+				style.BorderTopColor = c
+				style.BorderRightColor = c
+				style.BorderBottomColor = c
+				style.BorderLeftColor = c
+			}
+		case "border-style":
+			style.BorderTopStyle = value
+			style.BorderRightStyle = value
+			style.BorderBottomStyle = value
+			style.BorderLeftStyle = value
+		case "border-top":
+			w, s, c := parseBorderShorthand(value)
+			style.BorderTopWidth = w
+			style.BorderTopStyle = s
+			style.BorderTopColor = c
+		case "border-right":
+			w, s, c := parseBorderShorthand(value)
+			style.BorderRightWidth = w
+			style.BorderRightStyle = s
+			style.BorderRightColor = c
+		case "border-bottom":
+			w, s, c := parseBorderShorthand(value)
+			style.BorderBottomWidth = w
+			style.BorderBottomStyle = s
+			style.BorderBottomColor = c
+		case "border-left":
+			w, s, c := parseBorderShorthand(value)
+			style.BorderLeftWidth = w
+			style.BorderLeftStyle = s
+			style.BorderLeftColor = c
 		}
 	}
 	return style
+}
+
+// parseBorderShorthand parses "1px solid black" into width, style, color
+func parseBorderShorthand(value string) (float64, string, color.Color) {
+	parts := strings.Fields(value)
+	var width float64
+	var borderStyle string
+	var borderColor color.Color
+	for _, part := range parts {
+		if w := ParseSize(part); w > 0 {
+			width = w
+		} else if part == "solid" || part == "dashed" || part == "dotted" || part == "none" {
+			borderStyle = part
+		} else if c := ParseColor(part); c != nil {
+			borderColor = c
+		}
+	}
+	return width, borderStyle, borderColor
 }
 
 // ParseSize converts "10px" to float64
@@ -150,14 +257,14 @@ func ParseColor(value string) color.Color {
 		"lightcyan":   color.RGBA{224, 255, 255, 255},
 
 		// Dark variants
-		"darkgray":   color.RGBA{169, 169, 169, 255},
-		"darkgrey":   color.RGBA{169, 169, 169, 255},
-		"darkblue":   color.RGBA{0, 0, 139, 255},
-		"darkgreen":  color.RGBA{0, 100, 0, 255},
-		"darkred":    color.RGBA{139, 0, 0, 255},
-		"darkcyan":   color.RGBA{0, 139, 139, 255},
+		"darkgray":    color.RGBA{169, 169, 169, 255},
+		"darkgrey":    color.RGBA{169, 169, 169, 255},
+		"darkblue":    color.RGBA{0, 0, 139, 255},
+		"darkgreen":   color.RGBA{0, 100, 0, 255},
+		"darkred":     color.RGBA{139, 0, 0, 255},
+		"darkcyan":    color.RGBA{0, 139, 139, 255},
 		"darkmagenta": color.RGBA{139, 0, 139, 255},
-		"darkorange": color.RGBA{255, 140, 0, 255},
+		"darkorange":  color.RGBA{255, 140, 0, 255},
 
 		// Other common colors
 		"navy":       color.RGBA{0, 0, 128, 255},
@@ -260,4 +367,182 @@ type Rule struct {
 
 type Stylesheet struct {
 	Rules []Rule
+}
+
+// MatchSelector checks if a selector matches a DOM node
+func MatchSelector(sel Selector, tagName string, id string, classes []string) bool {
+	// Check tag name
+	if sel.TagName != "" && sel.TagName != tagName {
+		return false
+	}
+
+	// Check ID
+	if sel.ID != "" && sel.ID != id {
+		return false
+	}
+
+	// Check classes (all selector classes must be present)
+	for _, selClass := range sel.Classes {
+		found := false
+		for _, nodeClass := range classes {
+			if selClass == nodeClass {
+				found = true
+				break
+			}
+		}
+		if !found {
+			return false
+		}
+	}
+
+	return true
+}
+
+// ApplyStylesheet applies matching rules from stylesheet to a base style
+func ApplyStylesheet(sheet Stylesheet, tagName string, id string, classes []string) Style {
+	style := DefaultStyle()
+
+	// Check each rule
+	for _, rule := range sheet.Rules {
+		// Check if any selector matches
+		matches := false
+		for _, sel := range rule.Selectors {
+			if MatchSelector(sel, tagName, id, classes) {
+				matches = true
+				break
+			}
+		}
+
+		if !matches {
+			continue
+		}
+
+		// Apply declarations
+		for _, decl := range rule.Declarations {
+			applyDeclaration(&style, decl.Property, decl.Value)
+		}
+	}
+
+	return style
+}
+
+// applyDeclaration applies a single CSS property to a style
+func applyDeclaration(style *Style, property, value string) {
+	switch property {
+	case "color":
+		if c := ParseColor(value); c != nil {
+			style.Color = c
+		}
+	case "background-color":
+		if c := ParseColor(value); c != nil {
+			style.BackgroundColor = c
+		}
+	case "font-size":
+		if size := ParseFontSize(value); size > 0 {
+			style.FontSize = size
+		}
+	case "font-weight":
+		style.Bold = (value == "bold")
+	case "font-style":
+		style.Italic = (value == "italic")
+	case "margin":
+		m := ParseSize(value)
+		style.MarginTop = m
+		style.MarginBottom = m
+		style.MarginLeft = m
+		style.MarginRight = m
+	case "margin-top":
+		style.MarginTop = ParseSize(value)
+	case "margin-bottom":
+		style.MarginBottom = ParseSize(value)
+	case "margin-left":
+		style.MarginLeft = ParseSize(value)
+	case "margin-right":
+		style.MarginRight = ParseSize(value)
+	case "padding":
+		p := ParseSize(value)
+		style.PaddingTop = p
+		style.PaddingBottom = p
+		style.PaddingLeft = p
+		style.PaddingRight = p
+	case "padding-top":
+		style.PaddingTop = ParseSize(value)
+	case "padding-bottom":
+		style.PaddingBottom = ParseSize(value)
+	case "padding-left":
+		style.PaddingLeft = ParseSize(value)
+	case "padding-right":
+		style.PaddingRight = ParseSize(value)
+	case "text-align":
+		style.TextAlign = value
+	case "display":
+		style.Display = value
+	case "text-decoration":
+		style.TextDecoration = value
+	case "opacity":
+		if op, err := strconv.ParseFloat(value, 64); err == nil {
+			if op < 0 {
+				op = 0
+			} else if op > 1 {
+				op = 1
+			}
+			style.Opacity = op
+		}
+	case "visibility":
+		style.Visibility = value
+	case "cursor":
+		style.Cursor = value
+	case "border":
+		w, s, c := parseBorderShorthand(value)
+		style.BorderTopWidth = w
+		style.BorderRightWidth = w
+		style.BorderBottomWidth = w
+		style.BorderLeftWidth = w
+		style.BorderTopStyle = s
+		style.BorderRightStyle = s
+		style.BorderBottomStyle = s
+		style.BorderLeftStyle = s
+		style.BorderTopColor = c
+		style.BorderRightColor = c
+		style.BorderBottomColor = c
+		style.BorderLeftColor = c
+	case "border-width":
+		w := ParseSize(value)
+		style.BorderTopWidth = w
+		style.BorderRightWidth = w
+		style.BorderBottomWidth = w
+		style.BorderLeftWidth = w
+	case "border-color":
+		if c := ParseColor(value); c != nil {
+			style.BorderTopColor = c
+			style.BorderRightColor = c
+			style.BorderBottomColor = c
+			style.BorderLeftColor = c
+		}
+	case "border-style":
+		style.BorderTopStyle = value
+		style.BorderRightStyle = value
+		style.BorderBottomStyle = value
+		style.BorderLeftStyle = value
+	case "border-top":
+		w, s, c := parseBorderShorthand(value)
+		style.BorderTopWidth = w
+		style.BorderTopStyle = s
+		style.BorderTopColor = c
+	case "border-right":
+		w, s, c := parseBorderShorthand(value)
+		style.BorderRightWidth = w
+		style.BorderRightStyle = s
+		style.BorderRightColor = c
+	case "border-bottom":
+		w, s, c := parseBorderShorthand(value)
+		style.BorderBottomWidth = w
+		style.BorderBottomStyle = s
+		style.BorderBottomColor = c
+	case "border-left":
+		w, s, c := parseBorderShorthand(value)
+		style.BorderLeftWidth = w
+		style.BorderLeftStyle = s
+		style.BorderLeftColor = c
+	}
 }

@@ -34,6 +34,21 @@ func RenderToCanvas(commands []DisplayCommand, baseURL string, useCache bool) []
 			text.Move(fyne.NewPos(float32(c.X), float32(c.Y)))
 			objects = append(objects, text)
 
+			// Draw text decoration lines
+			if c.Underline || c.Strikethrough {
+				lineHeight := float32(1)
+				var lineY float32
+				if c.Underline {
+					lineY = float32(c.Y) + c.Size + 2 // Below the text with small gap
+				} else {
+					lineY = float32(c.Y) + c.Size*0.4 // Through the middle
+				}
+				line := canvas.NewRectangle(c.Color)
+				line.Resize(fyne.NewSize(float32(c.Width), lineHeight))
+				line.Move(fyne.NewPos(float32(c.X), lineY))
+				objects = append(objects, line)
+			}
+
 		case DrawImage:
 			var img *canvas.Image
 			if useCache {

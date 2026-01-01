@@ -1,22 +1,29 @@
 package render
 
 import (
+	"browser/layout"
+
 	"fyne.io/fyne/v2"
+	"fyne.io/fyne/v2/driver/desktop"
 	"fyne.io/fyne/v2/widget"
 )
 
 // ClickableContainer is a container that responds to clicks
 type ClickableContainer struct {
 	widget.BaseWidget
-	objects  []fyne.CanvasObject
-	onTapped func(x, y float32)
+	objects       []fyne.CanvasObject
+	onTapped      func(x, y float32)
+	layoutTree    *layout.LayoutBox
+	currentCursor desktop.Cursor
 }
 
 // NewClickableContainer creates a clickable container
-func NewClickableContainer(objects []fyne.CanvasObject, onTapped func(x, y float32)) *ClickableContainer {
+func NewClickableContainer(objects []fyne.CanvasObject, onTapped func(x, y float32), layoutTree *layout.LayoutBox) *ClickableContainer {
 	c := &ClickableContainer{
-		objects:  objects,
-		onTapped: onTapped,
+		objects:       objects,
+		onTapped:      onTapped,
+		layoutTree:    layoutTree,
+		currentCursor: desktop.DefaultCursor,
 	}
 	c.ExtendBaseWidget(c)
 	return c
@@ -31,6 +38,47 @@ func (c *ClickableContainer) Tapped(event *fyne.PointEvent) {
 
 // TappedSecondary is called for right-click (we ignore it)
 func (c *ClickableContainer) TappedSecondary(event *fyne.PointEvent) {}
+
+func (c *ClickableContainer) MouseIn(event *desktop.MouseEvent) {}
+
+func (c *ClickableContainer) MouseOut() {}
+
+func (c *ClickableContainer) MouseMoved(event *desktop.MouseEvent) {
+	if c.layoutTree == nil {
+		return
+	}
+
+	hit := c.layoutTree.HitTest(float64(event.Position.X), float64(event.Position.Y))
+
+	cursor := desktop.DefaultCursor
+	for box := hit; box != nil; box = box.Parent {
+		if box.Style.Cursor != "" {
+			switch box.Style.Cursor {
+			case "pointer":
+				cursor = desktop.PointerCursor
+			case "text":
+				cursor = desktop.TextCursor
+			case "crosshair":
+				cursor = desktop.CrosshairCursor
+			}
+			break
+		}
+		if box.Node != nil && box.Node.TagName == "a" {
+			cursor = desktop.PointerCursor
+			break
+		}
+	}
+
+	if c.currentCursor != cursor {
+		c.currentCursor = cursor
+		c.Refresh()
+	}
+}
+
+// Cursor implements desktop.Cursorable
+func (c *ClickableContainer) Cursor() desktop.Cursor {
+	return c.currentCursor
+}
 
 // CreateRenderer returns the renderer for this widget
 func (c *ClickableContainer) CreateRenderer() fyne.WidgetRenderer {

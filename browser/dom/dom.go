@@ -59,3 +59,25 @@ func FindTitle(node *Node) string {
 
 	return ""
 }
+
+func FindStyleContent(node *Node) string {
+	if node == nil {
+		return ""
+	}
+
+	var css string
+
+	if node.TagName == "style" {
+		for _, child := range node.Children {
+			if child.Type == Text {
+				css += child.Text + "\n"
+			}
+		}
+	}
+
+	for _, child := range node.Children {
+		css += FindStyleContent(child)
+	}
+
+	return css
+}
