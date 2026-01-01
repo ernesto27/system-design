@@ -1,0 +1,25 @@
+body {
+    background-color: #f0f0f0;
+}
+
+h1 {
+    color: #2c3e50;
+    text-align: center;
+    border-bottom: 2px solid #3498db;
+}
+
+.external-test {
+    color: white;
+    background-color: #27ae60;
+    padding: 15px;
+    border-radius: 5px;
+    font-size: 18px;
+    text-align: center;
+}
+
+#external-id {
+    color: #e74c3c;
+    font-weight: bold;
+    border: 2px dashed #c0392b;
+    padding: 10px;
+}

@@ -1,6 +1,7 @@
 package render
 
 import (
+	"browser/css"
 	"browser/dom"
 	"browser/layout"
 	"fmt"
@@ -16,13 +17,14 @@ import (
 )
 
 type Browser struct {
-	App        fyne.App
-	Window     fyne.Window
-	Width      float32
-	Height     float32
-	layoutTree *layout.LayoutBox
-	currentURL *url.URL
-	OnNavigate func(newURL string)
+	App          fyne.App
+	Window       fyne.Window
+	Width        float32
+	Height       float32
+	layoutTree   *layout.LayoutBox
+	currentURL   *url.URL
+	currentStyle css.Stylesheet
+	OnNavigate   func(newURL string)
 
 	urlEntry   *widget.Entry
 	content    *fyne.Container
@@ -261,6 +263,10 @@ func (b *Browser) SetDocument(doc *dom.Node) {
 	b.document = doc
 }
 
+func (b *Browser) SetStylesheet(stylesheet css.Stylesheet) {
+	b.currentStyle = stylesheet
+}
+
 // Reflow re-computes layout with new width and repaints
 func (b *Browser) Reflow(width float32) {
 	if b.document == nil {
@@ -268,7 +274,7 @@ func (b *Browser) Reflow(width float32) {
 	}
 
 	// Re-build layout tree with new width
-	layoutTree := layout.BuildLayoutTree(b.document)
+	layoutTree := layout.BuildLayoutTree(b.document, b.currentStyle)
 	layout.ComputeLayout(layoutTree, float64(width))
 
 	// Update stored values

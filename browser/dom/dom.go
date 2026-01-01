@@ -81,3 +81,16 @@ func FindStyleContent(node *Node) string {
 
 	return css
 }
+
+func FindStylesheetLinks(node *Node) []string {
+	var links []string
+	if node.TagName == "link" && node.Attributes["rel"] == "stylesheet" {
+		if href, ok := node.Attributes["href"]; ok {
+			links = append(links, href)
+		}
+	}
+	for _, child := range node.Children {
+		links = append(links, FindStylesheetLinks(child)...)
+	}
+	return links
+}

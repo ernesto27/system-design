@@ -23,9 +23,7 @@ var imageElements = map[string]bool{
 	"img": true,
 }
 
-func BuildLayoutTree(root *dom.Node) *LayoutBox {
-	cssContent := dom.FindStyleContent(root)
-	stylesheet := css.Parse(cssContent)
+func BuildLayoutTree(root *dom.Node, stylesheet css.Stylesheet) *LayoutBox {
 	return BuildBox(root, nil, stylesheet)
 }
 
