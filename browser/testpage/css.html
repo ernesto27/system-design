@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>CSS Test Page</title>
+    <link rel="stylesheet" href="style.css">
+    <style>
+        .red { color: red; }
+        .blue { color: blue; }
+        .bold { font-weight: bold; }
+        .big { font-size: 24px; }
+        .highlight { background-color: yellow; padding: 10px; }
+        #special { color: purple; font-size: 20px; font-style: italic; }
+        p.styled { background-color: lightgray; padding: 5px; }
+    </style>
+</head>
+<body>
+    <h1>CSS Test Page</h1>
+    <p>This page tests CSS styling features.</p>
+
+    <h2>External Stylesheet Test</h2>
+    <div class="external-test">
+        This box is styled via external CSS (style.css)!
+        <br>
+        (Green background, white text, centered)
+    </div>
+    <p id="external-id">This paragraph is styled via ID from external CSS (Red, dashed border)</p>
+
+    <hr>
+
+    <h2>Style Tag CSS (Classes and IDs)</h2>
+    <p>These elements are styled using &lt;style&gt; tag CSS:</p>
+    <p class="red">This text should be RED (class="red")</p>
+    <p class="blue">This text should be BLUE (class="blue")</p>
+    <p class="bold">This text should be BOLD (class="bold")</p>
+    <p class="big">This text should be BIG 24px (class="big")</p>
+    <p class="highlight">This has YELLOW background (class="highlight")</p>
+    <p class="red bold">This is RED and BOLD (multiple classes)</p>
+    <p id="special">This is PURPLE, ITALIC, 20px (id="special")</p>
+    <p class="styled">This paragraph has gray background (p.styled selector)</p>
+    <p class="blue" style="color: green;">This should be GREEN - inline overrides stylesheet</p>
+
+    <hr>
+
+    <h2>Inline Styles - Colors</h2>
+    <p style="color: red;">This text is red.</p>
+    <p style="color: blue; font-size: 24px;">Blue and larger text.</p>
+    <p style="background-color: yellow;">Yellow background.</p>
+    <p style="color: green; font-weight: bold;">Green and bold.</p>
+    <p style="font-style: italic; color: purple;">Purple italic text.</p>
+
+    <hr>
+
+    <h2>Padding and Margins</h2>
+    <p style="padding: 20px; background-color: lightgray;">This has 20px padding all around.</p>
+    <p style="padding-left: 40px; background-color: cyan;">This has 40px left padding.</p>
+    <p style="margin-left: 50px; background-color: lightgreen;">This has 50px left margin.</p>
+
+    <hr>
+
+    <h2>Text Alignment</h2>
+    <p style="text-align: left;">This text is left-aligned (default).</p>
+    <p style="text-align: center;">This text is centered.</p>
+    <p style="text-align: right;">This text is right-aligned.</p>
+    <p style="text-align: center; background-color: lightblue;">Centered with background to see the effect clearly.</p>
+
+    <hr>
+
+    <h2>Text Decoration</h2>
+    <p style="text-decoration: underline;">This text has an underline.</p>
+    <p style="text-decoration: line-through;">This text has a strikethrough.</p>
+    <p>Normal text with <span style="text-decoration: underline;">underlined part</span> inside.</p>
+    <p><a href="#">Links are underlined by default</a></p>
+    <p><a href="#" style="text-decoration: none;">This link has no underline (text-decoration: none)</a></p>
+    <p style="text-decoration: underline; color: red;">Red underlined text.</p>
+
+    <hr>
+
+    <h2>Borders</h2>
+    <p style="border: 2px solid black; padding: 10px;">2px solid black border</p>
+    <p style="border: 3px solid red; padding: 10px;">3px solid red border</p>
+    <p style="border: 1px solid blue; background-color: lightyellow; padding: 10px;">Blue border with yellow background</p>
+    <p style="border-top: 3px solid green; border-bottom: 3px solid purple; padding: 10px;">Green top, purple bottom</p>
+    <p style="border-left: 5px solid orange; padding: 10px;">5px orange left border only</p>
+
+    <hr>
+
+    <h2>Opacity</h2>
+    <p style="opacity: 1.0;">Full opacity (1.0) - fully visible</p>
+    <p style="opacity: 0.7;">70% opacity (0.7)</p>
+    <p style="opacity: 0.5;">50% opacity (0.5) - half transparent</p>
+    <p style="opacity: 0.3;">30% opacity (0.3)</p>
+    <p style="opacity: 0.1;">10% opacity (0.1) - barely visible</p>
+    <p style="background-color: red; opacity: 0.5;">Red background at 50% opacity</p>
+    <p style="color: blue; opacity: 0.5;">Blue text at 50% opacity</p>
+
+    <hr>
+
+    <h2>Visibility vs Display</h2>
+    <p>Compare visibility:hidden vs display:none:</p>
+    <p style="background-color: lightgreen;">Visible paragraph 1</p>
+    <p style="visibility: hidden; background-color: red;">HIDDEN with visibility:hidden (takes space)</p>
+    <p style="background-color: lightgreen;">Visible paragraph 2</p>
+    <p>Notice the gap above? That's the hidden element still taking space!</p>
+    <p style="background-color: lightblue;">Now compare with display:none below:</p>
+    <p style="display: none; background-color: red;">HIDDEN with display:none (no space)</p>
+    <p style="background-color: lightblue;">No gap here - display:none removes the element entirely.</p>
+    <div style="display: none;">
+        <p>Hidden div content</p>
+        <p>More hidden content</p>
+    </div>
+    <p>If you only see two green and two blue paragraphs above, both are working!</p>
+
+    <hr>
+
+    <h2>Cursor Styles</h2>
+    <p>Hover over these elements to see cursor changes:</p>
+    <p style="cursor: pointer; background-color: lightyellow; padding: 10px;">Pointer cursor (like a link)</p>
+    <p style="cursor: text; background-color: lightcyan; padding: 10px;">Text cursor (I-beam)</p>
+    <p style="cursor: crosshair; background-color: lightpink; padding: 10px;">Crosshair cursor</p>
+    <p><a href="#">Links automatically get pointer cursor</a></p>
+
+    <hr>
+
+    <h2>Navigation</h2>
+    <p><a href="tags.html">Go to HTML Tags Test Page</a></p>
+    <p><a href="index.html">Go to Full Test Page</a></p>
+
+    <hr>
+
+    <h2>End of Test</h2>
+    <p>If all styles above render correctly, CSS implementation is working!</p>
+</body>
+</html>
