@@ -30,7 +30,11 @@ func RenderToCanvas(commands []DisplayCommand, baseURL string, useCache bool) []
 		case DrawText:
 			text := canvas.NewText(c.Text, c.Color)
 			text.TextSize = c.Size
-			text.TextStyle = fyne.TextStyle{Bold: c.Bold, Italic: c.Italic}
+			text.TextStyle = fyne.TextStyle{
+				Bold:      c.Bold,
+				Italic:    c.Italic,
+				Monospace: c.Monospace,
+			}
 			text.Move(fyne.NewPos(float32(c.X), float32(c.Y)))
 			objects = append(objects, text)
 

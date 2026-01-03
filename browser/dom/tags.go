@@ -26,6 +26,8 @@ const (
 	TagI      = "i"
 	TagSmall  = "small"
 
+	TagPre = "pre"
+
 	// Lists
 	TagUL = "ul"
 	TagOL = "ol"

@@ -7,11 +7,23 @@ import (
 )
 
 var blockElements = map[string]bool{
-	"html": true, "body": true, "div": true,
-	"p": true, "h1": true, "h2": true, "h3": true, "h4": true, "h5": true, "h6": true,
-	"ul": true, "ol": true, "li": true,
-	"header": true, "footer": true,
+	"html":       true,
+	"body":       true,
+	"div":        true,
+	"p":          true,
+	"h1":         true,
+	"h2":         true,
+	"h3":         true,
+	"h4":         true,
+	"h5":         true,
+	"h6":         true,
+	"ul":         true,
+	"ol":         true,
+	"li":         true,
+	"header":     true,
+	"footer":     true,
 	"blockquote": true,
+	"pre":        true,
 }
 
 var skipElements = map[string]bool{

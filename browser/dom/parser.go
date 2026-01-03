@@ -17,7 +17,17 @@ func Parse(r io.Reader) *Node {
 }
 
 func convertNode(n *html.Node) *Node {
+	return convertNodeWithContext(n, false)
+}
+
+func convertNodeWithContext(n *html.Node, preserveWhitespace bool) *Node {
 	var node *Node
+
+	// Check if this element preserves whitespace
+	isPreserving := preserveWhitespace
+	if n.Type == html.ElementNode && n.Data == "pre" {
+		isPreserving = true
+	}
 
 	switch n.Type {
 	case html.DocumentNode:
@@ -29,7 +39,13 @@ func convertNode(n *html.Node) *Node {
 		}
 		node = NewElement(n.Data, attrs)
 	case html.TextNode:
-		text := strings.TrimSpace(n.Data)
+		var text string
+		if preserveWhitespace {
+			// Keep all whitespace for <pre> content
+			text = n.Data
+		} else {
+			text = strings.TrimSpace(n.Data)
+		}
 		if text == "" {
 			return nil
 		}
@@ -39,7 +55,7 @@ func convertNode(n *html.Node) *Node {
 	}
 
 	for c := n.FirstChild; c != nil; c = c.NextSibling {
-		child := convertNode(c)
+		child := convertNodeWithContext(c, isPreserving)
 		if child != nil {
 			node.AppendChild(child)
 		}
@@ -47,3 +63,4 @@ func convertNode(n *html.Node) *Node {
 
 	return node
 }
+

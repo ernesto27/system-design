@@ -147,6 +147,35 @@
 
     <hr>
 
+    <h2>Preformatted Text</h2>
+
+    <h3>Code Block</h3>
+    <pre>func main() {
+    fmt.Println("Hello, World!")
+
+    for i := 0; i < 10; i++ {
+        fmt.Printf("Number: %d\n", i)
+    }
+}</pre>
+
+    <h3>Another Code Block</h3>
+    <pre>package main
+
+import "fmt"
+
+type Browser struct {
+    URL     string
+    Title   string
+    History []string
+}
+
+func (b *Browser) Navigate(url string) {
+    b.History = append(b.History, b.URL)
+    b.URL = url
+}</pre>
+
+    <hr>
+
     <h2>End of Test</h2>
     <p>If you can see all elements above correctly, HTML tag rendering is working!</p>
 </body>

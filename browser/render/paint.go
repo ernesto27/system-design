@@ -5,6 +5,7 @@ import (
 	"browser/layout"
 	"fmt"
 	"image/color"
+	"strings"
 )
 
 // Colors
@@ -33,6 +34,7 @@ type TextStyle struct {
 	Size           float32
 	Bold           bool
 	Italic         bool
+	Monospace      bool
 	TextDecoration string
 	Opacity        float64
 	Visibility     string
@@ -74,6 +76,7 @@ type DrawText struct {
 	Size          float32
 	Bold          bool
 	Italic        bool
+	Monospace     bool
 	Underline     bool
 	Strikethrough bool
 }
@@ -255,6 +258,18 @@ func paintLayoutBox(box *layout.LayoutBox, commands *[]DisplayCommand, style Tex
 			if box.Style.FontSize == 0 {
 				currentStyle.Size = SizeSmall
 			}
+		case dom.TagPre:
+			currentStyle.Monospace = true
+			// Draw background for pre block
+			if box.Style.BackgroundColor == nil && !isHidden {
+				*commands = append(*commands, DrawRect{
+					X:      box.Rect.X,
+					Y:      box.Rect.Y,
+					Width:  box.Rect.Width,
+					Height: box.Rect.Height,
+					Color:  color.RGBA{245, 245, 245, 255}, // Very light gray
+				})
+			}
 		case dom.TagTH:
 			currentStyle.Bold = true
 		}
@@ -273,18 +288,42 @@ func paintLayoutBox(box *layout.LayoutBox, commands *[]DisplayCommand, style Tex
 			}
 		}
 
-		*commands = append(*commands, DrawText{
-			Text:          text,
-			X:             box.Rect.X,
-			Y:             box.Rect.Y,
-			Width:         box.Rect.Width,
-			Size:          currentStyle.Size,
-			Color:         applyOpacity(currentStyle.Color, currentStyle.Opacity),
-			Bold:          currentStyle.Bold,
-			Italic:        currentStyle.Italic,
-			Underline:     currentStyle.TextDecoration == "underline",
-			Strikethrough: currentStyle.TextDecoration == "line-through",
-		})
+		// Check if inside <pre> and has newlines - render each line separately
+		if currentStyle.Monospace && strings.Contains(text, "\n") {
+			lines := strings.Split(text, "\n")
+			lineHeight := float64(currentStyle.Size) * 1.5 // Line height = 1.5x font size
+			y := box.Rect.Y
+			for _, line := range lines {
+				*commands = append(*commands, DrawText{
+					Text:          line,
+					X:             box.Rect.X,
+					Y:             y,
+					Width:         box.Rect.Width,
+					Size:          currentStyle.Size,
+					Color:         applyOpacity(currentStyle.Color, currentStyle.Opacity),
+					Bold:          currentStyle.Bold,
+					Italic:        currentStyle.Italic,
+					Monospace:     currentStyle.Monospace,
+					Underline:     currentStyle.TextDecoration == "underline",
+					Strikethrough: currentStyle.TextDecoration == "line-through",
+				})
+				y += lineHeight
+			}
+		} else {
+			*commands = append(*commands, DrawText{
+				Text:          text,
+				X:             box.Rect.X,
+				Y:             box.Rect.Y,
+				Width:         box.Rect.Width,
+				Size:          currentStyle.Size,
+				Color:         applyOpacity(currentStyle.Color, currentStyle.Opacity),
+				Bold:          currentStyle.Bold,
+				Italic:        currentStyle.Italic,
+				Monospace:     currentStyle.Monospace,
+				Underline:     currentStyle.TextDecoration == "underline",
+				Strikethrough: currentStyle.TextDecoration == "line-through",
+			})
+		}
 	}
 
 	// Draw image

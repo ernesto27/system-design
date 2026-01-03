@@ -169,8 +169,27 @@ func computeBlockLayout(box *LayoutBox, containerWidth float64, startX, startY f
 		switch child.Type {
 		case TextBox:
 			fontSize := getFontSize(parentTag)
-			childWidth = MeasureText(child.Text, fontSize)
-			childHeight = getLineHeight(parentTag)
+			// Check if inside a <pre> element
+			if isInsidePre(child) {
+				// Handle multi-line preformatted text
+				lines := strings.Split(child.Text, "\n")
+				lineHeight := fontSize * 1.5 // Match render/paint.go line height
+
+				// Find the widest line
+				maxWidth := 0.0
+				for _, line := range lines {
+					w := MeasureText(line, fontSize)
+					if w > maxWidth {
+						maxWidth = w
+					}
+				}
+
+				childWidth = maxWidth
+				childHeight = float64(len(lines)) * lineHeight
+			} else {
+				childWidth = MeasureText(child.Text, fontSize)
+				childHeight = getLineHeight(parentTag)
+			}
 
 		case InlineBox:
 			// Compute inline box size from its content
@@ -547,4 +566,13 @@ func truncate(s string, max int) string {
 		return s
 	}
 	return s[:max] + "..."
+}
+
+func isInsidePre(box *LayoutBox) bool {
+	for p := box.Parent; p != nil; p = p.Parent {
+		if p.Node != nil && p.Node.TagName == dom.TagPre {
+			return true
+		}
+	}
+	return false
 }
