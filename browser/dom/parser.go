@@ -44,7 +44,7 @@ func convertNodeWithContext(n *html.Node, preserveWhitespace bool) *Node {
 			// Keep all whitespace for <pre> content
 			text = n.Data
 		} else {
-			text = strings.TrimSpace(n.Data)
+			text = normalizeWhitespace(n.Data)
 		}
 		if text == "" {
 			return nil
@@ -62,5 +62,41 @@ func convertNodeWithContext(n *html.Node, preserveWhitespace bool) *Node {
 	}
 
 	return node
+}
+
+// normalizeWhitespace collapses whitespace sequences to single spaces
+// while preserving space boundaries for inline element separation
+func normalizeWhitespace(s string) string {
+	if len(s) == 0 {
+		return ""
+	}
+
+	// Check boundaries - only actual spaces (not newlines) indicate inline separation
+	startsWithSpace := s[0] == ' ' || s[0] == '\t'
+	endsWithSpace := s[len(s)-1] == ' ' || s[len(s)-1] == '\t'
+
+	// Collapse all whitespace to single spaces
+	words := strings.Fields(s)
+	if len(words) == 0 {
+		// Text was all whitespace
+		// Only keep if it's purely spaces/tabs (inline separator)
+		// Discard if it contains newlines (HTML formatting)
+		if strings.ContainsAny(s, "\n\r") {
+			return ""
+		}
+		return " "
+	}
+
+	result := strings.Join(words, " ")
+
+	// Preserve boundary spaces for inline element separation
+	if startsWithSpace {
+		result = " " + result
+	}
+	if endsWithSpace {
+		result = result + " "
+	}
+
+	return result
 }
 

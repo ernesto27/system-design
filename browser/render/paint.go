@@ -258,6 +258,9 @@ func paintLayoutBox(box *layout.LayoutBox, commands *[]DisplayCommand, style Tex
 			if box.Style.FontSize == 0 {
 				currentStyle.Size = SizeSmall
 			}
+		case dom.TagU:
+			currentStyle.TextDecoration = "underline"
+
 		case dom.TagPre:
 			currentStyle.Monospace = true
 			// Draw background for pre block

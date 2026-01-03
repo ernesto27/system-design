@@ -25,6 +25,7 @@ const (
 	TagEm     = "em"
 	TagI      = "i"
 	TagSmall  = "small"
+	TagU      = "u"
 
 	TagPre = "pre"
 
