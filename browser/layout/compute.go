@@ -197,6 +197,20 @@ func computeBlockLayout(box *LayoutBox, containerWidth float64, startX, startY f
 
 		case ImageBox:
 			childWidth, childHeight = getImageSize(child.Node)
+		case InputBox:
+			childWidth = 200.0
+			childHeight = 28.0
+		case ButtonBox:
+			buttonText := getButtonText(child)
+			fontSize := getFontSize(parentTag)
+			childWidth = MeasureText(buttonText, fontSize) + 24.0
+			childHeight = 32.0
+		case TextareaBox:
+			childWidth = 300.0
+			childHeight = 80.0
+		case SelectBox:
+			childWidth = 200.0
+			childHeight = 28.0
 
 		case HRBox:
 			// Block element - flush line first
@@ -575,4 +589,19 @@ func isInsidePre(box *LayoutBox) bool {
 		}
 	}
 	return false
+}
+
+// getButtonText extracts text content from a button element
+func getButtonText(box *LayoutBox) string {
+	for _, child := range box.Children {
+		if child.Type == TextBox {
+			return child.Text
+		}
+	}
+	if box.Node != nil {
+		if val, ok := box.Node.Attributes["value"]; ok {
+			return val
+		}
+	}
+	return "Button"
 }

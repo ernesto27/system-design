@@ -25,6 +25,10 @@ const (
 	TableBox
 	TableRowBox
 	TableCellBox
+	InputBox
+	ButtonBox
+	TextareaBox
+	SelectBox
 )
 
 type LayoutBox struct {

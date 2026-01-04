@@ -24,6 +24,8 @@ var blockElements = map[string]bool{
 	"footer":     true,
 	"blockquote": true,
 	"pre":        true,
+	"form":       true,
+	"textarea":   true,
 }
 
 var skipElements = map[string]bool{
@@ -78,6 +80,14 @@ func BuildBox(node *dom.Node, parent *LayoutBox, stylesheet css.Stylesheet) *Lay
 			box.Type = BRBox
 		} else if imageElements[node.TagName] {
 			box.Type = ImageBox
+		} else if node.TagName == dom.TagInput {
+			box.Type = InputBox
+		} else if node.TagName == dom.TagButton {
+			box.Type = ButtonBox
+		} else if node.TagName == dom.TagTextarea {
+			box.Type = TextareaBox
+		} else if node.TagName == dom.TagSelect {
+			box.Type = SelectBox
 		} else if blockElements[node.TagName] {
 			box.Type = BlockBox
 		} else if node.TagName == dom.TagTable || node.TagName == dom.TagTBody || node.TagName == dom.TagTHead || node.TagName == dom.TagTFoot {

@@ -55,4 +55,12 @@ const (
 	TagTR    = "tr"
 	TagTD    = "td"
 	TagTH    = "th"
+
+	TagForm     = "form"
+	TagInput    = "input"
+	TagButton   = "button"
+	TagTextarea = "textarea"
+	TagSelect   = "select"
+	TagOption   = "option"
+	TagLabel    = "label"
 )

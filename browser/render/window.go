@@ -32,6 +32,10 @@ type Browser struct {
 	historyPos int
 
 	document *dom.Node
+
+	// Input state - keyed by DOM node (stable across reflow)
+	focusedInputNode *dom.Node
+	inputValues      map[*dom.Node]string
 }
 
 func NewBrowser(width, height float32) *Browser {
@@ -47,12 +51,13 @@ func NewBrowser(width, height float32) *Browser {
 	}
 
 	b := &Browser{
-		App:        a,
-		Window:     w,
-		Width:      width,
-		Height:     height,
-		history:    []string{},
-		historyPos: -1,
+		App:         a,
+		Window:      w,
+		Width:       width,
+		Height:      height,
+		history:     []string{},
+		historyPos:  -1,
+		inputValues: make(map[*dom.Node]string),
 	}
 	// Create URL entry
 	b.urlEntry = widget.NewEntry()
@@ -100,7 +105,13 @@ func NewBrowser(width, height float32) *Browser {
 		b.content, // center
 	)
 
-	w.Canvas().SetOnTypedKey(nil) // Ensure canvas is initialized
+	w.Canvas().SetOnTypedRune(func(r rune) {
+		b.handleTypedRune(r)
+	})
+	w.Canvas().SetOnTypedKey(func(key *fyne.KeyEvent) {
+		b.handleTypedKey(key)
+	})
+
 	go func() {
 		var lastWidth float32
 		for {
@@ -184,14 +195,29 @@ func (b *Browser) handleClick(x, y float64) {
 	hit := b.layoutTree.HitTest(x, y)
 	if hit == nil {
 		fmt.Println("  No hit found")
+		if b.focusedInputNode != nil {
+			b.focusedInputNode = nil
+			b.repaint()
+		}
 		return
 	}
 	fmt.Printf("  Hit: %+v\n", hit.Text)
+
+	if hit.Type == layout.InputBox && hit.Node != nil {
+		fmt.Print("click input box")
+		b.focusedInputNode = hit.Node // Store DOM node, not LayoutBox
+		b.repaint()
+		return
+	}
 
 	// Check if it's a link
 	href := hit.FindLink()
 	if href == "" {
 		fmt.Println("  Not a link")
+		if b.focusedInputNode != nil {
+			b.focusedInputNode = nil
+			b.repaint()
+		}
 		return
 	}
 	fmt.Println("  Found link:", href)
@@ -281,8 +307,8 @@ func (b *Browser) Reflow(width float32) {
 	b.Width = width
 	b.layoutTree = layoutTree
 
-	// Repaint
-	commands := BuildDisplayList(layoutTree)
+	// Repaint with input state preserved (uses DOM node keys, stable across reflow)
+	commands := BuildDisplayListWithInputs(layoutTree, b.inputValues, b.focusedInputNode)
 
 	baseURL := ""
 	if b.currentURL != nil {
@@ -294,11 +320,20 @@ func (b *Browser) Reflow(width float32) {
 
 	// UI updates must be on main thread
 	fyne.Do(func() {
+		// Preserve scroll position
+		var scrollOffset fyne.Position
+		if len(b.content.Objects) > 0 {
+			if oldScroll, ok := b.content.Objects[0].(*container.Scroll); ok {
+				scrollOffset = oldScroll.Offset
+			}
+		}
+
 		clickable := NewClickableContainer(objects, func(x, y float32) {
 			b.handleClick(float64(x), float64(y))
 		}, b.layoutTree)
 
 		scroll := container.NewScroll(clickable)
+		scroll.Offset = scrollOffset // Restore scroll position
 
 		b.content.Objects = []fyne.CanvasObject{scroll}
 		b.content.Refresh()
@@ -333,4 +368,78 @@ func (b *Browser) Refresh() {
 	if b.currentURL != nil && b.OnNavigate != nil {
 		b.OnNavigate(b.currentURL.String())
 	}
+}
+
+func (b *Browser) handleTypedRune(r rune) {
+	if b.focusedInputNode == nil {
+		return
+	}
+
+	// Add character to input value
+	current := b.inputValues[b.focusedInputNode]
+	b.inputValues[b.focusedInputNode] = current + string(r)
+
+	// Re-render to show new text
+	b.refreshContent()
+}
+
+func (b *Browser) handleTypedKey(key *fyne.KeyEvent) {
+	if b.focusedInputNode == nil {
+		return
+	}
+
+	switch key.Name {
+	case fyne.KeyBackspace:
+		current := b.inputValues[b.focusedInputNode]
+		if len(current) > 0 {
+			// Remove last character (handle UTF-8)
+			runes := []rune(current)
+			b.inputValues[b.focusedInputNode] = string(runes[:len(runes)-1])
+			b.repaint()
+		}
+	case fyne.KeyEscape:
+		// Unfocus on escape
+		b.focusedInputNode = nil
+		b.repaint()
+	}
+}
+
+// repaint re-renders the current layout tree without recalculating layout
+func (b *Browser) repaint() {
+	if b.layoutTree == nil {
+		return
+	}
+
+	commands := BuildDisplayListWithInputs(b.layoutTree, b.inputValues, b.focusedInputNode)
+
+	baseURL := ""
+	if b.currentURL != nil {
+		baseURL = b.currentURL.Scheme + "://" + b.currentURL.Host
+	}
+
+	objects := RenderToCanvas(commands, baseURL, true)
+
+	fyne.Do(func() {
+		// Preserve scroll position
+		var scrollOffset fyne.Position
+		if len(b.content.Objects) > 0 {
+			if oldScroll, ok := b.content.Objects[0].(*container.Scroll); ok {
+				scrollOffset = oldScroll.Offset
+			}
+		}
+
+		clickable := NewClickableContainer(objects, func(x, y float32) {
+			b.handleClick(float64(x), float64(y))
+		}, b.layoutTree)
+
+		scroll := container.NewScroll(clickable)
+		scroll.Offset = scrollOffset // Restore scroll position
+		b.content.Objects = []fyne.CanvasObject{scroll}
+		b.content.Refresh()
+	})
+}
+
+// refreshContent is an alias for repaint (called by keyboard handlers)
+func (b *Browser) refreshContent() {
+	b.repaint()
 }
