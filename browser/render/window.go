@@ -210,6 +210,13 @@ func (b *Browser) handleClick(x, y float64) {
 		return
 	}
 
+	if hit.Type == layout.TextareaBox && hit.Node != nil {
+		fmt.Println("click textarea")
+		b.focusedInputNode = hit.Node
+		b.repaint()
+		return
+	}
+
 	// Check if it's a link
 	href := hit.FindLink()
 	if href == "" {
@@ -395,6 +402,12 @@ func (b *Browser) handleTypedKey(key *fyne.KeyEvent) {
 			// Remove last character (handle UTF-8)
 			runes := []rune(current)
 			b.inputValues[b.focusedInputNode] = string(runes[:len(runes)-1])
+			b.repaint()
+		}
+	case fyne.KeyReturn, fyne.KeyEnter:
+		if b.focusedInputNode.TagName == "textarea" {
+			current := b.inputValues[b.focusedInputNode]
+			b.inputValues[b.focusedInputNode] = current + "\n"
 			b.repaint()
 		}
 	case fyne.KeyEscape:

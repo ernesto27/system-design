@@ -8,6 +8,7 @@ import (
 	_ "image/jpeg"
 	_ "image/png"
 	"net/http"
+	"strings"
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/canvas"
@@ -15,6 +16,72 @@ import (
 
 // Image cache to avoid re-fetching on reflow
 var imageCache = make(map[string]image.Image)
+
+// renderTextFieldObjects creates canvas objects for input/textarea fields
+func renderTextFieldObjects(x, y, width, height float64, value, placeholder string, isFocused bool) []fyne.CanvasObject {
+	var objects []fyne.CanvasObject
+
+	// Border - blue when focused, gray otherwise
+	var borderColor color.Color
+	if isFocused {
+		borderColor = color.RGBA{0, 120, 215, 255}
+	} else {
+		borderColor = color.RGBA{180, 180, 180, 255}
+	}
+	border := canvas.NewRectangle(borderColor)
+	border.Resize(fyne.NewSize(float32(width), float32(height)))
+	border.Move(fyne.NewPos(float32(x), float32(y)))
+	objects = append(objects, border)
+
+	// White background (inset by 1px)
+	bg := canvas.NewRectangle(color.White)
+	bg.Resize(fyne.NewSize(float32(width-2), float32(height-2)))
+	bg.Move(fyne.NewPos(float32(x+1), float32(y+1)))
+	objects = append(objects, bg)
+
+	// Show typed value or placeholder
+	if value != "" {
+		lines := strings.Split(value, "\n")
+		lineHeight := float32(18)
+		var lastLineWidth float32
+
+		for i, line := range lines {
+			text := canvas.NewText(line, color.Black)
+			text.TextSize = 14
+			text.Move(fyne.NewPos(float32(x+6), float32(y+6)+float32(i)*lineHeight))
+			objects = append(objects, text)
+			lastLineWidth = fyne.MeasureText(line, 14, fyne.TextStyle{}).Width
+		}
+
+		if isFocused {
+			// Cursor at end of last line
+			cursorY := float32(y+5) + float32(len(lines)-1)*lineHeight
+			cursor := canvas.NewRectangle(color.Black)
+			cursor.Resize(fyne.NewSize(1, 16))
+			cursor.Move(fyne.NewPos(float32(x+6)+lastLineWidth, cursorY))
+			objects = append(objects, cursor)
+		}
+	} else if placeholder != "" {
+		text := canvas.NewText(placeholder, color.RGBA{150, 150, 150, 255})
+		text.TextSize = 14
+		text.Move(fyne.NewPos(float32(x+6), float32(y+6)))
+		objects = append(objects, text)
+
+		if isFocused {
+			cursor := canvas.NewRectangle(color.Black)
+			cursor.Resize(fyne.NewSize(1, 16))
+			cursor.Move(fyne.NewPos(float32(x+6), float32(y+5)))
+			objects = append(objects, cursor)
+		}
+	} else if isFocused {
+		cursor := canvas.NewRectangle(color.Black)
+		cursor.Resize(fyne.NewSize(1, 16))
+		cursor.Move(fyne.NewPos(float32(x+6), float32(y+5)))
+		objects = append(objects, cursor)
+	}
+
+	return objects
+}
 
 func RenderToCanvas(commands []DisplayCommand, baseURL string, useCache bool) []fyne.CanvasObject {
 	var objects []fyne.CanvasObject
@@ -72,61 +139,7 @@ func RenderToCanvas(commands []DisplayCommand, baseURL string, useCache bool) []
 			objects = append(objects, hr)
 
 		case DrawInput:
-			// Border - blue when focused, gray otherwise
-			var borderColor color.Color
-			if c.IsFocused {
-				borderColor = color.RGBA{0, 120, 215, 255} // Blue focus border
-			} else {
-				borderColor = color.RGBA{180, 180, 180, 255}
-			}
-			border := canvas.NewRectangle(borderColor)
-			border.Resize(fyne.NewSize(float32(c.Width), float32(c.Height)))
-			border.Move(fyne.NewPos(float32(c.X), float32(c.Y)))
-			objects = append(objects, border)
-
-			// White background (inset by 1px)
-			bg := canvas.NewRectangle(color.White)
-			bg.Resize(fyne.NewSize(float32(c.Width-2), float32(c.Height-2)))
-			bg.Move(fyne.NewPos(float32(c.X+1), float32(c.Y+1)))
-			objects = append(objects, bg)
-
-			// Show typed value or placeholder
-			if c.Value != "" {
-				// Show typed text in black
-				text := canvas.NewText(c.Value, color.Black)
-				text.TextSize = 14
-				text.Move(fyne.NewPos(float32(c.X+6), float32(c.Y+6)))
-				objects = append(objects, text)
-
-				// Show cursor after text when focused
-				if c.IsFocused {
-					textWidth := fyne.MeasureText(c.Value, 14, fyne.TextStyle{}).Width
-					cursor := canvas.NewRectangle(color.Black)
-					cursor.Resize(fyne.NewSize(1, 16))
-					cursor.Move(fyne.NewPos(float32(c.X+6)+textWidth, float32(c.Y+5)))
-					objects = append(objects, cursor)
-				}
-			} else if c.Placeholder != "" {
-				// Show placeholder in gray
-				text := canvas.NewText(c.Placeholder, color.RGBA{150, 150, 150, 255})
-				text.TextSize = 14
-				text.Move(fyne.NewPos(float32(c.X+6), float32(c.Y+6)))
-				objects = append(objects, text)
-
-				// Show cursor at start when focused with no text
-				if c.IsFocused {
-					cursor := canvas.NewRectangle(color.Black)
-					cursor.Resize(fyne.NewSize(1, 16))
-					cursor.Move(fyne.NewPos(float32(c.X+6), float32(c.Y+5)))
-					objects = append(objects, cursor)
-				}
-			} else if c.IsFocused {
-				// No text, no placeholder, but focused - show cursor
-				cursor := canvas.NewRectangle(color.Black)
-				cursor.Resize(fyne.NewSize(1, 16))
-				cursor.Move(fyne.NewPos(float32(c.X+6), float32(c.Y+5)))
-				objects = append(objects, cursor)
-			}
+			objects = append(objects, renderTextFieldObjects(c.X, c.Y, c.Width, c.Height, c.Value, c.Placeholder, c.IsFocused)...)
 
 		case DrawButton:
 			// Button background
@@ -156,25 +169,7 @@ func RenderToCanvas(commands []DisplayCommand, baseURL string, useCache bool) []
 			objects = append(objects, text)
 
 		case DrawTextarea:
-			// Border
-			border := canvas.NewRectangle(color.RGBA{180, 180, 180, 255})
-			border.Resize(fyne.NewSize(float32(c.Width), float32(c.Height)))
-			border.Move(fyne.NewPos(float32(c.X), float32(c.Y)))
-			objects = append(objects, border)
-
-			// White background
-			bg := canvas.NewRectangle(color.White)
-			bg.Resize(fyne.NewSize(float32(c.Width-2), float32(c.Height-2)))
-			bg.Move(fyne.NewPos(float32(c.X+1), float32(c.Y+1)))
-			objects = append(objects, bg)
-
-			// Placeholder text
-			if c.Placeholder != "" {
-				text := canvas.NewText(c.Placeholder, color.RGBA{150, 150, 150, 255})
-				text.TextSize = 14
-				text.Move(fyne.NewPos(float32(c.X+6), float32(c.Y+6)))
-				objects = append(objects, text)
-			}
+			objects = append(objects, renderTextFieldObjects(c.X, c.Y, c.Width, c.Height, c.Value, c.Placeholder, c.IsFocused)...)
 
 		case DrawSelect:
 			// Border

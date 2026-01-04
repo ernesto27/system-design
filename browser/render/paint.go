@@ -55,6 +55,8 @@ type DrawButton struct {
 type DrawTextarea struct {
 	X, Y, Width, Height float64
 	Placeholder         string
+	Value               string
+	IsFocused           bool
 }
 
 type DrawSelect struct {
@@ -322,7 +324,7 @@ func paintLayoutBoxWithInputs(box *layout.LayoutBox, commands *[]DisplayCommand,
 					Text: line, X: box.Rect.X, Y: y, Width: box.Rect.Width,
 					Size: currentStyle.Size, Color: applyOpacity(currentStyle.Color, currentStyle.Opacity),
 					Bold: currentStyle.Bold, Italic: currentStyle.Italic, Monospace: currentStyle.Monospace,
-					Underline: currentStyle.TextDecoration == "underline",
+					Underline:     currentStyle.TextDecoration == "underline",
 					Strikethrough: currentStyle.TextDecoration == "line-through",
 				})
 				y += lineHeight
@@ -332,7 +334,7 @@ func paintLayoutBoxWithInputs(box *layout.LayoutBox, commands *[]DisplayCommand,
 				Text: text, X: box.Rect.X, Y: box.Rect.Y, Width: box.Rect.Width,
 				Size: currentStyle.Size, Color: applyOpacity(currentStyle.Color, currentStyle.Opacity),
 				Bold: currentStyle.Bold, Italic: currentStyle.Italic, Monospace: currentStyle.Monospace,
-				Underline: currentStyle.TextDecoration == "underline",
+				Underline:     currentStyle.TextDecoration == "underline",
 				Strikethrough: currentStyle.TextDecoration == "line-through",
 			})
 		}
@@ -383,10 +385,15 @@ func paintLayoutBoxWithInputs(box *layout.LayoutBox, commands *[]DisplayCommand,
 	}
 
 	if box.Type == layout.TextareaBox && box.Node != nil && !isHidden {
+		value := inputValues[box.Node]
+		isFocused := (box.Node == focusedInputNode)
+
 		*commands = append(*commands, DrawTextarea{
 			X: box.Rect.X, Y: box.Rect.Y,
 			Width: box.Rect.Width, Height: box.Rect.Height,
 			Placeholder: box.Node.Attributes["placeholder"],
+			Value:       value,
+			IsFocused:   isFocused,
 		})
 	}
 
