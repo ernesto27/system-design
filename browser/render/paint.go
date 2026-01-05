@@ -61,7 +61,28 @@ type DrawTextarea struct {
 
 type DrawSelect struct {
 	X, Y, Width, Height float64
-	Placeholder         string
+	Options             []string // List of option texts
+	SelectedValue       string   // Currently selected value
+	IsOpen              bool     // Is dropdown open?
+}
+
+type DrawRadio struct {
+	X, Y, Width, Height float64
+	IsChecked           bool
+}
+
+type DrawCheckbox struct {
+	X, Y, Width, Height float64
+	IsChecked           bool
+}
+
+// InputState holds all interactive form state for rendering
+type InputState struct {
+	InputValues    map[*dom.Node]string // Text input values
+	FocusedNode    *dom.Node            // Currently focused input/textarea
+	OpenSelectNode *dom.Node            // Which select dropdown is open
+	RadioValues    map[string]*dom.Node // Selected radio per group (key: name attr)
+	CheckboxValues map[*dom.Node]bool   // Checked state per check
 }
 
 // DefaultStyle returns the default text style
@@ -138,7 +159,7 @@ func BuildDisplayList(root *layout.LayoutBox) []DisplayCommand {
 	return commands
 }
 
-func BuildDisplayListWithInputs(root *layout.LayoutBox, inputValues map[*dom.Node]string, focusedInputNode *dom.Node) []DisplayCommand {
+func BuildDisplayListWithInputs(root *layout.LayoutBox, state InputState) []DisplayCommand {
 	var commands []DisplayCommand
 
 	contentHeight := root.Rect.Y + root.Rect.Height
@@ -152,12 +173,12 @@ func BuildDisplayListWithInputs(root *layout.LayoutBox, inputValues map[*dom.Nod
 		Color: color.White,
 	})
 
-	paintLayoutBoxWithInputs(root, &commands, DefaultStyle(), inputValues, focusedInputNode)
+	paintLayoutBoxWithInputs(root, &commands, DefaultStyle(), state)
 
 	return commands
 }
 
-func paintLayoutBoxWithInputs(box *layout.LayoutBox, commands *[]DisplayCommand, style TextStyle, inputValues map[*dom.Node]string, focusedInputNode *dom.Node) {
+func paintLayoutBoxWithInputs(box *layout.LayoutBox, commands *[]DisplayCommand, style TextStyle, state InputState) {
 	currentStyle := style
 
 	// Apply inline styles from CSS
@@ -359,8 +380,8 @@ func paintLayoutBoxWithInputs(box *layout.LayoutBox, commands *[]DisplayCommand,
 
 	// Input with state - use DOM node for lookup (stable across reflow)
 	if box.Type == layout.InputBox && box.Node != nil && !isHidden {
-		value := inputValues[box.Node]
-		isFocused := (box.Node == focusedInputNode)
+		value := state.InputValues[box.Node]
+		isFocused := (box.Node == state.FocusedNode)
 
 		placeholder := box.Node.Attributes["placeholder"]
 		if placeholder == "" {
@@ -385,8 +406,8 @@ func paintLayoutBoxWithInputs(box *layout.LayoutBox, commands *[]DisplayCommand,
 	}
 
 	if box.Type == layout.TextareaBox && box.Node != nil && !isHidden {
-		value := inputValues[box.Node]
-		isFocused := (box.Node == focusedInputNode)
+		value := state.InputValues[box.Node]
+		isFocused := (box.Node == state.FocusedNode)
 
 		*commands = append(*commands, DrawTextarea{
 			X: box.Rect.X, Y: box.Rect.Y,
@@ -398,10 +419,62 @@ func paintLayoutBoxWithInputs(box *layout.LayoutBox, commands *[]DisplayCommand,
 	}
 
 	if box.Type == layout.SelectBox && box.Node != nil && !isHidden {
+		// Get options from <option> children
+		var options []string
+		fmt.Printf("Select box found, children: %d\n", len(box.Node.Children))
+		for _, child := range box.Node.Children {
+			fmt.Printf("  Child: TagName=%s, Type=%d\n", child.TagName, child.Type)
+			if child.TagName == "option" {
+				for _, textNode := range child.Children {
+					fmt.Printf("    TextNode: Type=%d, Text=%q\n", textNode.Type, textNode.Text)
+					if textNode.Type == dom.Text {
+						options = append(options, textNode.Text)
+						break
+					}
+				}
+			}
+		}
+
+		selectedValue := state.InputValues[box.Node]
+		isOpen := (box.Node == state.OpenSelectNode)
+		fmt.Printf("Select: options=%v, isOpen=%v, openSelectNode=%p, box.Node=%p\n", options, isOpen, state.OpenSelectNode, box.Node)
+
 		*commands = append(*commands, DrawSelect{
 			X: box.Rect.X, Y: box.Rect.Y,
 			Width: box.Rect.Width, Height: box.Rect.Height,
-			Placeholder: "Select...",
+			Options:       options,
+			SelectedValue: selectedValue,
+			IsOpen:        isOpen,
+		})
+	}
+
+	// Radio button
+	if box.Type == layout.RadioBox && box.Node != nil && !isHidden {
+		name := box.Node.Attributes["name"]
+		isChecked := false
+		if name != "" && state.RadioValues != nil {
+			isChecked = (state.RadioValues[name] == box.Node)
+		}
+		// Fallback to HTML checked attribute if no runtime state
+		if !isChecked {
+			_, isChecked = box.Node.Attributes["checked"]
+		}
+		*commands = append(*commands, DrawRadio{
+			X: box.Rect.X, Y: box.Rect.Y,
+			Width: box.Rect.Width, Height: box.Rect.Height,
+			IsChecked: isChecked,
+		})
+	}
+
+	if box.Type == layout.CheckboxBox && box.Node != nil && !isHidden {
+		isChecked := false
+		if state.CheckboxValues != nil {
+			isChecked = state.CheckboxValues[box.Node]
+		}
+		*commands = append(*commands, DrawCheckbox{
+			X: box.Rect.X, Y: box.Rect.Y,
+			Width: box.Rect.Width, Height: box.Rect.Height,
+			IsChecked: isChecked,
 		})
 	}
 
@@ -416,7 +489,7 @@ func paintLayoutBoxWithInputs(box *layout.LayoutBox, commands *[]DisplayCommand,
 
 	// Paint children with input state
 	for _, child := range box.Children {
-		paintLayoutBoxWithInputs(child, commands, currentStyle, inputValues, focusedInputNode)
+		paintLayoutBoxWithInputs(child, commands, currentStyle, state)
 	}
 }
 
@@ -697,11 +770,37 @@ func paintLayoutBox(box *layout.LayoutBox, commands *[]DisplayCommand, style Tex
 
 	if box.Type == layout.SelectBox && box.Node != nil && !isHidden {
 		*commands = append(*commands, DrawSelect{
-			X:           box.Rect.X,
-			Y:           box.Rect.Y,
-			Width:       box.Rect.Width,
-			Height:      box.Rect.Height,
-			Placeholder: "Select...",
+			X:      box.Rect.X,
+			Y:      box.Rect.Y,
+			Width:  box.Rect.Width,
+			Height: box.Rect.Height,
+			// Note: original paintLayoutBox doesn't have access to input state
+			// Use BuildDisplayListWithInputs for full select functionality
+		})
+	}
+
+	// Radio button
+	if box.Type == layout.RadioBox && box.Node != nil && !isHidden {
+		_, isChecked := box.Node.Attributes["checked"]
+
+		*commands = append(*commands, DrawRadio{
+			X:         box.Rect.X,
+			Y:         box.Rect.Y,
+			Width:     box.Rect.Width,
+			Height:    box.Rect.Height,
+			IsChecked: isChecked,
+		})
+	}
+
+	// Checkbox
+	if box.Type == layout.CheckboxBox && box.Node != nil && !isHidden {
+		_, isChecked := box.Node.Attributes["checked"]
+		*commands = append(*commands, DrawCheckbox{
+			X:         box.Rect.X,
+			Y:         box.Rect.Y,
+			Width:     box.Rect.Width,
+			Height:    box.Rect.Height,
+			IsChecked: isChecked,
 		})
 	}
 

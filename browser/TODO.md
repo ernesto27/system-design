@@ -16,3 +16,9 @@
 - [ ] Form support (input fields, buttons)
 - [ ] `<pre>` / `<code>` tags (monospace text)
 - [ ] `<mark>` tag (highlighted background)
+
+
+Refactor this 
+X:         box.Rect.X,
+			Y:         box.Rect.Y,
+			Width:     box.Rect.Width,

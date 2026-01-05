@@ -36,6 +36,9 @@ type Browser struct {
 	// Input state - keyed by DOM node (stable across reflow)
 	focusedInputNode *dom.Node
 	inputValues      map[*dom.Node]string
+	openSelectNode   *dom.Node // Which select dropdown is open
+	radioValues      map[string]*dom.Node
+	checkboxValue    map[*dom.Node]bool
 }
 
 func NewBrowser(width, height float32) *Browser {
@@ -51,13 +54,15 @@ func NewBrowser(width, height float32) *Browser {
 	}
 
 	b := &Browser{
-		App:         a,
-		Window:      w,
-		Width:       width,
-		Height:      height,
-		history:     []string{},
-		historyPos:  -1,
-		inputValues: make(map[*dom.Node]string),
+		App:           a,
+		Window:        w,
+		Width:         width,
+		Height:        height,
+		history:       []string{},
+		historyPos:    -1,
+		inputValues:   make(map[*dom.Node]string),
+		radioValues:   make(map[string]*dom.Node),
+		checkboxValue: make(map[*dom.Node]bool),
 	}
 	// Create URL entry
 	b.urlEntry = widget.NewEntry()
@@ -210,19 +215,78 @@ func (b *Browser) handleClick(x, y float64) {
 		return
 	}
 
+	if hit.Type == layout.RadioBox && hit.Node != nil {
+		fmt.Println("click radio button")
+		name := hit.Node.Attributes["name"]
+		if name != "" {
+			b.radioValues[name] = hit.Node
+		}
+		b.repaint()
+		return
+	}
+
+	if hit.Type == layout.CheckboxBox && hit.Node != nil {
+		fmt.Println("click checkbox")
+		b.checkboxValue[hit.Node] = !b.checkboxValue[hit.Node]
+		b.repaint()
+		return
+	}
+
 	if hit.Type == layout.TextareaBox && hit.Node != nil {
 		fmt.Println("click textarea")
 		b.focusedInputNode = hit.Node
+		b.openSelectNode = nil // Close any open select
 		b.repaint()
 		return
+	}
+
+	if hit.Type == layout.SelectBox && hit.Node != nil {
+		fmt.Println("click select")
+		if b.openSelectNode == hit.Node {
+			// Already open - close it
+			b.openSelectNode = nil
+		} else {
+			// Open this select
+			b.openSelectNode = hit.Node
+			b.focusedInputNode = nil // Unfocus any input
+		}
+		b.repaint()
+		return
+	}
+
+	// Check if clicked on a select option (when dropdown is open)
+	if b.openSelectNode != nil {
+		// Check if we clicked an option by checking y position
+		selectBox := b.findSelectBox(b.openSelectNode)
+		if selectBox != nil {
+			optionHeight := 28.0
+			optionY := selectBox.Rect.Y + selectBox.Rect.Height
+			numOptions := b.countSelectOptions(b.openSelectNode)
+
+			// Check if click is in dropdown area
+			if y >= optionY && y < optionY+float64(numOptions)*optionHeight &&
+				x >= selectBox.Rect.X && x < selectBox.Rect.X+selectBox.Rect.Width {
+				// Calculate which option was clicked
+				optionIndex := int((y - optionY) / optionHeight)
+				optionValue := b.getSelectOptionByIndex(b.openSelectNode, optionIndex)
+				if optionValue != "" {
+					fmt.Println("  Selected option:", optionValue)
+					b.inputValues[b.openSelectNode] = optionValue
+					b.openSelectNode = nil // Close dropdown
+					b.repaint()
+					return
+				}
+			}
+		}
 	}
 
 	// Check if it's a link
 	href := hit.FindLink()
 	if href == "" {
 		fmt.Println("  Not a link")
-		if b.focusedInputNode != nil {
+		if b.focusedInputNode != nil || b.openSelectNode != nil {
 			b.focusedInputNode = nil
+			b.openSelectNode = nil
 			b.repaint()
 		}
 		return
@@ -315,7 +379,13 @@ func (b *Browser) Reflow(width float32) {
 	b.layoutTree = layoutTree
 
 	// Repaint with input state preserved (uses DOM node keys, stable across reflow)
-	commands := BuildDisplayListWithInputs(layoutTree, b.inputValues, b.focusedInputNode)
+	commands := BuildDisplayListWithInputs(layoutTree, InputState{
+		InputValues:    b.inputValues,
+		FocusedNode:    b.focusedInputNode,
+		OpenSelectNode: b.openSelectNode,
+		RadioValues:    b.radioValues,
+		CheckboxValues: b.checkboxValue,
+	})
 
 	baseURL := ""
 	if b.currentURL != nil {
@@ -413,8 +483,60 @@ func (b *Browser) handleTypedKey(key *fyne.KeyEvent) {
 	case fyne.KeyEscape:
 		// Unfocus on escape
 		b.focusedInputNode = nil
+		b.openSelectNode = nil
 		b.repaint()
 	}
+}
+
+// findSelectBox finds the LayoutBox for a given select DOM node
+func (b *Browser) findSelectBox(node *dom.Node) *layout.LayoutBox {
+	return findBoxByNode(b.layoutTree, node)
+}
+
+func findBoxByNode(box *layout.LayoutBox, node *dom.Node) *layout.LayoutBox {
+	if box == nil {
+		return nil
+	}
+	if box.Node == node {
+		return box
+	}
+	for _, child := range box.Children {
+		if found := findBoxByNode(child, node); found != nil {
+			return found
+		}
+	}
+	return nil
+}
+
+// countSelectOptions counts the number of <option> children
+func (b *Browser) countSelectOptions(selectNode *dom.Node) int {
+	count := 0
+	for _, child := range selectNode.Children {
+		if child.TagName == "option" {
+			count++
+		}
+	}
+	return count
+}
+
+// getSelectOptionByIndex returns the text of the option at the given index
+func (b *Browser) getSelectOptionByIndex(selectNode *dom.Node, index int) string {
+	current := 0
+	for _, child := range selectNode.Children {
+		if child.TagName == "option" {
+			if current == index {
+				// Get text content
+				for _, textNode := range child.Children {
+					if textNode.Type == dom.Text {
+						return textNode.Text
+					}
+				}
+				return ""
+			}
+			current++
+		}
+	}
+	return ""
 }
 
 // repaint re-renders the current layout tree without recalculating layout
@@ -423,7 +545,13 @@ func (b *Browser) repaint() {
 		return
 	}
 
-	commands := BuildDisplayListWithInputs(b.layoutTree, b.inputValues, b.focusedInputNode)
+	commands := BuildDisplayListWithInputs(b.layoutTree, InputState{
+		InputValues:    b.inputValues,
+		FocusedNode:    b.focusedInputNode,
+		OpenSelectNode: b.openSelectNode,
+		RadioValues:    b.radioValues,
+		CheckboxValues: b.checkboxValue,
+	})
 
 	baseURL := ""
 	if b.currentURL != nil {

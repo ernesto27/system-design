@@ -85,6 +85,7 @@ func renderTextFieldObjects(x, y, width, height float64, value, placeholder stri
 
 func RenderToCanvas(commands []DisplayCommand, baseURL string, useCache bool) []fyne.CanvasObject {
 	var objects []fyne.CanvasObject
+	var dropdownOverlays []fyne.CanvasObject // Collect dropdowns to render LAST (on top)
 
 	for _, cmd := range commands {
 		switch c := cmd.(type) {
@@ -172,8 +173,12 @@ func RenderToCanvas(commands []DisplayCommand, baseURL string, useCache bool) []
 			objects = append(objects, renderTextFieldObjects(c.X, c.Y, c.Width, c.Height, c.Value, c.Placeholder, c.IsFocused)...)
 
 		case DrawSelect:
-			// Border
-			border := canvas.NewRectangle(color.RGBA{180, 180, 180, 255})
+			// Border - blue when open
+			borderColor := color.RGBA{180, 180, 180, 255}
+			if c.IsOpen {
+				borderColor = color.RGBA{0, 120, 215, 255}
+			}
+			border := canvas.NewRectangle(borderColor)
 			border.Resize(fyne.NewSize(float32(c.Width), float32(c.Height)))
 			border.Move(fyne.NewPos(float32(c.X), float32(c.Y)))
 			objects = append(objects, border)
@@ -184,19 +189,122 @@ func RenderToCanvas(commands []DisplayCommand, baseURL string, useCache bool) []
 			bg.Move(fyne.NewPos(float32(c.X+1), float32(c.Y+1)))
 			objects = append(objects, bg)
 
-			// Placeholder text
-			text := canvas.NewText(c.Placeholder, color.RGBA{100, 100, 100, 255})
+			// Selected value or placeholder
+			displayText := "Select..."
+			textColor := color.RGBA{100, 100, 100, 255}
+			if c.SelectedValue != "" {
+				displayText = c.SelectedValue
+				textColor = color.RGBA{0, 0, 0, 255}
+			}
+			text := canvas.NewText(displayText, textColor)
 			text.TextSize = 14
 			text.Move(fyne.NewPos(float32(c.X+6), float32(c.Y+6)))
 			objects = append(objects, text)
 
-			// Dropdown arrow ▼
-			arrow := canvas.NewText("▼", color.RGBA{100, 100, 100, 255})
+			// Dropdown arrow
+			arrowText := "▼"
+			if c.IsOpen {
+				arrowText = "▲"
+			}
+			arrow := canvas.NewText(arrowText, color.RGBA{100, 100, 100, 255})
 			arrow.TextSize = 10
 			arrow.Move(fyne.NewPos(float32(c.X+c.Width-16), float32(c.Y+8)))
 			objects = append(objects, arrow)
+
+			// Dropdown list when open - collect in overlay slice to render on top
+			if c.IsOpen && len(c.Options) > 0 {
+				fmt.Printf("Canvas: Rendering dropdown with %d options at Y=%.0f\n", len(c.Options), c.Y+c.Height)
+				optionHeight := float64(28)
+				dropdownHeight := optionHeight * float64(len(c.Options))
+
+				// Dropdown border
+				dropBorder := canvas.NewRectangle(color.RGBA{180, 180, 180, 255})
+				dropBorder.Resize(fyne.NewSize(float32(c.Width), float32(dropdownHeight+2)))
+				dropBorder.Move(fyne.NewPos(float32(c.X), float32(c.Y+c.Height)))
+				dropdownOverlays = append(dropdownOverlays, dropBorder)
+
+				// Dropdown background
+				dropBg := canvas.NewRectangle(color.White)
+				dropBg.Resize(fyne.NewSize(float32(c.Width-2), float32(dropdownHeight)))
+				dropBg.Move(fyne.NewPos(float32(c.X+1), float32(c.Y+c.Height+1)))
+				dropdownOverlays = append(dropdownOverlays, dropBg)
+
+				// Options
+				for i, opt := range c.Options {
+					optY := c.Y + c.Height + float64(i)*optionHeight
+
+					// Highlight selected option
+					if opt == c.SelectedValue {
+						highlight := canvas.NewRectangle(color.RGBA{0, 120, 215, 40})
+						highlight.Resize(fyne.NewSize(float32(c.Width-2), float32(optionHeight)))
+						highlight.Move(fyne.NewPos(float32(c.X+1), float32(optY+1)))
+						dropdownOverlays = append(dropdownOverlays, highlight)
+					}
+
+					optText := canvas.NewText(opt, color.Black)
+					optText.TextSize = 14
+					optText.Move(fyne.NewPos(float32(c.X+6), float32(optY+6)))
+					dropdownOverlays = append(dropdownOverlays, optText)
+				}
+			}
+
+		case DrawRadio:
+			// Draw outer circle (border)
+			size := float32(c.Width)
+			if float32(c.Height) < size {
+				size = float32(c.Height)
+			}
+
+			// Outer circle border
+			outerCircle := canvas.NewCircle(color.RGBA{100, 100, 100, 255})
+			outerCircle.Resize(fyne.NewSize(size, size))
+			outerCircle.Move(fyne.NewPos(float32(c.X), float32(c.Y)))
+			objects = append(objects, outerCircle)
+
+			// Inner white background
+			innerSize := size - 4
+			innerCircle := canvas.NewCircle(color.White)
+			innerCircle.Resize(fyne.NewSize(innerSize, innerSize))
+			innerCircle.Move(fyne.NewPos(float32(c.X)+2, float32(c.Y)+2))
+			objects = append(objects, innerCircle)
+
+			// Fill dot if checked
+			if c.IsChecked {
+				dotSize := size - 10
+				dot := canvas.NewCircle(color.RGBA{0, 120, 215, 255})
+				dot.Resize(fyne.NewSize(dotSize, dotSize))
+				dot.Move(fyne.NewPos(float32(c.X)+5, float32(c.Y)+5))
+				objects = append(objects, dot)
+			}
+		case DrawCheckbox:
+			// Draw checkbox square
+			size := float32(c.Width)
+			if float32(c.Height) < size {
+				size = float32(c.Height)
+			}
+			// Outer square border
+			border := canvas.NewRectangle(color.RGBA{100, 100, 100, 255})
+			border.Resize(fyne.NewSize(size, size))
+			border.Move(fyne.NewPos(float32(c.X), float32(c.Y)))
+			objects = append(objects, border)
+			// Inner white background
+			innerSize := size - 4
+			inner := canvas.NewRectangle(color.White)
+			inner.Resize(fyne.NewSize(innerSize, innerSize))
+			inner.Move(fyne.NewPos(float32(c.X)+2, float32(c.Y)+2))
+			objects = append(objects, inner)
+			// Checkmark if checked
+			if c.IsChecked {
+				check := canvas.NewText("✓", color.RGBA{0, 120, 215, 255})
+				check.TextSize = size - 6
+				check.Move(fyne.NewPos(float32(c.X)+3, float32(c.Y)+1))
+				objects = append(objects, check)
+			}
 		}
 	}
+
+	// Append dropdown overlays at the end so they render on top of everything
+	objects = append(objects, dropdownOverlays...)
 
 	return objects
 }

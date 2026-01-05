@@ -29,6 +29,8 @@ const (
 	ButtonBox
 	TextareaBox
 	SelectBox
+	RadioBox
+	CheckboxBox
 )
 
 type LayoutBox struct {

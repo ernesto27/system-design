@@ -200,6 +200,12 @@ func computeBlockLayout(box *LayoutBox, containerWidth float64, startX, startY f
 		case InputBox:
 			childWidth = 200.0
 			childHeight = 28.0
+		case RadioBox:
+			childWidth = 20.0
+			childHeight = 20.0
+		case CheckboxBox:
+			childWidth = 20.0
+			childHeight = 20.0
 		case ButtonBox:
 			buttonText := getButtonText(child)
 			fontSize := getFontSize(parentTag)
@@ -364,6 +370,9 @@ func computeInlineSize(box *LayoutBox, parentTag string) (float64, float64) {
 			w, h = computeInlineSize(child, parentTag)
 		case ImageBox:
 			w, h = getImageSize(child.Node)
+		case CheckboxBox, RadioBox:
+			w = 20.0
+			h = 20.0
 		}
 		totalWidth += w
 		if h > maxHeight {
@@ -403,6 +412,12 @@ func layoutInlineChildren(box *LayoutBox, parentTag string) {
 			child.Rect.Width = w
 			child.Rect.Height = h
 			offsetX += w
+		case CheckboxBox, RadioBox:
+			child.Rect.X = box.Rect.X + offsetX
+			child.Rect.Y = box.Rect.Y
+			child.Rect.Width = 20.0
+			child.Rect.Height = 20.0
+			offsetX += 20.0
 		}
 	}
 }

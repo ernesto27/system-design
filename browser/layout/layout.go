@@ -81,7 +81,15 @@ func BuildBox(node *dom.Node, parent *LayoutBox, stylesheet css.Stylesheet) *Lay
 		} else if imageElements[node.TagName] {
 			box.Type = ImageBox
 		} else if node.TagName == dom.TagInput {
-			box.Type = InputBox
+			inputType := node.Attributes["type"]
+			switch strings.ToLower(inputType) {
+			case "radio":
+				box.Type = RadioBox
+			case "checkbox":
+				box.Type = CheckboxBox
+			default:
+				box.Type = InputBox
+			}
 		} else if node.TagName == dom.TagButton {
 			box.Type = ButtonBox
 		} else if node.TagName == dom.TagTextarea {
