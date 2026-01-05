@@ -41,39 +41,39 @@ type TextStyle struct {
 }
 
 type DrawInput struct {
-	X, Y, Width, Height float64
-	Placeholder         string
-	Value               string
-	IsFocused           bool
+	layout.Rect
+	Placeholder string
+	Value       string
+	IsFocused   bool
 }
 
 type DrawButton struct {
-	X, Y, Width, Height float64
-	Text                string
+	layout.Rect
+	Text string
 }
 
 type DrawTextarea struct {
-	X, Y, Width, Height float64
-	Placeholder         string
-	Value               string
-	IsFocused           bool
+	layout.Rect
+	Placeholder string
+	Value       string
+	IsFocused   bool
 }
 
 type DrawSelect struct {
-	X, Y, Width, Height float64
-	Options             []string // List of option texts
-	SelectedValue       string   // Currently selected value
-	IsOpen              bool     // Is dropdown open?
+	layout.Rect
+	Options       []string // List of option texts
+	SelectedValue string   // Currently selected value
+	IsOpen        bool     // Is dropdown open?
 }
 
 type DrawRadio struct {
-	X, Y, Width, Height float64
-	IsChecked           bool
+	layout.Rect
+	IsChecked bool
 }
 
 type DrawCheckbox struct {
-	X, Y, Width, Height float64
-	IsChecked           bool
+	layout.Rect
+	IsChecked bool
 }
 
 // InputState holds all interactive form state for rendering
@@ -109,8 +109,8 @@ func applyOpacity(c color.Color, opacity float64) color.Color {
 type DisplayCommand any
 
 type DrawRect struct {
-	X, Y, Width, Height float64
-	Color               color.Color
+	layout.Rect
+	Color color.Color
 }
 
 type DrawText struct {
@@ -127,14 +127,12 @@ type DrawText struct {
 }
 
 type DrawImage struct {
-	URL           string
-	X, Y          float64
-	Width, Height float64
+	layout.Rect
+	URL string
 }
 
 type DrawHR struct {
-	X, Y          float64
-	Width, Height float64
+	layout.Rect
 }
 
 func BuildDisplayList(root *layout.LayoutBox) []DisplayCommand {
@@ -147,11 +145,8 @@ func BuildDisplayList(root *layout.LayoutBox) []DisplayCommand {
 	}
 
 	commands = append(commands, DrawRect{
-		X:      0,
-		Y:      0,
-		Width:  3000, // Wide enough for most screens
-		Height: contentHeight,
-		Color:  color.White,
+		Rect:  layout.Rect{X: 0, Y: 0, Width: 3000, Height: contentHeight}, // Wide enough for most screens
+		Color: color.White,
 	})
 
 	paintLayoutBox(root, &commands, DefaultStyle())
@@ -168,8 +163,7 @@ func BuildDisplayListWithInputs(root *layout.LayoutBox, state InputState) []Disp
 	}
 
 	commands = append(commands, DrawRect{
-		X: 0, Y: 0,
-		Width: 3000, Height: contentHeight,
+		Rect:  layout.Rect{X: 0, Y: 0, Width: 3000, Height: contentHeight},
 		Color: color.White,
 	})
 
@@ -209,11 +203,8 @@ func paintLayoutBoxWithInputs(box *layout.LayoutBox, commands *[]DisplayCommand,
 	// Draw background if set
 	if box.Style.BackgroundColor != nil && !isHidden {
 		*commands = append(*commands, DrawRect{
-			X:      box.Rect.X,
-			Y:      box.Rect.Y,
-			Width:  box.Rect.Width,
-			Height: box.Rect.Height,
-			Color:  applyOpacity(box.Style.BackgroundColor, currentStyle.Opacity),
+			Rect:  box.Rect,
+			Color: applyOpacity(box.Style.BackgroundColor, currentStyle.Opacity),
 		})
 	}
 
@@ -221,29 +212,25 @@ func paintLayoutBoxWithInputs(box *layout.LayoutBox, commands *[]DisplayCommand,
 	if !isHidden {
 		if box.Style.BorderTopWidth > 0 && box.Style.BorderTopStyle != "none" && box.Style.BorderTopColor != nil {
 			*commands = append(*commands, DrawRect{
-				X: box.Rect.X, Y: box.Rect.Y,
-				Width: box.Rect.Width, Height: box.Style.BorderTopWidth,
+				Rect:  layout.Rect{X: box.Rect.X, Y: box.Rect.Y, Width: box.Rect.Width, Height: box.Style.BorderTopWidth},
 				Color: applyOpacity(box.Style.BorderTopColor, currentStyle.Opacity),
 			})
 		}
 		if box.Style.BorderBottomWidth > 0 && box.Style.BorderBottomStyle != "none" && box.Style.BorderBottomColor != nil {
 			*commands = append(*commands, DrawRect{
-				X: box.Rect.X, Y: box.Rect.Y + box.Rect.Height - box.Style.BorderBottomWidth,
-				Width: box.Rect.Width, Height: box.Style.BorderBottomWidth,
+				Rect:  layout.Rect{X: box.Rect.X, Y: box.Rect.Y + box.Rect.Height - box.Style.BorderBottomWidth, Width: box.Rect.Width, Height: box.Style.BorderBottomWidth},
 				Color: applyOpacity(box.Style.BorderBottomColor, currentStyle.Opacity),
 			})
 		}
 		if box.Style.BorderLeftWidth > 0 && box.Style.BorderLeftStyle != "none" && box.Style.BorderLeftColor != nil {
 			*commands = append(*commands, DrawRect{
-				X: box.Rect.X, Y: box.Rect.Y,
-				Width: box.Style.BorderLeftWidth, Height: box.Rect.Height,
+				Rect:  layout.Rect{X: box.Rect.X, Y: box.Rect.Y, Width: box.Style.BorderLeftWidth, Height: box.Rect.Height},
 				Color: applyOpacity(box.Style.BorderLeftColor, currentStyle.Opacity),
 			})
 		}
 		if box.Style.BorderRightWidth > 0 && box.Style.BorderRightStyle != "none" && box.Style.BorderRightColor != nil {
 			*commands = append(*commands, DrawRect{
-				X: box.Rect.X + box.Rect.Width - box.Style.BorderRightWidth, Y: box.Rect.Y,
-				Width: box.Style.BorderRightWidth, Height: box.Rect.Height,
+				Rect:  layout.Rect{X: box.Rect.X + box.Rect.Width - box.Style.BorderRightWidth, Y: box.Rect.Y, Width: box.Style.BorderRightWidth, Height: box.Rect.Height},
 				Color: applyOpacity(box.Style.BorderRightColor, currentStyle.Opacity),
 			})
 		}
@@ -315,8 +302,7 @@ func paintLayoutBoxWithInputs(box *layout.LayoutBox, commands *[]DisplayCommand,
 			currentStyle.Monospace = true
 			if box.Style.BackgroundColor == nil && !isHidden {
 				*commands = append(*commands, DrawRect{
-					X: box.Rect.X, Y: box.Rect.Y,
-					Width: box.Rect.Width, Height: box.Rect.Height,
+					Rect:  box.Rect,
 					Color: color.RGBA{245, 245, 245, 255},
 				})
 			}
@@ -365,16 +351,15 @@ func paintLayoutBoxWithInputs(box *layout.LayoutBox, commands *[]DisplayCommand,
 	if box.Type == layout.ImageBox && box.Node != nil && !isHidden {
 		if src := box.Node.Attributes["src"]; src != "" {
 			*commands = append(*commands, DrawImage{
-				URL: src, X: box.Rect.X, Y: box.Rect.Y,
-				Width: box.Rect.Width, Height: box.Rect.Height,
+				Rect: box.Rect,
+				URL:  src,
 			})
 		}
 	}
 
 	if box.Type == layout.HRBox && !isHidden {
 		*commands = append(*commands, DrawHR{
-			X: box.Rect.X, Y: box.Rect.Y,
-			Width: box.Rect.Width, Height: box.Rect.Height,
+			Rect: box.Rect,
 		})
 	}
 
@@ -389,8 +374,7 @@ func paintLayoutBoxWithInputs(box *layout.LayoutBox, commands *[]DisplayCommand,
 		}
 
 		*commands = append(*commands, DrawInput{
-			X: box.Rect.X, Y: box.Rect.Y,
-			Width: box.Rect.Width, Height: box.Rect.Height,
+			Rect:        box.Rect,
 			Placeholder: placeholder,
 			Value:       value,
 			IsFocused:   isFocused,
@@ -399,8 +383,7 @@ func paintLayoutBoxWithInputs(box *layout.LayoutBox, commands *[]DisplayCommand,
 
 	if box.Type == layout.ButtonBox && !isHidden {
 		*commands = append(*commands, DrawButton{
-			X: box.Rect.X, Y: box.Rect.Y,
-			Width: box.Rect.Width, Height: box.Rect.Height,
+			Rect: box.Rect,
 			Text: getButtonTextFromBox(box),
 		})
 	}
@@ -410,8 +393,7 @@ func paintLayoutBoxWithInputs(box *layout.LayoutBox, commands *[]DisplayCommand,
 		isFocused := (box.Node == state.FocusedNode)
 
 		*commands = append(*commands, DrawTextarea{
-			X: box.Rect.X, Y: box.Rect.Y,
-			Width: box.Rect.Width, Height: box.Rect.Height,
+			Rect:        box.Rect,
 			Placeholder: box.Node.Attributes["placeholder"],
 			Value:       value,
 			IsFocused:   isFocused,
@@ -440,8 +422,7 @@ func paintLayoutBoxWithInputs(box *layout.LayoutBox, commands *[]DisplayCommand,
 		fmt.Printf("Select: options=%v, isOpen=%v, openSelectNode=%p, box.Node=%p\n", options, isOpen, state.OpenSelectNode, box.Node)
 
 		*commands = append(*commands, DrawSelect{
-			X: box.Rect.X, Y: box.Rect.Y,
-			Width: box.Rect.Width, Height: box.Rect.Height,
+			Rect:          box.Rect,
 			Options:       options,
 			SelectedValue: selectedValue,
 			IsOpen:        isOpen,
@@ -460,8 +441,7 @@ func paintLayoutBoxWithInputs(box *layout.LayoutBox, commands *[]DisplayCommand,
 			_, isChecked = box.Node.Attributes["checked"]
 		}
 		*commands = append(*commands, DrawRadio{
-			X: box.Rect.X, Y: box.Rect.Y,
-			Width: box.Rect.Width, Height: box.Rect.Height,
+			Rect:      box.Rect,
 			IsChecked: isChecked,
 		})
 	}
@@ -472,8 +452,7 @@ func paintLayoutBoxWithInputs(box *layout.LayoutBox, commands *[]DisplayCommand,
 			isChecked = state.CheckboxValues[box.Node]
 		}
 		*commands = append(*commands, DrawCheckbox{
-			X: box.Rect.X, Y: box.Rect.Y,
-			Width: box.Rect.Width, Height: box.Rect.Height,
+			Rect:      box.Rect,
 			IsChecked: isChecked,
 		})
 	}
@@ -481,10 +460,10 @@ func paintLayoutBoxWithInputs(box *layout.LayoutBox, commands *[]DisplayCommand,
 	// Draw table cell border
 	if box.Type == layout.TableCellBox {
 		borderColor := color.Gray{Y: 180}
-		*commands = append(*commands, DrawRect{X: box.Rect.X, Y: box.Rect.Y, Width: box.Rect.Width, Height: 1, Color: borderColor})
-		*commands = append(*commands, DrawRect{X: box.Rect.X, Y: box.Rect.Y + box.Rect.Height - 1, Width: box.Rect.Width, Height: 1, Color: borderColor})
-		*commands = append(*commands, DrawRect{X: box.Rect.X, Y: box.Rect.Y, Width: 1, Height: box.Rect.Height, Color: borderColor})
-		*commands = append(*commands, DrawRect{X: box.Rect.X + box.Rect.Width - 1, Y: box.Rect.Y, Width: 1, Height: box.Rect.Height, Color: borderColor})
+		*commands = append(*commands, DrawRect{Rect: layout.Rect{X: box.Rect.X, Y: box.Rect.Y, Width: box.Rect.Width, Height: 1}, Color: borderColor})
+		*commands = append(*commands, DrawRect{Rect: layout.Rect{X: box.Rect.X, Y: box.Rect.Y + box.Rect.Height - 1, Width: box.Rect.Width, Height: 1}, Color: borderColor})
+		*commands = append(*commands, DrawRect{Rect: layout.Rect{X: box.Rect.X, Y: box.Rect.Y, Width: 1, Height: box.Rect.Height}, Color: borderColor})
+		*commands = append(*commands, DrawRect{Rect: layout.Rect{X: box.Rect.X + box.Rect.Width - 1, Y: box.Rect.Y, Width: 1, Height: box.Rect.Height}, Color: borderColor})
 	}
 
 	// Paint children with input state
@@ -525,11 +504,8 @@ func paintLayoutBox(box *layout.LayoutBox, commands *[]DisplayCommand, style Tex
 	// Draw background if set
 	if box.Style.BackgroundColor != nil && !isHidden {
 		*commands = append(*commands, DrawRect{
-			X:      box.Rect.X,
-			Y:      box.Rect.Y,
-			Width:  box.Rect.Width,
-			Height: box.Rect.Height,
-			Color:  applyOpacity(box.Style.BackgroundColor, currentStyle.Opacity),
+			Rect:  box.Rect,
+			Color: applyOpacity(box.Style.BackgroundColor, currentStyle.Opacity),
 		})
 	}
 
@@ -538,41 +514,29 @@ func paintLayoutBox(box *layout.LayoutBox, commands *[]DisplayCommand, style Tex
 		// Top border
 		if box.Style.BorderTopWidth > 0 && box.Style.BorderTopStyle != "none" && box.Style.BorderTopColor != nil {
 			*commands = append(*commands, DrawRect{
-				X:      box.Rect.X,
-				Y:      box.Rect.Y,
-				Width:  box.Rect.Width,
-				Height: box.Style.BorderTopWidth,
-				Color:  applyOpacity(box.Style.BorderTopColor, currentStyle.Opacity),
+				Rect:  layout.Rect{X: box.Rect.X, Y: box.Rect.Y, Width: box.Rect.Width, Height: box.Style.BorderTopWidth},
+				Color: applyOpacity(box.Style.BorderTopColor, currentStyle.Opacity),
 			})
 		}
 		// Bottom border
 		if box.Style.BorderBottomWidth > 0 && box.Style.BorderBottomStyle != "none" && box.Style.BorderBottomColor != nil {
 			*commands = append(*commands, DrawRect{
-				X:      box.Rect.X,
-				Y:      box.Rect.Y + box.Rect.Height - box.Style.BorderBottomWidth,
-				Width:  box.Rect.Width,
-				Height: box.Style.BorderBottomWidth,
-				Color:  applyOpacity(box.Style.BorderBottomColor, currentStyle.Opacity),
+				Rect:  layout.Rect{X: box.Rect.X, Y: box.Rect.Y + box.Rect.Height - box.Style.BorderBottomWidth, Width: box.Rect.Width, Height: box.Style.BorderBottomWidth},
+				Color: applyOpacity(box.Style.BorderBottomColor, currentStyle.Opacity),
 			})
 		}
 		// Left border
 		if box.Style.BorderLeftWidth > 0 && box.Style.BorderLeftStyle != "none" && box.Style.BorderLeftColor != nil {
 			*commands = append(*commands, DrawRect{
-				X:      box.Rect.X,
-				Y:      box.Rect.Y,
-				Width:  box.Style.BorderLeftWidth,
-				Height: box.Rect.Height,
-				Color:  applyOpacity(box.Style.BorderLeftColor, currentStyle.Opacity),
+				Rect:  layout.Rect{X: box.Rect.X, Y: box.Rect.Y, Width: box.Style.BorderLeftWidth, Height: box.Rect.Height},
+				Color: applyOpacity(box.Style.BorderLeftColor, currentStyle.Opacity),
 			})
 		}
 		// Right border
 		if box.Style.BorderRightWidth > 0 && box.Style.BorderRightStyle != "none" && box.Style.BorderRightColor != nil {
 			*commands = append(*commands, DrawRect{
-				X:      box.Rect.X + box.Rect.Width - box.Style.BorderRightWidth,
-				Y:      box.Rect.Y,
-				Width:  box.Style.BorderRightWidth,
-				Height: box.Rect.Height,
-				Color:  applyOpacity(box.Style.BorderRightColor, currentStyle.Opacity),
+				Rect:  layout.Rect{X: box.Rect.X + box.Rect.Width - box.Style.BorderRightWidth, Y: box.Rect.Y, Width: box.Style.BorderRightWidth, Height: box.Rect.Height},
+				Color: applyOpacity(box.Style.BorderRightColor, currentStyle.Opacity),
 			})
 		}
 	}
@@ -645,11 +609,8 @@ func paintLayoutBox(box *layout.LayoutBox, commands *[]DisplayCommand, style Tex
 			// Draw background for pre block
 			if box.Style.BackgroundColor == nil && !isHidden {
 				*commands = append(*commands, DrawRect{
-					X:      box.Rect.X,
-					Y:      box.Rect.Y,
-					Width:  box.Rect.Width,
-					Height: box.Rect.Height,
-					Color:  color.RGBA{245, 245, 245, 255}, // Very light gray
+					Rect:  box.Rect,
+					Color: color.RGBA{245, 245, 245, 255}, // Very light gray
 				})
 			}
 		case dom.TagTH:
@@ -713,21 +674,15 @@ func paintLayoutBox(box *layout.LayoutBox, commands *[]DisplayCommand, style Tex
 		src := box.Node.Attributes["src"]
 		if src != "" {
 			*commands = append(*commands, DrawImage{
-				URL:    src,
-				X:      box.Rect.X,
-				Y:      box.Rect.Y,
-				Width:  box.Rect.Width,
-				Height: box.Rect.Height,
+				Rect: box.Rect,
+				URL:  src,
 			})
 		}
 	}
 
 	if box.Type == layout.HRBox && !isHidden {
 		*commands = append(*commands, DrawHR{
-			X:      box.Rect.X,
-			Y:      box.Rect.Y,
-			Width:  box.Rect.Width,
-			Height: box.Rect.Height,
+			Rect: box.Rect,
 		})
 	}
 
@@ -738,10 +693,7 @@ func paintLayoutBox(box *layout.LayoutBox, commands *[]DisplayCommand, style Tex
 		}
 
 		*commands = append(*commands, DrawInput{
-			X:           box.Rect.X,
-			Y:           box.Rect.Y,
-			Width:       box.Rect.Width,
-			Height:      box.Rect.Height,
+			Rect:        box.Rect,
 			Placeholder: placeholder,
 		})
 	}
@@ -749,31 +701,22 @@ func paintLayoutBox(box *layout.LayoutBox, commands *[]DisplayCommand, style Tex
 	if box.Type == layout.ButtonBox && !isHidden {
 		buttonText := getButtonTextFromBox(box)
 		*commands = append(*commands, DrawButton{
-			X:      box.Rect.X,
-			Y:      box.Rect.Y,
-			Width:  box.Rect.Width,
-			Height: box.Rect.Height,
-			Text:   buttonText,
+			Rect: box.Rect,
+			Text: buttonText,
 		})
 	}
 
 	if box.Type == layout.TextareaBox && box.Node != nil && !isHidden {
 		placeholder := box.Node.Attributes["placeholder"]
 		*commands = append(*commands, DrawTextarea{
-			X:           box.Rect.X,
-			Y:           box.Rect.Y,
-			Width:       box.Rect.Width,
-			Height:      box.Rect.Height,
+			Rect:        box.Rect,
 			Placeholder: placeholder,
 		})
 	}
 
 	if box.Type == layout.SelectBox && box.Node != nil && !isHidden {
 		*commands = append(*commands, DrawSelect{
-			X:      box.Rect.X,
-			Y:      box.Rect.Y,
-			Width:  box.Rect.Width,
-			Height: box.Rect.Height,
+			Rect: box.Rect,
 			// Note: original paintLayoutBox doesn't have access to input state
 			// Use BuildDisplayListWithInputs for full select functionality
 		})
@@ -784,10 +727,7 @@ func paintLayoutBox(box *layout.LayoutBox, commands *[]DisplayCommand, style Tex
 		_, isChecked := box.Node.Attributes["checked"]
 
 		*commands = append(*commands, DrawRadio{
-			X:         box.Rect.X,
-			Y:         box.Rect.Y,
-			Width:     box.Rect.Width,
-			Height:    box.Rect.Height,
+			Rect:      box.Rect,
 			IsChecked: isChecked,
 		})
 	}
@@ -796,10 +736,7 @@ func paintLayoutBox(box *layout.LayoutBox, commands *[]DisplayCommand, style Tex
 	if box.Type == layout.CheckboxBox && box.Node != nil && !isHidden {
 		_, isChecked := box.Node.Attributes["checked"]
 		*commands = append(*commands, DrawCheckbox{
-			X:         box.Rect.X,
-			Y:         box.Rect.Y,
-			Width:     box.Rect.Width,
-			Height:    box.Rect.Height,
+			Rect:      box.Rect,
 			IsChecked: isChecked,
 		})
 	}
@@ -809,26 +746,22 @@ func paintLayoutBox(box *layout.LayoutBox, commands *[]DisplayCommand, style Tex
 		borderColor := color.Gray{Y: 180}
 		// Top border
 		*commands = append(*commands, DrawRect{
-			X: box.Rect.X, Y: box.Rect.Y,
-			Width: box.Rect.Width, Height: 1,
+			Rect:  layout.Rect{X: box.Rect.X, Y: box.Rect.Y, Width: box.Rect.Width, Height: 1},
 			Color: borderColor,
 		})
 		// Bottom border
 		*commands = append(*commands, DrawRect{
-			X: box.Rect.X, Y: box.Rect.Y + box.Rect.Height - 1,
-			Width: box.Rect.Width, Height: 1,
+			Rect:  layout.Rect{X: box.Rect.X, Y: box.Rect.Y + box.Rect.Height - 1, Width: box.Rect.Width, Height: 1},
 			Color: borderColor,
 		})
 		// Left border
 		*commands = append(*commands, DrawRect{
-			X: box.Rect.X, Y: box.Rect.Y,
-			Width: 1, Height: box.Rect.Height,
+			Rect:  layout.Rect{X: box.Rect.X, Y: box.Rect.Y, Width: 1, Height: box.Rect.Height},
 			Color: borderColor,
 		})
 		// Right border
 		*commands = append(*commands, DrawRect{
-			X: box.Rect.X + box.Rect.Width - 1, Y: box.Rect.Y,
-			Width: 1, Height: box.Rect.Height,
+			Rect:  layout.Rect{X: box.Rect.X + box.Rect.Width - 1, Y: box.Rect.Y, Width: 1, Height: box.Rect.Height},
 			Color: borderColor,
 		})
 	}
