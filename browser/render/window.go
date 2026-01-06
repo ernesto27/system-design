@@ -209,6 +209,10 @@ func (b *Browser) handleClick(x, y float64) {
 	fmt.Printf("  Hit: %+v\n", hit.Text)
 
 	if hit.Type == layout.InputBox && hit.Node != nil {
+		if isNodeDisabled(hit.Node) {
+			return
+		}
+
 		fmt.Print("click input box")
 		b.focusedInputNode = hit.Node // Store DOM node, not LayoutBox
 		b.repaint()
@@ -216,6 +220,9 @@ func (b *Browser) handleClick(x, y float64) {
 	}
 
 	if hit.Type == layout.RadioBox && hit.Node != nil {
+		if isNodeDisabled(hit.Node) {
+			return
+		}
 		fmt.Println("click radio button")
 		name := hit.Node.Attributes["name"]
 		if name != "" {
@@ -226,6 +233,9 @@ func (b *Browser) handleClick(x, y float64) {
 	}
 
 	if hit.Type == layout.CheckboxBox && hit.Node != nil {
+		if isNodeDisabled(hit.Node) {
+			return
+		}
 		fmt.Println("click checkbox")
 		b.checkboxValue[hit.Node] = !b.checkboxValue[hit.Node]
 		b.repaint()
@@ -233,6 +243,9 @@ func (b *Browser) handleClick(x, y float64) {
 	}
 
 	if hit.Type == layout.TextareaBox && hit.Node != nil {
+		if isNodeDisabled(hit.Node) {
+			return
+		}
 		fmt.Println("click textarea")
 		b.focusedInputNode = hit.Node
 		b.openSelectNode = nil // Close any open select
@@ -241,6 +254,9 @@ func (b *Browser) handleClick(x, y float64) {
 	}
 
 	if hit.Type == layout.SelectBox && hit.Node != nil {
+		if isNodeDisabled(hit.Node) {
+			return
+		}
 		fmt.Println("click select")
 		if b.openSelectNode == hit.Node {
 			// Already open - close it
@@ -452,6 +468,10 @@ func (b *Browser) handleTypedRune(r rune) {
 		return
 	}
 
+	if isNodeDisabled(b.focusedInputNode) || isNodeReadonly(b.focusedInputNode) {
+		return
+	}
+
 	// Add character to input value
 	current := b.inputValues[b.focusedInputNode]
 	b.inputValues[b.focusedInputNode] = current + string(r)
@@ -467,6 +487,9 @@ func (b *Browser) handleTypedKey(key *fyne.KeyEvent) {
 
 	switch key.Name {
 	case fyne.KeyBackspace:
+		if isNodeDisabled(b.focusedInputNode) || isNodeReadonly(b.focusedInputNode) {
+			return
+		}
 		current := b.inputValues[b.focusedInputNode]
 		if len(current) > 0 {
 			// Remove last character (handle UTF-8)
@@ -475,6 +498,9 @@ func (b *Browser) handleTypedKey(key *fyne.KeyEvent) {
 			b.repaint()
 		}
 	case fyne.KeyReturn, fyne.KeyEnter:
+		if isNodeDisabled(b.focusedInputNode) || isNodeReadonly(b.focusedInputNode) {
+			return
+		}
 		if b.focusedInputNode.TagName == "textarea" {
 			current := b.inputValues[b.focusedInputNode]
 			b.inputValues[b.focusedInputNode] = current + "\n"
@@ -583,4 +609,22 @@ func (b *Browser) repaint() {
 // refreshContent is an alias for repaint (called by keyboard handlers)
 func (b *Browser) refreshContent() {
 	b.repaint()
+}
+
+// isNodeDisabled checks if a DOM node has the disabled attribute
+func isNodeDisabled(node *dom.Node) bool {
+	if node == nil {
+		return false
+	}
+	_, disabled := node.Attributes["disabled"]
+	return disabled
+}
+
+// isNodeReadonly checks if a DOM node has the readonly attribute
+func isNodeReadonly(node *dom.Node) bool {
+	if node == nil {
+		return false
+	}
+	_, readonly := node.Attributes["readonly"]
+	return readonly
 }

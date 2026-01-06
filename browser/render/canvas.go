@@ -18,26 +18,38 @@ import (
 var imageCache = make(map[string]image.Image)
 
 // renderTextFieldObjects creates canvas objects for input/textarea fields
-func renderTextFieldObjects(x, y, width, height float64, value, placeholder string, isFocused bool) []fyne.CanvasObject {
+func renderTextFieldObjects(x, y, width, height float64, value, placeholder string, isFocused bool, isDisabled bool) []fyne.CanvasObject {
 	var objects []fyne.CanvasObject
 
-	// Border - blue when focused, gray otherwise
+	// Border color based on state
 	var borderColor color.Color
-	if isFocused {
-		borderColor = color.RGBA{0, 120, 215, 255}
+	if isDisabled {
+		borderColor = ColorBorderDisabled
+	} else if isFocused {
+		borderColor = ColorBorderFocused
 	} else {
-		borderColor = color.RGBA{180, 180, 180, 255}
+		borderColor = ColorBorder
 	}
 	border := canvas.NewRectangle(borderColor)
 	border.Resize(fyne.NewSize(float32(width), float32(height)))
 	border.Move(fyne.NewPos(float32(x), float32(y)))
 	objects = append(objects, border)
 
-	// White background (inset by 1px)
-	bg := canvas.NewRectangle(color.White)
+	// Background (inset by 1px)
+	bgColor := ColorInputBg
+	if isDisabled {
+		bgColor = ColorInputBgDisabled
+	}
+	bg := canvas.NewRectangle(bgColor)
 	bg.Resize(fyne.NewSize(float32(width-2), float32(height-2)))
 	bg.Move(fyne.NewPos(float32(x+1), float32(y+1)))
 	objects = append(objects, bg)
+
+	// Text color based on state
+	textColor := ColorText
+	if isDisabled {
+		textColor = ColorTextDisabled
+	}
 
 	// Show typed value or placeholder
 	if value != "" {
@@ -46,35 +58,39 @@ func renderTextFieldObjects(x, y, width, height float64, value, placeholder stri
 		var lastLineWidth float32
 
 		for i, line := range lines {
-			text := canvas.NewText(line, color.Black)
+			text := canvas.NewText(line, textColor)
 			text.TextSize = 14
 			text.Move(fyne.NewPos(float32(x+6), float32(y+6)+float32(i)*lineHeight))
 			objects = append(objects, text)
 			lastLineWidth = fyne.MeasureText(line, 14, fyne.TextStyle{}).Width
 		}
 
-		if isFocused {
-			// Cursor at end of last line
+		if isFocused && !isDisabled {
 			cursorY := float32(y+5) + float32(len(lines)-1)*lineHeight
-			cursor := canvas.NewRectangle(color.Black)
+			cursor := canvas.NewRectangle(ColorBlack)
 			cursor.Resize(fyne.NewSize(1, 16))
 			cursor.Move(fyne.NewPos(float32(x+6)+lastLineWidth, cursorY))
 			objects = append(objects, cursor)
 		}
 	} else if placeholder != "" {
-		text := canvas.NewText(placeholder, color.RGBA{150, 150, 150, 255})
+		placeholderColor := ColorPlaceholder
+		if isDisabled {
+			placeholderColor = ColorPlaceholderDisabled
+		}
+
+		text := canvas.NewText(placeholder, placeholderColor)
 		text.TextSize = 14
 		text.Move(fyne.NewPos(float32(x+6), float32(y+6)))
 		objects = append(objects, text)
 
-		if isFocused {
-			cursor := canvas.NewRectangle(color.Black)
+		if isFocused && !isDisabled {
+			cursor := canvas.NewRectangle(ColorBlack)
 			cursor.Resize(fyne.NewSize(1, 16))
 			cursor.Move(fyne.NewPos(float32(x+6), float32(y+5)))
 			objects = append(objects, cursor)
 		}
-	} else if isFocused {
-		cursor := canvas.NewRectangle(color.Black)
+	} else if isFocused && !isDisabled {
+		cursor := canvas.NewRectangle(ColorBlack)
 		cursor.Resize(fyne.NewSize(1, 16))
 		cursor.Move(fyne.NewPos(float32(x+6), float32(y+5)))
 		objects = append(objects, cursor)
@@ -111,9 +127,9 @@ func RenderToCanvas(commands []DisplayCommand, baseURL string, useCache bool) []
 				lineHeight := float32(1)
 				var lineY float32
 				if c.Underline {
-					lineY = float32(c.Y) + c.Size + 2 // Below the text with small gap
+					lineY = float32(c.Y) + c.Size + 2
 				} else {
-					lineY = float32(c.Y) + c.Size*0.4 // Through the middle
+					lineY = float32(c.Y) + c.Size*0.4
 				}
 				line := canvas.NewRectangle(c.Color)
 				line.Resize(fyne.NewSize(float32(c.Width), lineHeight))
@@ -134,7 +150,7 @@ func RenderToCanvas(commands []DisplayCommand, baseURL string, useCache bool) []
 			}
 
 		case DrawHR:
-			hr := canvas.NewRectangle(color.Gray{Y: 180})
+			hr := canvas.NewRectangle(ColorHR)
 			hr.Resize(fyne.NewSize(float32(c.Width), float32(c.Height)))
 			hr.Move(fyne.NewPos(float32(c.X), float32(c.Y)))
 			objects = append(objects, hr)
@@ -144,29 +160,45 @@ func RenderToCanvas(commands []DisplayCommand, baseURL string, useCache bool) []
 			if c.IsPassword && displayValue != "" {
 				displayValue = strings.Repeat("•", len([]rune(displayValue)))
 			}
-			objects = append(objects, renderTextFieldObjects(c.X, c.Y, c.Width, c.Height, displayValue, c.Placeholder, c.IsFocused)...)
+			objects = append(objects, renderTextFieldObjects(c.X, c.Y, c.Width, c.Height, displayValue, c.Placeholder, c.IsFocused, c.IsDisabled)...)
 
 		case DrawButton:
 			// Button background
-			bg := canvas.NewRectangle(color.RGBA{225, 225, 225, 255})
+			bgColor := ColorButtonBg
+			if c.IsDisabled {
+				bgColor = ColorButtonBgDisabled
+			}
+			bg := canvas.NewRectangle(bgColor)
 			bg.Resize(fyne.NewSize(float32(c.Width), float32(c.Height)))
 			bg.Move(fyne.NewPos(float32(c.X), float32(c.Y)))
 			objects = append(objects, bg)
 
 			// Top/left highlight
-			highlight := canvas.NewRectangle(color.RGBA{255, 255, 255, 255})
+			highlightColor := ColorButtonHighlight
+			if c.IsDisabled {
+				highlightColor = ColorButtonHighlightDisabled
+			}
+			highlight := canvas.NewRectangle(highlightColor)
 			highlight.Resize(fyne.NewSize(float32(c.Width-1), 1))
 			highlight.Move(fyne.NewPos(float32(c.X), float32(c.Y)))
 			objects = append(objects, highlight)
 
 			// Bottom/right shadow
-			shadow := canvas.NewRectangle(color.RGBA{150, 150, 150, 255})
+			shadowColor := ColorButtonShadow
+			if c.IsDisabled {
+				shadowColor = ColorButtonShadowDisabled
+			}
+			shadow := canvas.NewRectangle(shadowColor)
 			shadow.Resize(fyne.NewSize(float32(c.Width), 1))
 			shadow.Move(fyne.NewPos(float32(c.X), float32(c.Y+c.Height-1)))
 			objects = append(objects, shadow)
 
 			// Button text (centered)
-			text := canvas.NewText(c.Text, color.Black)
+			textColor := ColorText
+			if c.IsDisabled {
+				textColor = ColorTextDisabled
+			}
+			text := canvas.NewText(c.Text, textColor)
 			text.TextSize = 14
 			textWidth := fyne.MeasureText(c.Text, 14, fyne.TextStyle{}).Width
 			textX := c.X + (c.Width-float64(textWidth))/2
@@ -174,31 +206,41 @@ func RenderToCanvas(commands []DisplayCommand, baseURL string, useCache bool) []
 			objects = append(objects, text)
 
 		case DrawTextarea:
-			objects = append(objects, renderTextFieldObjects(c.X, c.Y, c.Width, c.Height, c.Value, c.Placeholder, c.IsFocused)...)
+			objects = append(objects, renderTextFieldObjects(c.X, c.Y, c.Width, c.Height, c.Value, c.Placeholder, c.IsFocused, c.IsDisabled)...)
 
 		case DrawSelect:
 			// Border - blue when open
-			borderColor := color.RGBA{180, 180, 180, 255}
+			borderColor := ColorBorder
 			if c.IsOpen {
-				borderColor = color.RGBA{0, 120, 215, 255}
+				borderColor = ColorBorderFocused
+			}
+			if c.IsDisabled {
+				borderColor = ColorBorderDisabled
 			}
 			border := canvas.NewRectangle(borderColor)
 			border.Resize(fyne.NewSize(float32(c.Width), float32(c.Height)))
 			border.Move(fyne.NewPos(float32(c.X), float32(c.Y)))
 			objects = append(objects, border)
 
-			// White background
-			bg := canvas.NewRectangle(color.White)
+			// Background
+			bgColor := ColorInputBg
+			if c.IsDisabled {
+				bgColor = ColorInputBgDisabled
+			}
+			bg := canvas.NewRectangle(bgColor)
 			bg.Resize(fyne.NewSize(float32(c.Width-2), float32(c.Height-2)))
 			bg.Move(fyne.NewPos(float32(c.X+1), float32(c.Y+1)))
 			objects = append(objects, bg)
 
 			// Selected value or placeholder
 			displayText := "Select..."
-			textColor := color.RGBA{100, 100, 100, 255}
+			textColor := ColorSelectArrow
 			if c.SelectedValue != "" {
 				displayText = c.SelectedValue
-				textColor = color.RGBA{0, 0, 0, 255}
+				textColor = ColorText
+			}
+			if c.IsDisabled {
+				textColor = ColorTextDisabled
 			}
 			text := canvas.NewText(displayText, textColor)
 			text.TextSize = 14
@@ -210,25 +252,29 @@ func RenderToCanvas(commands []DisplayCommand, baseURL string, useCache bool) []
 			if c.IsOpen {
 				arrowText = "▲"
 			}
-			arrow := canvas.NewText(arrowText, color.RGBA{100, 100, 100, 255})
+			arrowColor := ColorSelectArrow
+			if c.IsDisabled {
+				arrowColor = ColorTextDisabled
+			}
+			arrow := canvas.NewText(arrowText, arrowColor)
 			arrow.TextSize = 10
 			arrow.Move(fyne.NewPos(float32(c.X+c.Width-16), float32(c.Y+8)))
 			objects = append(objects, arrow)
 
-			// Dropdown list when open - collect in overlay slice to render on top
+			// Dropdown list when open
 			if c.IsOpen && len(c.Options) > 0 {
 				fmt.Printf("Canvas: Rendering dropdown with %d options at Y=%.0f\n", len(c.Options), c.Y+c.Height)
 				optionHeight := float64(28)
 				dropdownHeight := optionHeight * float64(len(c.Options))
 
 				// Dropdown border
-				dropBorder := canvas.NewRectangle(color.RGBA{180, 180, 180, 255})
+				dropBorder := canvas.NewRectangle(ColorBorder)
 				dropBorder.Resize(fyne.NewSize(float32(c.Width), float32(dropdownHeight+2)))
 				dropBorder.Move(fyne.NewPos(float32(c.X), float32(c.Y+c.Height)))
 				dropdownOverlays = append(dropdownOverlays, dropBorder)
 
 				// Dropdown background
-				dropBg := canvas.NewRectangle(color.White)
+				dropBg := canvas.NewRectangle(ColorWhite)
 				dropBg.Resize(fyne.NewSize(float32(c.Width-2), float32(dropdownHeight)))
 				dropBg.Move(fyne.NewPos(float32(c.X+1), float32(c.Y+c.Height+1)))
 				dropdownOverlays = append(dropdownOverlays, dropBg)
@@ -239,13 +285,13 @@ func RenderToCanvas(commands []DisplayCommand, baseURL string, useCache bool) []
 
 					// Highlight selected option
 					if opt == c.SelectedValue {
-						highlight := canvas.NewRectangle(color.RGBA{0, 120, 215, 40})
+						highlight := canvas.NewRectangle(ColorSelectHighlight)
 						highlight.Resize(fyne.NewSize(float32(c.Width-2), float32(optionHeight)))
 						highlight.Move(fyne.NewPos(float32(c.X+1), float32(optY+1)))
 						dropdownOverlays = append(dropdownOverlays, highlight)
 					}
 
-					optText := canvas.NewText(opt, color.Black)
+					optText := canvas.NewText(opt, ColorBlack)
 					optText.TextSize = 14
 					optText.Move(fyne.NewPos(float32(c.X+6), float32(optY+6)))
 					dropdownOverlays = append(dropdownOverlays, optText)
@@ -253,53 +299,77 @@ func RenderToCanvas(commands []DisplayCommand, baseURL string, useCache bool) []
 			}
 
 		case DrawRadio:
-			// Draw outer circle (border)
 			size := float32(c.Width)
 			if float32(c.Height) < size {
 				size = float32(c.Height)
 			}
 
-			// Outer circle border
-			outerCircle := canvas.NewCircle(color.RGBA{100, 100, 100, 255})
+			// Outer circle
+			outerColor := ColorCheckboxBorder
+			if c.IsDisabled {
+				outerColor = ColorCheckboxBorderDisabled
+			}
+			outerCircle := canvas.NewCircle(outerColor)
 			outerCircle.Resize(fyne.NewSize(size, size))
 			outerCircle.Move(fyne.NewPos(float32(c.X), float32(c.Y)))
 			objects = append(objects, outerCircle)
 
-			// Inner white background
+			// Inner background
 			innerSize := size - 4
-			innerCircle := canvas.NewCircle(color.White)
+			innerColor := ColorInputBg
+			if c.IsDisabled {
+				innerColor = ColorInputBgDisabled
+			}
+			innerCircle := canvas.NewCircle(innerColor)
 			innerCircle.Resize(fyne.NewSize(innerSize, innerSize))
 			innerCircle.Move(fyne.NewPos(float32(c.X)+2, float32(c.Y)+2))
 			objects = append(objects, innerCircle)
 
-			// Fill dot if checked
 			if c.IsChecked {
 				dotSize := size - 10
-				dot := canvas.NewCircle(color.RGBA{0, 120, 215, 255})
+				dotColor := ColorAccent
+				if c.IsDisabled {
+					dotColor = ColorAccentDisabled
+				}
+				dot := canvas.NewCircle(dotColor)
 				dot.Resize(fyne.NewSize(dotSize, dotSize))
 				dot.Move(fyne.NewPos(float32(c.X)+5, float32(c.Y)+5))
 				objects = append(objects, dot)
 			}
+
 		case DrawCheckbox:
-			// Draw checkbox square
 			size := float32(c.Width)
 			if float32(c.Height) < size {
 				size = float32(c.Height)
 			}
-			// Outer square border
-			border := canvas.NewRectangle(color.RGBA{100, 100, 100, 255})
+
+			// Border
+			borderColor := ColorCheckboxBorder
+			if c.IsDisabled {
+				borderColor = ColorCheckboxBorderDisabled
+			}
+			border := canvas.NewRectangle(borderColor)
 			border.Resize(fyne.NewSize(size, size))
 			border.Move(fyne.NewPos(float32(c.X), float32(c.Y)))
 			objects = append(objects, border)
-			// Inner white background
+
+			// Inner background
 			innerSize := size - 4
-			inner := canvas.NewRectangle(color.White)
+			innerColor := ColorInputBg
+			if c.IsDisabled {
+				innerColor = ColorInputBgDisabled
+			}
+			inner := canvas.NewRectangle(innerColor)
 			inner.Resize(fyne.NewSize(innerSize, innerSize))
 			inner.Move(fyne.NewPos(float32(c.X)+2, float32(c.Y)+2))
 			objects = append(objects, inner)
-			// Checkmark if checked
+
 			if c.IsChecked {
-				check := canvas.NewText("✓", color.RGBA{0, 120, 215, 255})
+				checkColor := ColorAccent
+				if c.IsDisabled {
+					checkColor = ColorAccentDisabled
+				}
+				check := canvas.NewText("✓", checkColor)
 				check.TextSize = size - 6
 				check.Move(fyne.NewPos(float32(c.X)+3, float32(c.Y)+1))
 				objects = append(objects, check)

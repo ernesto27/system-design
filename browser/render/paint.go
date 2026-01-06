@@ -8,13 +8,7 @@ import (
 	"strings"
 )
 
-// Colors
-var (
-	ColorWhite      = color.White
-	ColorBlack      = color.Black
-	ColorLink       = color.RGBA{0, 0, 238, 255}     // Blue
-	ColorBackground = color.RGBA{240, 240, 240, 255} // Light gray
-)
+// Colors are defined in colors.go
 
 // Font sizes
 var (
@@ -46,11 +40,14 @@ type DrawInput struct {
 	Value       string
 	IsFocused   bool
 	IsPassword  bool
+	IsDisabled  bool
+	IsReadonly  bool
 }
 
 type DrawButton struct {
 	layout.Rect
-	Text string
+	Text       string
+	IsDisabled bool
 }
 
 type DrawTextarea struct {
@@ -58,6 +55,8 @@ type DrawTextarea struct {
 	Placeholder string
 	Value       string
 	IsFocused   bool
+	IsDisabled  bool
+	IsReadonly  bool
 }
 
 type DrawSelect struct {
@@ -65,16 +64,21 @@ type DrawSelect struct {
 	Options       []string // List of option texts
 	SelectedValue string   // Currently selected value
 	IsOpen        bool     // Is dropdown open?
+	IsDisabled    bool
+	IsReadonly    bool
 }
 
 type DrawRadio struct {
 	layout.Rect
-	IsChecked bool
+	IsChecked  bool
+	IsDisabled bool
 }
 
 type DrawCheckbox struct {
 	layout.Rect
-	IsChecked bool
+	IsChecked  bool
+	IsDisabled bool
+	IsReadonly bool
 }
 
 // InputState holds all interactive form state for rendering
@@ -377,12 +381,21 @@ func paintLayoutBoxWithInputs(box *layout.LayoutBox, commands *[]DisplayCommand,
 		inputType := strings.ToLower(box.Node.Attributes["type"])
 		isPassword := (inputType == "password")
 
+		_, isDisabled := box.Node.Attributes["disabled"]
+		_, isReadonly := box.Node.Attributes["readonly"]
+
+		if isDisabled {
+			isFocused = false
+		}
+
 		*commands = append(*commands, DrawInput{
 			Rect:        box.Rect,
 			Placeholder: placeholder,
 			Value:       value,
 			IsFocused:   isFocused,
 			IsPassword:  isPassword,
+			IsDisabled:  isDisabled,
+			IsReadonly:  isReadonly,
 		})
 	}
 
@@ -397,11 +410,20 @@ func paintLayoutBoxWithInputs(box *layout.LayoutBox, commands *[]DisplayCommand,
 		value := state.InputValues[box.Node]
 		isFocused := (box.Node == state.FocusedNode)
 
+		_, isDisabled := box.Node.Attributes["disabled"]
+		_, isReadonly := box.Node.Attributes["readonly"]
+
+		if isDisabled {
+			isFocused = false
+		}
+
 		*commands = append(*commands, DrawTextarea{
 			Rect:        box.Rect,
 			Placeholder: box.Node.Attributes["placeholder"],
 			Value:       value,
 			IsFocused:   isFocused,
+			IsDisabled:  isDisabled,
+			IsReadonly:  isReadonly,
 		})
 	}
 
@@ -423,7 +445,10 @@ func paintLayoutBoxWithInputs(box *layout.LayoutBox, commands *[]DisplayCommand,
 		}
 
 		selectedValue := state.InputValues[box.Node]
-		isOpen := (box.Node == state.OpenSelectNode)
+		_, isDisabled := box.Node.Attributes["disabled"]
+
+		// Disabled selects cannot be open
+		isOpen := (box.Node == state.OpenSelectNode) && !isDisabled
 		fmt.Printf("Select: options=%v, isOpen=%v, openSelectNode=%p, box.Node=%p\n", options, isOpen, state.OpenSelectNode, box.Node)
 
 		*commands = append(*commands, DrawSelect{
@@ -431,6 +456,7 @@ func paintLayoutBoxWithInputs(box *layout.LayoutBox, commands *[]DisplayCommand,
 			Options:       options,
 			SelectedValue: selectedValue,
 			IsOpen:        isOpen,
+			IsDisabled:    isDisabled,
 		})
 	}
 
@@ -445,9 +471,13 @@ func paintLayoutBoxWithInputs(box *layout.LayoutBox, commands *[]DisplayCommand,
 		if !isChecked {
 			_, isChecked = box.Node.Attributes["checked"]
 		}
+
+		_, isDisabled := box.Node.Attributes["disabled"]
+
 		*commands = append(*commands, DrawRadio{
-			Rect:      box.Rect,
-			IsChecked: isChecked,
+			Rect:       box.Rect,
+			IsChecked:  isChecked,
+			IsDisabled: isDisabled,
 		})
 	}
 
@@ -456,9 +486,12 @@ func paintLayoutBoxWithInputs(box *layout.LayoutBox, commands *[]DisplayCommand,
 		if state.CheckboxValues != nil {
 			isChecked = state.CheckboxValues[box.Node]
 		}
+
+		_, isDisabled := box.Node.Attributes["disabled"]
 		*commands = append(*commands, DrawCheckbox{
-			Rect:      box.Rect,
-			IsChecked: isChecked,
+			Rect:       box.Rect,
+			IsChecked:  isChecked,
+			IsDisabled: isDisabled,
 		})
 	}
 
