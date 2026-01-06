@@ -38,10 +38,11 @@ type DrawInput struct {
 	layout.Rect
 	Placeholder string
 	Value       string
+	InputType   string // text, password, email, number, etc.
 	IsFocused   bool
-	IsPassword  bool
 	IsDisabled  bool
 	IsReadonly  bool
+	IsValid     bool // For validation feedback (email, etc.)
 }
 
 type DrawButton struct {
@@ -379,7 +380,9 @@ func paintLayoutBoxWithInputs(box *layout.LayoutBox, commands *[]DisplayCommand,
 		}
 
 		inputType := strings.ToLower(box.Node.Attributes["type"])
-		isPassword := (inputType == "password")
+		if inputType == "" {
+			inputType = "text"
+		}
 
 		_, isDisabled := box.Node.Attributes["disabled"]
 		_, isReadonly := box.Node.Attributes["readonly"]
@@ -388,14 +391,21 @@ func paintLayoutBoxWithInputs(box *layout.LayoutBox, commands *[]DisplayCommand,
 			isFocused = false
 		}
 
+		// Validate based on input type
+		isValid := true
+		if inputType == "email" && value != "" {
+			isValid = isValidEmail(value)
+		}
+
 		*commands = append(*commands, DrawInput{
 			Rect:        box.Rect,
 			Placeholder: placeholder,
 			Value:       value,
+			InputType:   inputType,
 			IsFocused:   isFocused,
-			IsPassword:  isPassword,
 			IsDisabled:  isDisabled,
 			IsReadonly:  isReadonly,
+			IsValid:     isValid,
 		})
 	}
 
@@ -565,4 +575,24 @@ func getButtonTextFromBox(box *layout.LayoutBox) string {
 		}
 	}
 	return "Button"
+}
+
+// isValidEmail checks if the value is a valid email format
+func isValidEmail(value string) bool {
+	// Simple validation: must have @ with text before and after
+	atIndex := strings.Index(value, "@")
+	if atIndex < 1 {
+		return false
+	}
+	// Must have something after @
+	afterAt := value[atIndex+1:]
+	if len(afterAt) < 1 {
+		return false
+	}
+	// Must have a dot after @ (for domain)
+	dotIndex := strings.Index(afterAt, ".")
+	if dotIndex < 1 || dotIndex >= len(afterAt)-1 {
+		return false
+	}
+	return true
 }

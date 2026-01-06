@@ -18,6 +18,7 @@ var (
 	ColorBorder         = color.RGBA{180, 180, 180, 255} // Normal border
 	ColorBorderFocused  = color.RGBA{0, 120, 215, 255}   // Focused border (blue)
 	ColorBorderDisabled = color.RGBA{200, 200, 200, 255} // Disabled border
+	ColorBorderInvalid  = color.RGBA{220, 53, 69, 255}   // Red border for invalid input
 )
 
 // Input background colors

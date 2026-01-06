@@ -18,13 +18,15 @@ import (
 var imageCache = make(map[string]image.Image)
 
 // renderTextFieldObjects creates canvas objects for input/textarea fields
-func renderTextFieldObjects(x, y, width, height float64, value, placeholder string, isFocused bool, isDisabled bool) []fyne.CanvasObject {
+func renderTextFieldObjects(x, y, width, height float64, value, placeholder string, isFocused, isDisabled, isValid bool) []fyne.CanvasObject {
 	var objects []fyne.CanvasObject
 
 	// Border color based on state
 	var borderColor color.Color
 	if isDisabled {
 		borderColor = ColorBorderDisabled
+	} else if !isValid {
+		borderColor = ColorBorderInvalid
 	} else if isFocused {
 		borderColor = ColorBorderFocused
 	} else {
@@ -157,10 +159,10 @@ func RenderToCanvas(commands []DisplayCommand, baseURL string, useCache bool) []
 
 		case DrawInput:
 			displayValue := c.Value
-			if c.IsPassword && displayValue != "" {
+			if c.InputType == "password" && displayValue != "" {
 				displayValue = strings.Repeat("•", len([]rune(displayValue)))
 			}
-			objects = append(objects, renderTextFieldObjects(c.X, c.Y, c.Width, c.Height, displayValue, c.Placeholder, c.IsFocused, c.IsDisabled)...)
+			objects = append(objects, renderTextFieldObjects(c.X, c.Y, c.Width, c.Height, displayValue, c.Placeholder, c.IsFocused, c.IsDisabled, c.IsValid)...)
 
 		case DrawButton:
 			// Button background
@@ -206,7 +208,7 @@ func RenderToCanvas(commands []DisplayCommand, baseURL string, useCache bool) []
 			objects = append(objects, text)
 
 		case DrawTextarea:
-			objects = append(objects, renderTextFieldObjects(c.X, c.Y, c.Width, c.Height, c.Value, c.Placeholder, c.IsFocused, c.IsDisabled)...)
+			objects = append(objects, renderTextFieldObjects(c.X, c.Y, c.Width, c.Height, c.Value, c.Placeholder, c.IsFocused, c.IsDisabled, true)...)
 
 		case DrawSelect:
 			// Border - blue when open
