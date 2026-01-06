@@ -101,6 +101,113 @@ func renderTextFieldObjects(x, y, width, height float64, value, placeholder stri
 	return objects
 }
 
+// renderNumberInput creates canvas objects for number input with spin buttons
+func renderNumberInput(x, y, width, height float64, value, placeholder string, isFocused, isDisabled bool) []fyne.CanvasObject {
+	var objects []fyne.CanvasObject
+
+	buttonWidth := 24.0
+	textFieldWidth := width - buttonWidth
+
+	// Border color based on state
+	var borderColor color.Color
+	if isDisabled {
+		borderColor = ColorBorderDisabled
+	} else if isFocused {
+		borderColor = ColorBorderFocused
+	} else {
+		borderColor = ColorBorder
+	}
+
+	// Main border around entire control
+	border := canvas.NewRectangle(borderColor)
+	border.Resize(fyne.NewSize(float32(width), float32(height)))
+	border.Move(fyne.NewPos(float32(x), float32(y)))
+	objects = append(objects, border)
+
+	// Text field background
+	bgColor := ColorInputBg
+	if isDisabled {
+		bgColor = ColorInputBgDisabled
+	}
+	bg := canvas.NewRectangle(bgColor)
+	bg.Resize(fyne.NewSize(float32(textFieldWidth-2), float32(height-2)))
+	bg.Move(fyne.NewPos(float32(x+1), float32(y+1)))
+	objects = append(objects, bg)
+
+	// Text color
+	textColor := ColorText
+	if isDisabled {
+		textColor = ColorTextDisabled
+	}
+
+	// Display value or placeholder
+	if value != "" {
+		text := canvas.NewText(value, textColor)
+		text.TextSize = 14
+		text.Move(fyne.NewPos(float32(x+6), float32(y+6)))
+		objects = append(objects, text)
+
+		if isFocused && !isDisabled {
+			textWidth := fyne.MeasureText(value, 14, fyne.TextStyle{}).Width
+			cursor := canvas.NewRectangle(ColorBlack)
+			cursor.Resize(fyne.NewSize(1, 16))
+			cursor.Move(fyne.NewPos(float32(x+6)+textWidth, float32(y+5)))
+			objects = append(objects, cursor)
+		}
+	} else if placeholder != "" {
+		placeholderColor := ColorPlaceholder
+		if isDisabled {
+			placeholderColor = ColorPlaceholderDisabled
+		}
+		text := canvas.NewText(placeholder, placeholderColor)
+		text.TextSize = 14
+		text.Move(fyne.NewPos(float32(x+6), float32(y+6)))
+		objects = append(objects, text)
+	}
+
+	// Spin buttons area
+	btnX := x + textFieldWidth
+	btnHeight := height / 2
+
+	// Button colors
+	btnBg := ColorButtonBg
+	btnText := ColorText
+	if isDisabled {
+		btnBg = ColorButtonBgDisabled
+		btnText = ColorTextDisabled
+	}
+
+	// Up button (top half)
+	upBg := canvas.NewRectangle(btnBg)
+	upBg.Resize(fyne.NewSize(float32(buttonWidth-1), float32(btnHeight-1)))
+	upBg.Move(fyne.NewPos(float32(btnX), float32(y+1)))
+	objects = append(objects, upBg)
+
+	upArrow := canvas.NewText("▲", btnText)
+	upArrow.TextSize = 10
+	upArrow.Move(fyne.NewPos(float32(btnX+7), float32(y+2)))
+	objects = append(objects, upArrow)
+
+	// Down button (bottom half)
+	downBg := canvas.NewRectangle(btnBg)
+	downBg.Resize(fyne.NewSize(float32(buttonWidth-1), float32(btnHeight-1)))
+	downBg.Move(fyne.NewPos(float32(btnX), float32(y+btnHeight)))
+	objects = append(objects, downBg)
+
+	downArrow := canvas.NewText("▼", btnText)
+	downArrow.TextSize = 10
+	downArrow.Move(fyne.NewPos(float32(btnX+7), float32(y+btnHeight+1)))
+	objects = append(objects, downArrow)
+
+	// Separator line between buttons
+	separator := canvas.NewRectangle(borderColor)
+	separator.Resize(fyne.NewSize(float32(buttonWidth-1), 1))
+	separator.Move(fyne.NewPos(float32(btnX), float32(y+btnHeight)))
+	objects = append(objects, separator)
+
+	return objects
+}
+
 func RenderToCanvas(commands []DisplayCommand, baseURL string, useCache bool) []fyne.CanvasObject {
 	var objects []fyne.CanvasObject
 	var dropdownOverlays []fyne.CanvasObject // Collect dropdowns to render LAST (on top)
@@ -162,7 +269,11 @@ func RenderToCanvas(commands []DisplayCommand, baseURL string, useCache bool) []
 			if c.InputType == "password" && displayValue != "" {
 				displayValue = strings.Repeat("•", len([]rune(displayValue)))
 			}
-			objects = append(objects, renderTextFieldObjects(c.X, c.Y, c.Width, c.Height, displayValue, c.Placeholder, c.IsFocused, c.IsDisabled, c.IsValid)...)
+			if c.InputType == "number" {
+				objects = append(objects, renderNumberInput(c.X, c.Y, c.Width, c.Height, displayValue, c.Placeholder, c.IsFocused, c.IsDisabled)...)
+			} else {
+				objects = append(objects, renderTextFieldObjects(c.X, c.Y, c.Width, c.Height, displayValue, c.Placeholder, c.IsFocused, c.IsDisabled, c.IsValid)...)
+			}
 
 		case DrawButton:
 			// Button background

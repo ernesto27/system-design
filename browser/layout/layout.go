@@ -83,6 +83,8 @@ func BuildBox(node *dom.Node, parent *LayoutBox, stylesheet css.Stylesheet) *Lay
 		} else if node.TagName == dom.TagInput {
 			inputType := node.Attributes["type"]
 			switch strings.ToLower(inputType) {
+			case "hidden":
+				return nil
 			case "radio":
 				box.Type = RadioBox
 			case "checkbox":

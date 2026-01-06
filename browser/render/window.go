@@ -7,6 +7,8 @@ import (
 	"fmt"
 	"image/color"
 	"net/url"
+	"strconv"
+	"strings"
 	"time"
 
 	"fyne.io/fyne/v2"
@@ -211,6 +213,34 @@ func (b *Browser) handleClick(x, y float64) {
 	if hit.Type == layout.InputBox && hit.Node != nil {
 		if isNodeDisabled(hit.Node) {
 			return
+		}
+
+		inputType := strings.ToLower(hit.Node.Attributes["type"])
+
+		// Handle number input spin buttons
+		if inputType == "number" {
+			buttonWidth := 24.0
+			btnX := hit.Rect.X + hit.Rect.Width - buttonWidth
+
+			// Check if click is in spin button area
+			if x >= btnX {
+				midY := hit.Rect.Y + hit.Rect.Height/2
+				currentVal := b.inputValues[hit.Node]
+				num := parseNumber(currentVal)
+
+				if y < midY {
+					// Up button clicked - increment
+					num++
+				} else {
+					// Down button clicked - decrement
+					num--
+				}
+
+				b.inputValues[hit.Node] = formatNumber(num)
+				b.focusedInputNode = hit.Node
+				b.repaint()
+				return
+			}
 		}
 
 		fmt.Print("click input box")
@@ -472,6 +502,12 @@ func (b *Browser) handleTypedRune(r rune) {
 		return
 	}
 
+	// Filter input for number type
+	inputType := strings.ToLower(b.focusedInputNode.Attributes["type"])
+	if inputType == "number" && !isNumericRune(r) {
+		return // Ignore non-numeric input
+	}
+
 	// Add character to input value
 	current := b.inputValues[b.focusedInputNode]
 	b.inputValues[b.focusedInputNode] = current + string(r)
@@ -627,4 +663,27 @@ func isNodeReadonly(node *dom.Node) bool {
 	}
 	_, readonly := node.Attributes["readonly"]
 	return readonly
+}
+
+// parseNumber parses a string to int, returns 0 if invalid
+func parseNumber(s string) int {
+	s = strings.TrimSpace(s)
+	if s == "" {
+		return 0
+	}
+	n, err := strconv.Atoi(s)
+	if err != nil {
+		return 0
+	}
+	return n
+}
+
+// formatNumber formats an int to string
+func formatNumber(n int) string {
+	return strconv.Itoa(n)
+}
+
+// isNumericRune checks if a rune is valid for number input
+func isNumericRune(r rune) bool {
+	return (r >= '0' && r <= '9') || r == '-'
 }
