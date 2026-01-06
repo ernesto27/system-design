@@ -326,6 +326,22 @@ func (b *Browser) handleClick(x, y float64) {
 		}
 	}
 
+	// Check if this is a form submission
+	if hit.Node != nil && (hit.Node.TagName == "button" ||
+		(hit.Node.TagName == "input" && hit.Node.Attributes["type"] == "submit")) {
+		if isNodeDisabled(hit.Node) {
+			return
+		}
+		buttonType := hit.Node.Attributes["type"]
+		// Default button type inside form is "submit"
+		if buttonType == "" || buttonType == "submit" {
+			if formNode := findParentForm(hit.Node); formNode != nil {
+				b.submitForm(formNode)
+				return
+			}
+		}
+	}
+
 	// Check if it's a link
 	href := hit.FindLink()
 	if href == "" {
@@ -647,6 +663,61 @@ func (b *Browser) refreshContent() {
 	b.repaint()
 }
 
+// collectFormData gathers all input name/value pairs from a form
+func (b *Browser) collectFormData(formNode *dom.Node) url.Values {
+	data := url.Values{}
+	b.collectInputs(formNode, data)
+	return data
+}
+
+// collectInputs recursively collects inputs from the DOM tree
+func (b *Browser) collectInputs(node *dom.Node, data url.Values) {
+	if node == nil {
+		return
+	}
+
+	if node.Type == dom.Element {
+		name := node.Attributes["name"]
+		if name != "" {
+			switch node.TagName {
+			case "input":
+				inputType := node.Attributes["type"]
+				switch inputType {
+				case "checkbox", "radio":
+					// Only include if checked
+					if node.Attributes["checked"] != "" || b.isChecked(node) {
+						value := node.Attributes["value"]
+						if value == "" {
+							value = "on" // Default value for checkboxes
+						}
+						data.Add(name, value)
+					}
+				case "submit", "button":
+					// Don't include submit buttons in data
+				default:
+					// text, password, email, number, hidden, etc.
+					value := b.inputValues[node]
+					if value == "" {
+						value = node.Attributes["value"]
+					}
+					data.Add(name, value)
+				}
+			case "textarea":
+				value := b.inputValues[node]
+				data.Add(name, value)
+			case "select":
+				value := b.getSelectedValue(node)
+				data.Add(name, value)
+			}
+		}
+	}
+
+	// Recurse into children
+	for _, child := range node.Children {
+		b.collectInputs(child, data)
+	}
+}
+
 // isNodeDisabled checks if a DOM node has the disabled attribute
 func isNodeDisabled(node *dom.Node) bool {
 	if node == nil {
@@ -686,4 +757,113 @@ func formatNumber(n int) string {
 // isNumericRune checks if a rune is valid for number input
 func isNumericRune(r rune) bool {
 	return (r >= '0' && r <= '9') || r == '-'
+}
+
+// findParentForm walks up the DOM tree to find the parent <form> element
+func findParentForm(node *dom.Node) *dom.Node {
+	current := node
+	for current != nil {
+		if current.Type == dom.Element && current.TagName == "form" {
+			return current
+		}
+		current = current.Parent
+	}
+	return nil
+}
+
+// submitForm handles form submission
+func (b *Browser) submitForm(formNode *dom.Node) {
+	// Get form attributes
+	action := formNode.Attributes["action"]
+	method := strings.ToUpper(formNode.Attributes["method"])
+	if method == "" {
+		method = "GET" // Default method
+	}
+
+	// Collect form data
+	data := b.collectFormData(formNode)
+
+	// Build target URL
+	var targetURL string
+	if action == "" {
+		// Submit to current page
+		if b.currentURL != nil {
+			targetURL = b.currentURL.String()
+		}
+	} else {
+		// Resolve relative URL
+		targetURL = b.resolveURL(action)
+	}
+
+	if method == "GET" {
+		// Append query string to URL
+		if len(data) > 0 {
+			if strings.Contains(targetURL, "?") {
+				targetURL += "&" + data.Encode()
+			} else {
+				targetURL += "?" + data.Encode()
+			}
+		}
+
+		// Navigate to the URL
+		if b.OnNavigate != nil {
+			b.OnNavigate(targetURL)
+		}
+	}
+	// POST handling would go here later
+}
+
+// isChecked checks if a checkbox/radio is currently checked
+func (b *Browser) isChecked(node *dom.Node) bool {
+	inputType := node.Attributes["type"]
+	if inputType == "checkbox" {
+		return b.checkboxValue[node]
+	}
+	if inputType == "radio" {
+		name := node.Attributes["name"]
+		return b.radioValues[name] == node
+	}
+	return false
+}
+
+// getSelectedValue gets the selected option value from a select element
+func (b *Browser) getSelectedValue(selectNode *dom.Node) string {
+	// Check if we have a stored value
+	if val, ok := b.inputValues[selectNode]; ok {
+		return val
+	}
+
+	// Otherwise check DOM for selected attribute
+	for _, child := range selectNode.Children {
+		if child.TagName == "option" {
+			if child.Attributes["selected"] != "" {
+				value := child.Attributes["value"]
+				if value == "" {
+					// Use text content if no value attribute
+					for _, textNode := range child.Children {
+						if textNode.Type == dom.Text {
+							return textNode.Text
+						}
+					}
+				}
+				return value
+			}
+		}
+	}
+
+	// Return first option if none selected
+	for _, child := range selectNode.Children {
+		if child.TagName == "option" {
+			value := child.Attributes["value"]
+			if value == "" {
+				for _, textNode := range child.Children {
+					if textNode.Type == dom.Text {
+						return textNode.Text
+					}
+				}
+			}
+			return value
+		}
+	}
+	return ""
 }
