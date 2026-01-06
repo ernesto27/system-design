@@ -45,6 +45,7 @@ type DrawInput struct {
 	Placeholder string
 	Value       string
 	IsFocused   bool
+	IsPassword  bool
 }
 
 type DrawButton struct {
@@ -373,11 +374,15 @@ func paintLayoutBoxWithInputs(box *layout.LayoutBox, commands *[]DisplayCommand,
 			placeholder = box.Node.Attributes["value"]
 		}
 
+		inputType := strings.ToLower(box.Node.Attributes["type"])
+		isPassword := (inputType == "password")
+
 		*commands = append(*commands, DrawInput{
 			Rect:        box.Rect,
 			Placeholder: placeholder,
 			Value:       value,
 			IsFocused:   isFocused,
+			IsPassword:  isPassword,
 		})
 	}
 
@@ -473,303 +478,8 @@ func paintLayoutBoxWithInputs(box *layout.LayoutBox, commands *[]DisplayCommand,
 }
 
 func paintLayoutBox(box *layout.LayoutBox, commands *[]DisplayCommand, style TextStyle) {
-	currentStyle := style
-
-	// Apply inline styles from CSS
-	if box.Style.Color != nil {
-		currentStyle.Color = box.Style.Color
-	}
-	if box.Style.FontSize > 0 {
-		currentStyle.Size = float32(box.Style.FontSize)
-	}
-	if box.Style.Bold {
-		currentStyle.Bold = true
-	}
-	if box.Style.Italic {
-		currentStyle.Italic = true
-	}
-	if box.Style.TextDecoration != "" {
-		currentStyle.TextDecoration = box.Style.TextDecoration
-	}
-	if box.Style.Opacity > 0 {
-		currentStyle.Opacity = box.Style.Opacity
-	}
-	if box.Style.Visibility != "" {
-		currentStyle.Visibility = box.Style.Visibility
-	}
-
-	// Check visibility (hidden elements still take space but aren't drawn)
-	isHidden := currentStyle.Visibility == "hidden"
-
-	// Draw background if set
-	if box.Style.BackgroundColor != nil && !isHidden {
-		*commands = append(*commands, DrawRect{
-			Rect:  box.Rect,
-			Color: applyOpacity(box.Style.BackgroundColor, currentStyle.Opacity),
-		})
-	}
-
-	// Draw borders if set
-	if !isHidden {
-		// Top border
-		if box.Style.BorderTopWidth > 0 && box.Style.BorderTopStyle != "none" && box.Style.BorderTopColor != nil {
-			*commands = append(*commands, DrawRect{
-				Rect:  layout.Rect{X: box.Rect.X, Y: box.Rect.Y, Width: box.Rect.Width, Height: box.Style.BorderTopWidth},
-				Color: applyOpacity(box.Style.BorderTopColor, currentStyle.Opacity),
-			})
-		}
-		// Bottom border
-		if box.Style.BorderBottomWidth > 0 && box.Style.BorderBottomStyle != "none" && box.Style.BorderBottomColor != nil {
-			*commands = append(*commands, DrawRect{
-				Rect:  layout.Rect{X: box.Rect.X, Y: box.Rect.Y + box.Rect.Height - box.Style.BorderBottomWidth, Width: box.Rect.Width, Height: box.Style.BorderBottomWidth},
-				Color: applyOpacity(box.Style.BorderBottomColor, currentStyle.Opacity),
-			})
-		}
-		// Left border
-		if box.Style.BorderLeftWidth > 0 && box.Style.BorderLeftStyle != "none" && box.Style.BorderLeftColor != nil {
-			*commands = append(*commands, DrawRect{
-				Rect:  layout.Rect{X: box.Rect.X, Y: box.Rect.Y, Width: box.Style.BorderLeftWidth, Height: box.Rect.Height},
-				Color: applyOpacity(box.Style.BorderLeftColor, currentStyle.Opacity),
-			})
-		}
-		// Right border
-		if box.Style.BorderRightWidth > 0 && box.Style.BorderRightStyle != "none" && box.Style.BorderRightColor != nil {
-			*commands = append(*commands, DrawRect{
-				Rect:  layout.Rect{X: box.Rect.X + box.Rect.Width - box.Style.BorderRightWidth, Y: box.Rect.Y, Width: box.Style.BorderRightWidth, Height: box.Rect.Height},
-				Color: applyOpacity(box.Style.BorderRightColor, currentStyle.Opacity),
-			})
-		}
-	}
-
-	// Apply tag-based styles (defaults, can be overridden by inline styles above)
-	if box.Node != nil {
-		switch box.Node.TagName {
-		case dom.TagH1:
-			if box.Style.FontSize == 0 {
-				currentStyle.Size = SizeH1
-			}
-			if !box.Style.Bold {
-				currentStyle.Bold = true
-			}
-		case dom.TagH2:
-			if box.Style.FontSize == 0 {
-				currentStyle.Size = SizeH2
-			}
-			if !box.Style.Bold {
-				currentStyle.Bold = true
-			}
-		case dom.TagH3:
-			if box.Style.FontSize == 0 {
-				currentStyle.Size = SizeH3
-			}
-			if !box.Style.Bold {
-				currentStyle.Bold = true
-			}
-		case dom.TagH4:
-			if box.Style.FontSize == 0 {
-				currentStyle.Size = SizeH4
-			}
-			if !box.Style.Bold {
-				currentStyle.Bold = true
-			}
-		case dom.TagH5:
-			if box.Style.FontSize == 0 {
-				currentStyle.Size = SizeH5
-			}
-			if !box.Style.Bold {
-				currentStyle.Bold = true
-			}
-		case dom.TagH6:
-			if box.Style.FontSize == 0 {
-				currentStyle.Size = SizeH6
-			}
-			if !box.Style.Bold {
-				currentStyle.Bold = true
-			}
-		case dom.TagA:
-			if box.Style.Color == nil {
-				currentStyle.Color = ColorLink
-			}
-			if box.Style.TextDecoration == "" {
-				currentStyle.TextDecoration = "underline"
-			}
-		case dom.TagStrong, dom.TagB:
-			currentStyle.Bold = true
-		case dom.TagEm, dom.TagI:
-			currentStyle.Italic = true
-		case dom.TagSmall:
-			if box.Style.FontSize == 0 {
-				currentStyle.Size = SizeSmall
-			}
-		case dom.TagU:
-			currentStyle.TextDecoration = "underline"
-
-		case dom.TagPre:
-			currentStyle.Monospace = true
-			// Draw background for pre block
-			if box.Style.BackgroundColor == nil && !isHidden {
-				*commands = append(*commands, DrawRect{
-					Rect:  box.Rect,
-					Color: color.RGBA{245, 245, 245, 255}, // Very light gray
-				})
-			}
-		case dom.TagTH:
-			currentStyle.Bold = true
-		}
-	}
-
-	// Draw text
-	if box.Type == layout.TextBox && box.Text != "" && !isHidden {
-		text := box.Text
-
-		// Add bullet or number for list items
-		if isListItem, isOrdered, index := getListInfo(box); isListItem {
-			if isOrdered {
-				text = fmt.Sprintf("%d. %s", index, text)
-			} else {
-				text = "• " + text
-			}
-		}
-
-		// Check if inside <pre> and has newlines - render each line separately
-		if currentStyle.Monospace && strings.Contains(text, "\n") {
-			lines := strings.Split(text, "\n")
-			lineHeight := float64(currentStyle.Size) * 1.5 // Line height = 1.5x font size
-			y := box.Rect.Y
-			for _, line := range lines {
-				*commands = append(*commands, DrawText{
-					Text:          line,
-					X:             box.Rect.X,
-					Y:             y,
-					Width:         box.Rect.Width,
-					Size:          currentStyle.Size,
-					Color:         applyOpacity(currentStyle.Color, currentStyle.Opacity),
-					Bold:          currentStyle.Bold,
-					Italic:        currentStyle.Italic,
-					Monospace:     currentStyle.Monospace,
-					Underline:     currentStyle.TextDecoration == "underline",
-					Strikethrough: currentStyle.TextDecoration == "line-through",
-				})
-				y += lineHeight
-			}
-		} else {
-			*commands = append(*commands, DrawText{
-				Text:          text,
-				X:             box.Rect.X,
-				Y:             box.Rect.Y,
-				Width:         box.Rect.Width,
-				Size:          currentStyle.Size,
-				Color:         applyOpacity(currentStyle.Color, currentStyle.Opacity),
-				Bold:          currentStyle.Bold,
-				Italic:        currentStyle.Italic,
-				Monospace:     currentStyle.Monospace,
-				Underline:     currentStyle.TextDecoration == "underline",
-				Strikethrough: currentStyle.TextDecoration == "line-through",
-			})
-		}
-	}
-
-	// Draw image
-	if box.Type == layout.ImageBox && box.Node != nil && !isHidden {
-		src := box.Node.Attributes["src"]
-		if src != "" {
-			*commands = append(*commands, DrawImage{
-				Rect: box.Rect,
-				URL:  src,
-			})
-		}
-	}
-
-	if box.Type == layout.HRBox && !isHidden {
-		*commands = append(*commands, DrawHR{
-			Rect: box.Rect,
-		})
-	}
-
-	if box.Type == layout.InputBox && box.Node != nil && !isHidden {
-		placeholder := box.Node.Attributes["placeholder"]
-		if placeholder == "" {
-			placeholder = box.Node.Attributes["value"]
-		}
-
-		*commands = append(*commands, DrawInput{
-			Rect:        box.Rect,
-			Placeholder: placeholder,
-		})
-	}
-
-	if box.Type == layout.ButtonBox && !isHidden {
-		buttonText := getButtonTextFromBox(box)
-		*commands = append(*commands, DrawButton{
-			Rect: box.Rect,
-			Text: buttonText,
-		})
-	}
-
-	if box.Type == layout.TextareaBox && box.Node != nil && !isHidden {
-		placeholder := box.Node.Attributes["placeholder"]
-		*commands = append(*commands, DrawTextarea{
-			Rect:        box.Rect,
-			Placeholder: placeholder,
-		})
-	}
-
-	if box.Type == layout.SelectBox && box.Node != nil && !isHidden {
-		*commands = append(*commands, DrawSelect{
-			Rect: box.Rect,
-			// Note: original paintLayoutBox doesn't have access to input state
-			// Use BuildDisplayListWithInputs for full select functionality
-		})
-	}
-
-	// Radio button
-	if box.Type == layout.RadioBox && box.Node != nil && !isHidden {
-		_, isChecked := box.Node.Attributes["checked"]
-
-		*commands = append(*commands, DrawRadio{
-			Rect:      box.Rect,
-			IsChecked: isChecked,
-		})
-	}
-
-	// Checkbox
-	if box.Type == layout.CheckboxBox && box.Node != nil && !isHidden {
-		_, isChecked := box.Node.Attributes["checked"]
-		*commands = append(*commands, DrawCheckbox{
-			Rect:      box.Rect,
-			IsChecked: isChecked,
-		})
-	}
-
-	// Draw table cell border
-	if box.Type == layout.TableCellBox {
-		borderColor := color.Gray{Y: 180}
-		// Top border
-		*commands = append(*commands, DrawRect{
-			Rect:  layout.Rect{X: box.Rect.X, Y: box.Rect.Y, Width: box.Rect.Width, Height: 1},
-			Color: borderColor,
-		})
-		// Bottom border
-		*commands = append(*commands, DrawRect{
-			Rect:  layout.Rect{X: box.Rect.X, Y: box.Rect.Y + box.Rect.Height - 1, Width: box.Rect.Width, Height: 1},
-			Color: borderColor,
-		})
-		// Left border
-		*commands = append(*commands, DrawRect{
-			Rect:  layout.Rect{X: box.Rect.X, Y: box.Rect.Y, Width: 1, Height: box.Rect.Height},
-			Color: borderColor,
-		})
-		// Right border
-		*commands = append(*commands, DrawRect{
-			Rect:  layout.Rect{X: box.Rect.X + box.Rect.Width - 1, Y: box.Rect.Y, Width: 1, Height: box.Rect.Height},
-			Color: borderColor,
-		})
-	}
-
-	// Paint children with inherited style
-	for _, child := range box.Children {
-		paintLayoutBox(child, commands, currentStyle)
-	}
+	// Delegate to the stateful version with empty state
+	paintLayoutBoxWithInputs(box, commands, style, InputState{})
 }
 
 // getListInfo returns (isListItem, isOrdered, itemIndex)

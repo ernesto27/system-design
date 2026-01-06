@@ -140,7 +140,11 @@ func RenderToCanvas(commands []DisplayCommand, baseURL string, useCache bool) []
 			objects = append(objects, hr)
 
 		case DrawInput:
-			objects = append(objects, renderTextFieldObjects(c.X, c.Y, c.Width, c.Height, c.Value, c.Placeholder, c.IsFocused)...)
+			displayValue := c.Value
+			if c.IsPassword && displayValue != "" {
+				displayValue = strings.Repeat("•", len([]rune(displayValue)))
+			}
+			objects = append(objects, renderTextFieldObjects(c.X, c.Y, c.Width, c.Height, displayValue, c.Placeholder, c.IsFocused)...)
 
 		case DrawButton:
 			// Button background
