@@ -487,6 +487,8 @@ func RenderToCanvas(commands []DisplayCommand, baseURL string, useCache bool) []
 				check.Move(fyne.NewPos(float32(c.X)+3, float32(c.Y)+1))
 				objects = append(objects, check)
 			}
+		case DrawFileInput:
+			objects = append(objects, renderFileInput(c.X, c.Y, c.Width, c.Height, c.Filename, c.IsDisabled)...)
 		}
 	}
 
@@ -556,4 +558,50 @@ func resolveImageURL(src, baseURL string) string {
 	}
 
 	return baseURL + "/" + src
+}
+
+func renderFileInput(x, y, width, height float64, filename string, isDisabled bool) []fyne.CanvasObject {
+	var objects []fyne.CanvasObject
+
+	buttonWidth := 100.0
+
+	// Button background
+	btnBg := ColorButtonBg
+	if isDisabled {
+		btnBg = ColorButtonBgDisabled
+	}
+	btn := canvas.NewRectangle(btnBg)
+	btn.Resize(fyne.NewSize(float32(buttonWidth), float32(height)))
+	btn.Move(fyne.NewPos(float32(x), float32(y)))
+	objects = append(objects, btn)
+
+	// Button text
+	btnTextColor := ColorText
+	if isDisabled {
+		btnTextColor = ColorTextDisabled
+	}
+	btnText := canvas.NewText("Choose File", btnTextColor)
+	btnText.TextSize = 12
+	btnText.Move(fyne.NewPos(float32(x+10), float32(y+8)))
+	objects = append(objects, btnText)
+
+	// Filename area background
+	filenameBg := canvas.NewRectangle(ColorInputBg)
+	filenameBg.Resize(fyne.NewSize(float32(width-buttonWidth-4), float32(height)))
+	filenameBg.Move(fyne.NewPos(float32(x+buttonWidth+4), float32(y)))
+	objects = append(objects, filenameBg)
+
+	// Filename text
+	displayName := "No file chosen"
+	if filename != "" {
+		// Show just the filename, not full path
+		parts := strings.Split(filename, "/")
+		displayName = parts[len(parts)-1]
+	}
+	filenameText := canvas.NewText(displayName, ColorText)
+	filenameText.TextSize = 12
+	filenameText.Move(fyne.NewPos(float32(x+buttonWidth+10), float32(y+8)))
+	objects = append(objects, filenameText)
+
+	return objects
 }

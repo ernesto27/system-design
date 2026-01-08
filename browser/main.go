@@ -25,25 +25,40 @@ func main() {
 	browser := render.NewBrowser(800, 600)
 
 	// When link is clicked or Go pressed, load the page
-	browser.OnNavigate = func(newURL string) {
-		loadPage(browser, newURL)
+	browser.OnNavigate = func(req render.NavigationRequest) {
+		loadPage(browser, req)
 	}
-
 	// Load initial page
-	loadPage(browser, startURL)
+	loadPage(browser, render.NavigationRequest{
+		URL:    startURL,
+		Method: "GET",
+	})
 
 	// Run the GUI
 	browser.Run()
 }
 
-func loadPage(browser *render.Browser, pageURL string) {
-	fmt.Println("Fetching:", pageURL)
+func loadPage(browser *render.Browser, req render.NavigationRequest) {
+	pageURL := req.URL
+	method := req.Method
+	if method == "" {
+		method = "GET"
+	}
+	fmt.Printf("Fetching (%s): %s\n", method, pageURL)
 	browser.ShowLoading()
 	browser.UpdateURLBar(pageURL)
 
 	// Run fetch in background so UI stays responsive
 	go func() {
-		resp, err := http.Get(pageURL)
+		var resp *http.Response
+		var err error
+
+		if method == "POST" {
+			resp, err = http.PostForm(pageURL, req.Data)
+		} else {
+			resp, err = http.Get(pageURL)
+		}
+
 		if err != nil {
 			fmt.Println("Error:", err)
 			browser.ShowError("Error 404")

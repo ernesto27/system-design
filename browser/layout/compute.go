@@ -217,6 +217,9 @@ func computeBlockLayout(box *LayoutBox, containerWidth float64, startX, startY f
 		case SelectBox:
 			childWidth = 200.0
 			childHeight = 28.0
+		case FileInputBox:
+			childWidth = 250.0
+			childHeight = 32.0
 
 		case HRBox:
 			// Block element - flush line first

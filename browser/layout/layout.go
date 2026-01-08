@@ -89,6 +89,8 @@ func BuildBox(node *dom.Node, parent *LayoutBox, stylesheet css.Stylesheet) *Lay
 				box.Type = RadioBox
 			case "checkbox":
 				box.Type = CheckboxBox
+			case "file":
+				box.Type = FileInputBox
 			default:
 				box.Type = InputBox
 			}

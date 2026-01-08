@@ -15,8 +15,17 @@ import (
 	"fyne.io/fyne/v2/app"
 	"fyne.io/fyne/v2/canvas"
 	"fyne.io/fyne/v2/container"
+	"fyne.io/fyne/v2/dialog"
 	"fyne.io/fyne/v2/widget"
 )
+
+type NavigationRequest struct {
+	URL         string
+	Method      string
+	Data        url.Values
+	Body        []byte
+	ContentType string
+}
 
 type Browser struct {
 	App          fyne.App
@@ -26,7 +35,7 @@ type Browser struct {
 	layoutTree   *layout.LayoutBox
 	currentURL   *url.URL
 	currentStyle css.Stylesheet
-	OnNavigate   func(newURL string)
+	OnNavigate   func(req NavigationRequest)
 
 	urlEntry   *widget.Entry
 	content    *fyne.Container
@@ -41,6 +50,7 @@ type Browser struct {
 	openSelectNode   *dom.Node // Which select dropdown is open
 	radioValues      map[string]*dom.Node
 	checkboxValue    map[*dom.Node]bool
+	fileInputValues  map[*dom.Node]string
 }
 
 func NewBrowser(width, height float32) *Browser {
@@ -56,15 +66,16 @@ func NewBrowser(width, height float32) *Browser {
 	}
 
 	b := &Browser{
-		App:           a,
-		Window:        w,
-		Width:         width,
-		Height:        height,
-		history:       []string{},
-		historyPos:    -1,
-		inputValues:   make(map[*dom.Node]string),
-		radioValues:   make(map[string]*dom.Node),
-		checkboxValue: make(map[*dom.Node]bool),
+		App:             a,
+		Window:          w,
+		Width:           width,
+		Height:          height,
+		history:         []string{},
+		historyPos:      -1,
+		inputValues:     make(map[*dom.Node]string),
+		radioValues:     make(map[string]*dom.Node),
+		checkboxValue:   make(map[*dom.Node]bool),
+		fileInputValues: make(map[*dom.Node]string),
 	}
 	// Create URL entry
 	b.urlEntry = widget.NewEntry()
@@ -73,7 +84,7 @@ func NewBrowser(width, height float32) *Browser {
 	b.urlEntry.OnSubmitted = func(text string) {
 		if text != "" {
 			if b.OnNavigate != nil {
-				b.OnNavigate(text)
+				b.OnNavigate(NavigationRequest{URL: text, Method: "GET"})
 			}
 		}
 	}
@@ -83,7 +94,7 @@ func NewBrowser(width, height float32) *Browser {
 		url := b.urlEntry.Text
 		if url != "" {
 			if b.OnNavigate != nil {
-				b.OnNavigate(url)
+				b.OnNavigate(NavigationRequest{URL: url, Method: "GET"})
 			}
 		}
 	})
@@ -178,7 +189,7 @@ func (b *Browser) GoBack() {
 		b.urlEntry.SetText(prevURL)
 
 		if b.OnNavigate != nil {
-			b.OnNavigate(prevURL)
+			b.OnNavigate(NavigationRequest{URL: prevURL, Method: "GET"})
 		}
 	}
 }
@@ -272,6 +283,26 @@ func (b *Browser) handleClick(x, y float64) {
 		return
 	}
 
+	if hit.Type == layout.FileInputBox && hit.Node != nil {
+		if isNodeDisabled(hit.Node) {
+			return
+		}
+		fmt.Println("click file input")
+		dialog.ShowFileOpen(func(reader fyne.URIReadCloser, err error) {
+			if err != nil {
+				fmt.Println("File dialog error:", err)
+				return
+			}
+			if reader == nil {
+				return // User cancelled
+			}
+			b.fileInputValues[hit.Node] = reader.URI().Path()
+			reader.Close()
+			b.repaint()
+		}, b.Window)
+		return
+	}
+
 	if hit.Type == layout.TextareaBox && hit.Node != nil {
 		if isNodeDisabled(hit.Node) {
 			return
@@ -361,7 +392,7 @@ func (b *Browser) handleClick(x, y float64) {
 
 	// Call navigation callback
 	if b.OnNavigate != nil {
-		b.OnNavigate(fullURL)
+		b.OnNavigate(NavigationRequest{URL: fullURL, Method: "GET"})
 	}
 }
 
@@ -442,11 +473,12 @@ func (b *Browser) Reflow(width float32) {
 
 	// Repaint with input state preserved (uses DOM node keys, stable across reflow)
 	commands := BuildDisplayListWithInputs(layoutTree, InputState{
-		InputValues:    b.inputValues,
-		FocusedNode:    b.focusedInputNode,
-		OpenSelectNode: b.openSelectNode,
-		RadioValues:    b.radioValues,
-		CheckboxValues: b.checkboxValue,
+		InputValues:     b.inputValues,
+		FocusedNode:     b.focusedInputNode,
+		OpenSelectNode:  b.openSelectNode,
+		RadioValues:     b.radioValues,
+		CheckboxValues:  b.checkboxValue,
+		FileInputValues: b.fileInputValues,
 	})
 
 	baseURL := ""
@@ -505,7 +537,7 @@ func (b *Browser) ShowError(message string) {
 
 func (b *Browser) Refresh() {
 	if b.currentURL != nil && b.OnNavigate != nil {
-		b.OnNavigate(b.currentURL.String())
+		b.OnNavigate(NavigationRequest{URL: b.currentURL.String(), Method: "GET"})
 	}
 }
 
@@ -624,11 +656,12 @@ func (b *Browser) repaint() {
 	}
 
 	commands := BuildDisplayListWithInputs(b.layoutTree, InputState{
-		InputValues:    b.inputValues,
-		FocusedNode:    b.focusedInputNode,
-		OpenSelectNode: b.openSelectNode,
-		RadioValues:    b.radioValues,
-		CheckboxValues: b.checkboxValue,
+		InputValues:     b.inputValues,
+		FocusedNode:     b.focusedInputNode,
+		OpenSelectNode:  b.openSelectNode,
+		RadioValues:     b.radioValues,
+		CheckboxValues:  b.checkboxValue,
+		FileInputValues: b.fileInputValues,
 	})
 
 	baseURL := ""
@@ -795,7 +828,8 @@ func (b *Browser) submitForm(formNode *dom.Node) {
 		targetURL = b.resolveURL(action)
 	}
 
-	if method == "GET" {
+	switch method {
+	case "GET":
 		// Append query string to URL
 		if len(data) > 0 {
 			if strings.Contains(targetURL, "?") {
@@ -807,10 +841,14 @@ func (b *Browser) submitForm(formNode *dom.Node) {
 
 		// Navigate to the URL
 		if b.OnNavigate != nil {
-			b.OnNavigate(targetURL)
+			b.OnNavigate(NavigationRequest{URL: targetURL, Method: "GET"})
+		}
+	case "POST":
+		// Send POST request with form data
+		if b.OnNavigate != nil {
+			b.OnNavigate(NavigationRequest{URL: targetURL, Method: "POST", Data: data})
 		}
 	}
-	// POST handling would go here later
 }
 
 // isChecked checks if a checkbox/radio is currently checked

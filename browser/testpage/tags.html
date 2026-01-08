@@ -7,6 +7,26 @@
     <h1>HTML Tags Test Page</h1>
     <p>This page tests HTML element rendering without CSS styling.</p>
 
+    <h2>POST Form Test</h2>
+    <p>This form submits via POST to httpbin.org (shows received data):</p>
+    <form action="https://httpbin.org/post" method="post">
+        <p>Username: <input type="text" name="username" placeholder="Your name"></p>
+        <p>Email: <input type="email" name="email" placeholder="you@example.com"></p>
+        <p>Attachment: <input type="file" name="attachment"></p>
+        <p>Message: <textarea name="message" placeholder="Your message..."></textarea></p>
+        <p>
+            <input type="radio" name="priority" value="low"> Low
+            <input type="radio" name="priority" value="normal"> Normal
+            <input type="radio" name="priority" value="high"> High
+        </p>
+        <p>
+            <input type="checkbox" name="urgent" value="yes"> Mark as urgent
+        </p>
+        <p><button type="submit">Submit POST</button></p>
+    </form>
+
+    <hr>
+
     <h2>Password Input Test</h2>
     <p>Username: <input type="text" placeholder="Enter username"></p>
     <p>Password: <input type="password" placeholder="Enter password"></p>
@@ -302,6 +322,10 @@ func (b *Browser) Navigate(url string) {
         <option>Option 2</option>
         <option>Option 3</option>
     </select>
+
+    <h3>File Input</h3>
+    <p>Normal: <input type="file"></p>
+    <p>Disabled: <input type="file" disabled></p>
 
     <h3>Complete Form</h3>
     <form>

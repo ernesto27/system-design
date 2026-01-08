@@ -84,11 +84,12 @@ type DrawCheckbox struct {
 
 // InputState holds all interactive form state for rendering
 type InputState struct {
-	InputValues    map[*dom.Node]string // Text input values
-	FocusedNode    *dom.Node            // Currently focused input/textarea
-	OpenSelectNode *dom.Node            // Which select dropdown is open
-	RadioValues    map[string]*dom.Node // Selected radio per group (key: name attr)
-	CheckboxValues map[*dom.Node]bool   // Checked state per check
+	InputValues     map[*dom.Node]string // Text input values
+	FocusedNode     *dom.Node            // Currently focused input/textarea
+	OpenSelectNode  *dom.Node            // Which select dropdown is open
+	RadioValues     map[string]*dom.Node // Selected radio per group (key: name attr)
+	CheckboxValues  map[*dom.Node]bool   // Checked state per check
+	FileInputValues map[*dom.Node]string // Selected filename per file input
 }
 
 // DefaultStyle returns the default text style
@@ -139,6 +140,12 @@ type DrawImage struct {
 
 type DrawHR struct {
 	layout.Rect
+}
+
+type DrawFileInput struct {
+	layout.Rect
+	Filename   string
+	IsDisabled bool
 }
 
 func BuildDisplayList(root *layout.LayoutBox) []DisplayCommand {
@@ -501,6 +508,17 @@ func paintLayoutBoxWithInputs(box *layout.LayoutBox, commands *[]DisplayCommand,
 		*commands = append(*commands, DrawCheckbox{
 			Rect:       box.Rect,
 			IsChecked:  isChecked,
+			IsDisabled: isDisabled,
+		})
+	}
+
+	if box.Type == layout.FileInputBox && box.Node != nil && !isHidden {
+		filename := state.FileInputValues[box.Node]
+		_, isDisabled := box.Node.Attributes["disabled"]
+
+		*commands = append(*commands, DrawFileInput{
+			Rect:       box.Rect,
+			Filename:   filename,
 			IsDisabled: isDisabled,
 		})
 	}
