@@ -213,26 +213,6 @@ func ParseColor(value string) color.Color {
 	return nil
 }
 
-// ParseFontSize converts "20px" or "1.5em" to float64
-func ParseFontSize(value string) float64 {
-	value = strings.ToLower(value)
-
-	// Handle px
-	if strings.HasSuffix(value, "px") {
-		num := strings.TrimSuffix(value, "px")
-		if size, err := strconv.ParseFloat(num, 64); err == nil {
-			return size
-		}
-	}
-
-	// Handle plain number
-	if size, err := strconv.ParseFloat(value, 64); err == nil {
-		return size
-	}
-
-	return 0
-}
-
 type Selector struct {
 	TagName string
 	ID      string
@@ -322,7 +302,7 @@ func applyDeclaration(style *Style, property, value string) {
 			style.BackgroundColor = c
 		}
 	case "font-size":
-		if size := ParseFontSize(value); size > 0 {
+		if size := ParseSize(value); size > 0 {
 			style.FontSize = size
 		}
 	case "font-weight":
