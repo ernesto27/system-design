@@ -533,8 +533,11 @@ func paintLayoutBoxWithInputs(box *layout.LayoutBox, commands *[]DisplayCommand,
 	}
 
 	// Paint children with input state
-	for _, child := range box.Children {
-		paintLayoutBoxWithInputs(child, commands, currentStyle, state)
+	// Skip children for elements that render their own content
+	if box.Type != layout.ButtonBox && box.Type != layout.SelectBox {
+		for _, child := range box.Children {
+			paintLayoutBoxWithInputs(child, commands, currentStyle, state)
+		}
 	}
 }
 

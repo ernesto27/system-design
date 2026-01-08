@@ -9,7 +9,7 @@
 
     <h2>POST Form Test</h2>
     <p>This form submits via POST to httpbin.org (shows received data):</p>
-    <form action="https://httpbin.org/post" method="post">
+    <form action="https://httpbin.org/post" method="post" enctype="multipart/form-data">
         <p>Username: <input type="text" name="username" placeholder="Your name"></p>
         <p>Email: <input type="email" name="email" placeholder="you@example.com"></p>
         <p>Attachment: <input type="file" name="attachment"></p>

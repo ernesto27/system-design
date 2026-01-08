@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"fmt"
 	"io"
 	"net/http"
@@ -54,7 +55,20 @@ func loadPage(browser *render.Browser, req render.NavigationRequest) {
 		var err error
 
 		if method == "POST" {
-			resp, err = http.PostForm(pageURL, req.Data)
+			if req.Body != nil && req.ContentType != "" {
+				// Multipart form data (file upload)
+				httpReq, err := http.NewRequest("POST", pageURL, bytes.NewReader(req.Body))
+				if err != nil {
+					fmt.Println("Error creating request:", err)
+					browser.ShowError("Error creating request")
+					return
+				}
+				httpReq.Header.Set("Content-Type", req.ContentType)
+				resp, err = http.DefaultClient.Do(httpReq)
+			} else {
+				// URL-encoded form data (default)
+				resp, err = http.PostForm(pageURL, req.Data)
+			}
 		} else {
 			resp, err = http.Get(pageURL)
 		}

@@ -30,7 +30,7 @@ var blockElements = map[string]bool{
 
 var skipElements = map[string]bool{
 	"script": true, "style": true, "head": true,
-	"meta": true, "link": true,
+	"meta": true, "link": true, "option": true,
 }
 
 var imageElements = map[string]bool{

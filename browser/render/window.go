@@ -4,9 +4,13 @@ import (
 	"browser/css"
 	"browser/dom"
 	"browser/layout"
+	"bytes"
 	"fmt"
 	"image/color"
+	"mime/multipart"
 	"net/url"
+	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
@@ -725,6 +729,8 @@ func (b *Browser) collectInputs(node *dom.Node, data url.Values) {
 						}
 						data.Add(name, value)
 					}
+				case "file":
+					// Skip file inputs - they require multipart encoding
 				case "submit", "button":
 					// Don't include submit buttons in data
 				default:
@@ -809,6 +815,8 @@ func (b *Browser) submitForm(formNode *dom.Node) {
 	// Get form attributes
 	action := formNode.Attributes["action"]
 	method := strings.ToUpper(formNode.Attributes["method"])
+	enctype := formNode.Attributes["enctype"]
+
 	if method == "" {
 		method = "GET" // Default method
 	}
@@ -844,9 +852,29 @@ func (b *Browser) submitForm(formNode *dom.Node) {
 			b.OnNavigate(NavigationRequest{URL: targetURL, Method: "GET"})
 		}
 	case "POST":
-		// Send POST request with form data
-		if b.OnNavigate != nil {
-			b.OnNavigate(NavigationRequest{URL: targetURL, Method: "POST", Data: data})
+		if enctype == "multipart/form-data" {
+			body, contentType, err := b.buildMultipartBody(formNode)
+			if err != nil {
+				fmt.Println("Error building multipart body:", err)
+				return
+			}
+			if b.OnNavigate != nil {
+				b.OnNavigate(NavigationRequest{
+					URL:         targetURL,
+					Method:      "POST",
+					Body:        body,
+					ContentType: contentType,
+				})
+			}
+		} else {
+			data := b.collectFormData(formNode)
+			if b.OnNavigate != nil {
+				b.OnNavigate(NavigationRequest{
+					URL:    targetURL,
+					Method: "POST",
+					Data:   data,
+				})
+			}
 		}
 	}
 }
@@ -904,4 +932,106 @@ func (b *Browser) getSelectedValue(selectNode *dom.Node) string {
 		}
 	}
 	return ""
+}
+
+func (b *Browser) buildMultipartBody(formNode *dom.Node) ([]byte, string, error) {
+	var body bytes.Buffer
+	writer := multipart.NewWriter(&body)
+
+	b.addMultipartFields(writer, formNode)
+	b.addmultipartFiles(writer, formNode)
+
+	err := writer.Close()
+	if err != nil {
+		return nil, "", err
+	}
+
+	return body.Bytes(), writer.FormDataContentType(), nil
+}
+
+// addMultipartFields adds non-file form fields to the multipart writer
+func (b *Browser) addMultipartFields(writer *multipart.Writer, node *dom.Node) {
+	if node == nil {
+		return
+	}
+
+	if node.Type == dom.Element {
+		name := node.Attributes["name"]
+		if name != "" {
+			switch node.TagName {
+			case "input":
+				inputType := node.Attributes["type"]
+				switch inputType {
+				case "file":
+					// Skip - handled separately
+				case "checkbox", "radio":
+					if b.isChecked(node) {
+						value := node.Attributes["value"]
+						if value == "" {
+							value = "on"
+						}
+						field, _ := writer.CreateFormField(name)
+						field.Write([]byte(value))
+					}
+				case "submit", "button":
+					// Skip submit buttons
+				default:
+					value := b.inputValues[node]
+					if value == "" {
+						value = node.Attributes["value"]
+					}
+					field, _ := writer.CreateFormField(name)
+					field.Write([]byte(value))
+				}
+			case "textarea":
+				value := b.inputValues[node]
+				field, _ := writer.CreateFormField(name)
+				field.Write([]byte(value))
+			case "select":
+				value := b.getSelectedValue(node)
+				field, _ := writer.CreateFormField(name)
+				field.Write([]byte(value))
+			}
+		}
+	}
+
+	for _, child := range node.Children {
+		b.addMultipartFields(writer, child)
+	}
+}
+
+func (b *Browser) addmultipartFiles(writer *multipart.Writer, node *dom.Node) {
+	if node == nil {
+		return
+	}
+
+	if node.Type == dom.Element && node.TagName == "input" {
+		inputType := node.Attributes["type"]
+		name := node.Attributes["name"]
+
+		if inputType == "file" && name != "" {
+			filePath := b.fileInputValues[node]
+			if filePath != "" {
+				fileData, err := os.ReadFile(filePath)
+				if err != nil {
+					fmt.Println("Error reading file for upload:", err)
+					return
+				}
+
+				filename := filepath.Base(filePath)
+
+				fileWriter, err := writer.CreateFormFile(name, filename)
+				if err != nil {
+					fmt.Println("Error creating form file field:", err)
+					return
+				}
+
+				fileWriter.Write(fileData)
+			}
+		}
+	}
+
+	for _, child := range node.Children {
+		b.addmultipartFiles(writer, child)
+	}
 }
