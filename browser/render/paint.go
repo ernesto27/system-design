@@ -306,10 +306,12 @@ func paintLayoutBoxWithInputs(box *layout.LayoutBox, commands *[]DisplayCommand,
 		case dom.TagEm, dom.TagI:
 			currentStyle.Italic = true
 		case dom.TagSmall:
-			if box.Style.FontSize == 0 {
-				currentStyle.Size = SizeSmall
-			}
+			currentStyle.Size = SizeSmall
 		case dom.TagU:
+			currentStyle.TextDecoration = "underline"
+		case dom.TagDel:
+			currentStyle.TextDecoration = "line-through"
+		case dom.TagIns:
 			currentStyle.TextDecoration = "underline"
 		case dom.TagPre:
 			currentStyle.Monospace = true

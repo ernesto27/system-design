@@ -28,6 +28,8 @@ const (
 	TagU      = "u"
 
 	TagPre = "pre"
+	TagDel = "del"
+	TagIns = "ins"
 
 	// Lists
 	TagUL = "ul"

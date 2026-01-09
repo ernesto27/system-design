@@ -22,8 +22,8 @@
 - [ ] `<mark>` - highlighted text
 - [ ] `<sub>` - subscript
 - [ ] `<sup>` - superscript
-- [ ] `<del>` - deleted text (strikethrough)
-- [ ] `<ins>` - inserted text (underline)
+- [x] `<del>` - deleted text (strikethrough)
+- [x] `<ins>` - inserted text (underline)
 - [ ] `<time>` - date/time
 - [ ] `<dfn>` - definition term
 
@@ -192,3 +192,7 @@
 ## Testing
 - [ ] http://acid1.acidtests.org
 - [ ] http://acid2.acidtests.org
+
+
+https://github.com/web-platform-tests/wpt?tab=readme-ov-file
+

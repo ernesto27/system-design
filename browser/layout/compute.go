@@ -28,6 +28,8 @@ func getLineHeight(tagName string) float64 {
 		return 22.0
 	case dom.TagH6:
 		return 20.0
+	case dom.TagSmall:
+		return 18.0
 	default:
 		return 24.0
 	}
@@ -47,6 +49,8 @@ func getFontSize(tagName string) float64 {
 	case dom.TagH5:
 		return 14.0
 	case dom.TagH6:
+		return 12.0
+	case dom.TagSmall:
 		return 12.0
 	default:
 		return 16.0
@@ -362,13 +366,19 @@ func computeInlineSize(box *LayoutBox, parentTag string) (float64, float64) {
 	var totalWidth float64
 	var maxHeight float64
 
+	// Use the inline element's tag if it affects font size (e.g., <small>)
+	tagForSize := parentTag
+	if box.Node != nil && box.Node.TagName == dom.TagSmall {
+		tagForSize = dom.TagSmall
+	}
+
 	for _, child := range box.Children {
 		var w, h float64
 		switch child.Type {
 		case TextBox:
-			fontSize := getFontSize(parentTag)
+			fontSize := getFontSize(tagForSize)
 			w = MeasureText(child.Text, fontSize)
-			h = getLineHeight(parentTag)
+			h = getLineHeight(tagForSize)
 		case InlineBox:
 			w, h = computeInlineSize(child, parentTag)
 		case ImageBox:
@@ -388,22 +398,33 @@ func computeInlineSize(box *LayoutBox, parentTag string) (float64, float64) {
 
 // layoutInlineChildren positions children within an inline box
 func layoutInlineChildren(box *LayoutBox, parentTag string) {
+	// Use the inline element's tag if it affects font size (e.g., <small>)
+	tagForSize := parentTag
+	if box.Node != nil && box.Node.TagName == dom.TagSmall {
+		tagForSize = dom.TagSmall
+	}
+
+	// Calculate vertical offset for baseline alignment
+	parentLineHeight := getLineHeight(parentTag)
+	childLineHeight := getLineHeight(tagForSize)
+	baselineOffset := (parentLineHeight - childLineHeight) / 2
+
 	offsetX := 0.0
 	for _, child := range box.Children {
 		switch child.Type {
 		case TextBox:
-			fontSize := getFontSize(parentTag)
+			fontSize := getFontSize(tagForSize)
 			w := MeasureText(child.Text, fontSize)
-			h := getLineHeight(parentTag)
+			h := getLineHeight(tagForSize)
 			child.Rect.X = box.Rect.X + offsetX
-			child.Rect.Y = box.Rect.Y
+			child.Rect.Y = box.Rect.Y + baselineOffset
 			child.Rect.Width = w
 			child.Rect.Height = h
 			offsetX += w
 		case InlineBox:
 			w, h := computeInlineSize(child, parentTag)
 			child.Rect.X = box.Rect.X + offsetX
-			child.Rect.Y = box.Rect.Y
+			child.Rect.Y = box.Rect.Y + baselineOffset
 			child.Rect.Width = w
 			child.Rect.Height = h
 			layoutInlineChildren(child, parentTag)

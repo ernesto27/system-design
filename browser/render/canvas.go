@@ -238,7 +238,7 @@ func RenderToCanvas(commands []DisplayCommand, baseURL string, useCache bool) []
 				if c.Underline {
 					lineY = float32(c.Y) + c.Size + 2
 				} else {
-					lineY = float32(c.Y) + c.Size*0.4
+					lineY = float32(c.Y) + c.Size*0.9
 				}
 				line := canvas.NewRectangle(c.Color)
 				line.Resize(fyne.NewSize(float32(c.Width), lineHeight))
