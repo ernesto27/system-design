@@ -1,6 +1,7 @@
 package layout
 
 import (
+	"browser/css"
 	"browser/dom"
 	"fmt"
 	"strconv"
@@ -377,7 +378,8 @@ func computeInlineSize(box *LayoutBox, parentTag string) (float64, float64) {
 		switch child.Type {
 		case TextBox:
 			fontSize := getFontSize(tagForSize)
-			w = MeasureText(child.Text, fontSize)
+			text := css.ApplyTextTransform(child.Text, box.Style.TextTransform)
+			w = MeasureText(text, fontSize)
 			h = getLineHeight(tagForSize)
 		case InlineBox:
 			w, h = computeInlineSize(child, parentTag)
@@ -414,7 +416,8 @@ func layoutInlineChildren(box *LayoutBox, parentTag string) {
 		switch child.Type {
 		case TextBox:
 			fontSize := getFontSize(tagForSize)
-			w := MeasureText(child.Text, fontSize)
+			text := css.ApplyTextTransform(child.Text, box.Style.TextTransform)
+			w := MeasureText(text, fontSize)
 			h := getLineHeight(tagForSize)
 			child.Rect.X = box.Rect.X + offsetX
 			child.Rect.Y = box.Rect.Y + baselineOffset

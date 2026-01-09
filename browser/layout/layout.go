@@ -176,6 +176,9 @@ func mergeStyles(base *css.Style, inline *css.Style) {
 	if inline.TextDecoration != "" {
 		base.TextDecoration = inline.TextDecoration
 	}
+	if inline.TextTransform != "" {
+		base.TextTransform = inline.TextTransform
+	}
 	if inline.Opacity != 1.0 {
 		base.Opacity = inline.Opacity
 	}

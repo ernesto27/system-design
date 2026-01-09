@@ -1,6 +1,7 @@
 package render
 
 import (
+	"browser/css"
 	"browser/dom"
 	"browser/layout"
 	"fmt"
@@ -30,6 +31,7 @@ type TextStyle struct {
 	Italic         bool
 	Monospace      bool
 	TextDecoration string
+	TextTransform  string
 	Opacity        float64
 	Visibility     string
 }
@@ -131,6 +133,7 @@ type DrawText struct {
 	Monospace     bool
 	Underline     bool
 	Strikethrough bool
+	TextTransform string
 }
 
 type DrawImage struct {
@@ -203,6 +206,9 @@ func paintLayoutBoxWithInputs(box *layout.LayoutBox, commands *[]DisplayCommand,
 	}
 	if box.Style.TextDecoration != "" {
 		currentStyle.TextDecoration = box.Style.TextDecoration
+	}
+	if box.Style.TextTransform != "" {
+		currentStyle.TextTransform = box.Style.TextTransform
 	}
 	if box.Style.Opacity > 0 {
 		currentStyle.Opacity = box.Style.Opacity
@@ -328,7 +334,8 @@ func paintLayoutBoxWithInputs(box *layout.LayoutBox, commands *[]DisplayCommand,
 
 	// Draw text
 	if box.Type == layout.TextBox && box.Text != "" && !isHidden {
-		text := box.Text
+		text := css.ApplyTextTransform(box.Text, currentStyle.TextTransform)
+
 		if isListItem, isOrdered, index := getListInfo(box); isListItem {
 			if isOrdered {
 				text = fmt.Sprintf("%d. %s", index, text)

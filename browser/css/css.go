@@ -26,6 +26,7 @@ type Style struct {
 	Opacity         float64
 	Visibility      string
 	Cursor          string
+	TextTransform   string
 
 	// Border properties
 	BorderTopWidth    float64
@@ -343,6 +344,8 @@ func applyDeclaration(style *Style, property, value string) {
 		style.Display = value
 	case "text-decoration":
 		style.TextDecoration = value
+	case "text-transform":
+		style.TextTransform = value
 	case "opacity":
 		if op, err := strconv.ParseFloat(value, 64); err == nil {
 			if op < 0 {
