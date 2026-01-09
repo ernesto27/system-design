@@ -67,8 +67,12 @@ func computeBlockLayout(box *LayoutBox, containerWidth float64, startX, startY f
 	box.Rect.Y = startY
 	box.Rect.Width = containerWidth
 
+	if box.Style.Width > 0 {
+		box.Rect.Width = box.Style.Width
+	}
+
 	innerX := startX
-	innerWidth := containerWidth
+	innerWidth := box.Rect.Width
 
 	// Get current tag name
 	currentTag := ""
@@ -332,7 +336,11 @@ func computeBlockLayout(box *LayoutBox, containerWidth float64, startX, startY f
 		yOffset = lineStartY + lineHeight
 	}
 
-	box.Rect.Height = yOffset - startY + box.Margin.Bottom + box.Padding.Bottom + box.Style.BorderBottomWidth
+	if box.Style.Height > 0 {
+		box.Rect.Height = box.Style.Height
+	} else {
+		box.Rect.Height = yOffset - startY + box.Margin.Bottom + box.Padding.Bottom + box.Style.BorderBottomWidth
+	}
 }
 
 // applyLineAlignment repositions inline elements based on text-align

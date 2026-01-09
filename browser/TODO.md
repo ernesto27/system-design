@@ -120,7 +120,7 @@
 - [ ] `line-height` - line spacing
 - [ ] `letter-spacing` - character spacing
 - [ ] `word-spacing` - word spacing
-- [ ] `text-transform` - uppercase/lowercase/capitalize
+- [x] `text-transform` - uppercase/lowercase/capitalize
 - [ ] `text-shadow` - text shadow
 - [ ] `white-space` - whitespace handling
 - [ ] `text-overflow` - ellipsis/clip

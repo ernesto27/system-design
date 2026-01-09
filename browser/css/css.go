@@ -27,6 +27,8 @@ type Style struct {
 	Visibility      string
 	Cursor          string
 	TextTransform   string
+	Width           float64
+	Height          float64
 
 	// Border properties
 	BorderTopWidth    float64
@@ -411,5 +413,13 @@ func applyDeclaration(style *Style, property, value string) {
 		style.BorderLeftWidth = w
 		style.BorderLeftStyle = s
 		style.BorderLeftColor = c
+	case "width":
+		if w := ParseSize(value); w > 0 {
+			style.Width = w
+		}
+	case "height":
+		if h := ParseSize(value); h > 0 {
+			style.Height = h
+		}
 	}
 }
