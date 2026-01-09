@@ -71,6 +71,10 @@ func computeBlockLayout(box *LayoutBox, containerWidth float64, startX, startY f
 		box.Rect.Width = box.Style.Width
 	}
 
+	if box.Style.MinWidth > 0 && box.Rect.Width < box.Style.MinWidth {
+		box.Rect.Width = box.Style.MinWidth
+	}
+
 	innerX := startX
 	innerWidth := box.Rect.Width
 

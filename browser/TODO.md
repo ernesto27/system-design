@@ -70,8 +70,8 @@
 ## Missing CSS Properties
 
 ### Sizing
-- [ ] `width` - element width
-- [ ] `height` - element height
+- [x] `width` - element width
+- [x] `height` - element height
 - [ ] `min-width` - minimum width
 - [ ] `max-width` - maximum width
 - [ ] `min-height` - minimum height

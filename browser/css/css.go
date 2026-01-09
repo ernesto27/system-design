@@ -29,6 +29,7 @@ type Style struct {
 	TextTransform   string
 	Width           float64
 	Height          float64
+	MinWidth        float64
 
 	// Border properties
 	BorderTopWidth    float64
@@ -420,6 +421,11 @@ func applyDeclaration(style *Style, property, value string) {
 	case "height":
 		if h := ParseSize(value); h > 0 {
 			style.Height = h
+		}
+
+	case "min-width":
+		if w := ParseSize(value); w > 0 {
+			style.MinWidth = w
 		}
 	}
 }
