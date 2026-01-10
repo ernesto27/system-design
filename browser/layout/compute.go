@@ -349,6 +349,10 @@ func computeBlockLayout(box *LayoutBox, containerWidth float64, startX, startY f
 	} else {
 		box.Rect.Height = yOffset - startY + box.Margin.Bottom + box.Padding.Bottom + box.Style.BorderBottomWidth
 	}
+
+	if box.Style.MinHeight > 0 && box.Rect.Height < box.Style.MinHeight {
+		box.Rect.Height = box.Style.MinHeight
+	}
 }
 
 // applyLineAlignment repositions inline elements based on text-align

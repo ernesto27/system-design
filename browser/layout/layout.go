@@ -241,4 +241,8 @@ func mergeStyles(base *css.Style, inline *css.Style) {
 	if inline.Height > 0 {
 		base.Height = inline.Height
 	}
+
+	if inline.MinHeight > 0 {
+		base.MinHeight = inline.MinHeight
+	}
 }

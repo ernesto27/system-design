@@ -31,6 +31,7 @@ type Style struct {
 	Height          float64
 	MinWidth        float64
 	MaxWidth        float64
+	MinHeight       float64
 
 	// Border properties
 	BorderTopWidth    float64
@@ -432,6 +433,10 @@ func applyDeclaration(style *Style, property, value string) {
 	case "max-width":
 		if w := ParseSize(value); w > 0 {
 			style.MaxWidth = w
+		}
+	case "min-height":
+		if h := ParseSize(value); h > 0 {
+			style.MinHeight = h
 		}
 	}
 }

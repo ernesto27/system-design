@@ -38,11 +38,27 @@
         Width vs Max-Width (Should be 200px, not 500px)
     </div>
 
+    <h2>Min-Height Test</h2>
+    <!-- The content is short, but min-height says 100px. -->
+    <!-- If successful, this green box will be 100px tall. -->
+    <div style="min-height: 100px; background-color: green; color: white; padding: 10px;">
+        Min-Height Check (Should be 100px tall)
+    </div>
+    <!-- Height says 30px, but min-height says 80px. Min wins. -->
+    <div style="height: 30px; min-height: 80px; background-color: darkgreen; color: white; padding: 10px;">
+        Height vs Min-Height (Should be 80px tall, not 30px)
+    </div>
+
     <h2>External Stylesheet Test</h2>
     <div class="external-test">
         This box is styled via external CSS (style.css)!
         <br>
         (Green background, white text, centered)
+    </div>
+    <div class="min-height-test">
+        This box tests min-height from external CSS!
+        <br>
+        (Purple background, should be at least 80px tall)
     </div>
     <p id="external-id">This paragraph is styled via ID from external CSS (Red, dashed border)</p>
 

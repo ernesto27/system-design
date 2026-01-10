@@ -74,7 +74,7 @@
 - [x] `height` - element height
 - [x] `min-width` - minimum width
 - [x] `max-width` - maximum width
-- [ ] `min-height` - minimum height
+- [x] `min-height` - minimum height
 - [ ] `max-height` - maximum height
 
 ### Positioning
