@@ -75,7 +75,7 @@
 - [x] `min-width` - minimum width
 - [x] `max-width` - maximum width
 - [x] `min-height` - minimum height
-- [ ] `max-height` - maximum height
+- [x] `max-height` - maximum height
 
 ### Positioning
 - [ ] `position` - static/relative/absolute/fixed/sticky
@@ -160,7 +160,7 @@
 - [ ] `border-spacing` - cell spacing
 - [ ] `table-layout` - auto/fixed
 
-### Other
+### Othernd related tests
 - [ ] `outline` - focus outline
 - [ ] `content` - generated content
 - [ ] `pointer-events` - click behavior

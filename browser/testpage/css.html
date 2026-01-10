@@ -49,6 +49,17 @@
         Height vs Min-Height (Should be 80px tall, not 30px)
     </div>
 
+    <h2>Max-Height Test</h2>
+    <!-- The content would be tall, but max-height caps it at 60px. -->
+    <!-- If successful, this orange box will be 60px tall. -->
+    <div style="max-height: 60px; background-color: orange; color: white; padding: 10px;">
+        Max-Height Check - This is a long piece of content that should be capped at 60px tall even though it wants to be taller. (Should be 60px max)
+    </div>
+    <!-- Height says 200px, but max-height says 80px. Max wins. -->
+    <div style="height: 200px; max-height: 80px; background-color: darkorange; color: white; padding: 10px;">
+        Height vs Max-Height (Should be 80px tall, not 200px)
+    </div>
+
     <h2>External Stylesheet Test</h2>
     <div class="external-test">
         This box is styled via external CSS (style.css)!
@@ -59,6 +70,11 @@
         This box tests min-height from external CSS!
         <br>
         (Purple background, should be at least 80px tall)
+    </div>
+    <div class="max-height-test">
+        This box tests max-height from external CSS!
+        <br>
+        (Orange background, should be max 50px tall with overflow hidden)
     </div>
     <p id="external-id">This paragraph is styled via ID from external CSS (Red, dashed border)</p>
 
