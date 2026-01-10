@@ -27,6 +27,17 @@
         Min-Width Check (Should be 200px)
     </div>
 
+    <h2>Max-Width Test</h2>
+    <!-- The container is wide, but max-width caps it at 300px. -->
+    <!-- If successful, this blue box will be 300px wide (not full width). -->
+    <div style="max-width: 300px; background-color: blue; color: white; padding: 10px;">
+        Max-Width Check (Should be 300px, not full width)
+    </div>
+    <!-- Width says 500px, but max-width says 200px. Max wins. -->
+    <div style="width: 500px; max-width: 200px; background-color: darkblue; color: white; padding: 10px;">
+        Width vs Max-Width (Should be 200px, not 500px)
+    </div>
+
     <h2>External Stylesheet Test</h2>
     <div class="external-test">
         This box is styled via external CSS (style.css)!
