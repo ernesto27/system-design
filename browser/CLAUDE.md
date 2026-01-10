@@ -60,6 +60,37 @@ URL → HTTP Fetch → DOM Tree → Layout Tree → Display Commands → GUI
 3. `LayoutBox.FindLink()` walks up parent chain looking for `<a>` tags
 4. URL resolved relative to current page, then `OnNavigate` callback fired
 
+## Testing Conventions
+
+Use table-driven tests with `testify/assert`:
+
+```go
+func TestFunctionName(t *testing.T) {
+    tests := []struct {
+        name     string
+        input    string
+        expected string
+    }{
+        {"case one", "input1", "expected1"},
+        {"case two", "input2", "expected2"},
+    }
+
+    for _, tt := range tests {
+        t.Run(tt.name, func(t *testing.T) {
+            result := FunctionName(tt.input)
+            assert.Equal(t, tt.expected, result)
+        })
+    }
+}
+```
+
+Run tests:
+```bash
+go test ./... -v           # All tests
+go test ./layout/... -v    # Package tests
+go test ./... -cover       # With coverage
+```
+
 ## Dependencies
 
 - `golang.org/x/net/html` - HTML tokenizer/parser

@@ -154,38 +154,6 @@ func (n *Node) AppendChild(child *Node) {
     n.Children = append(n.Children, child)
 }
 ```
-
----
-
-## Testing Patterns
-
-Use table-driven tests with `t.Run()` subtests:
-
-```go
-func TestSomething(t *testing.T) {
-    tests := []struct {
-        name     string
-        input    string
-        expected string
-    }{
-        {"empty input", "", ""},
-        {"basic case", "hello", "hello"},
-    }
-
-    for _, tt := range tests {
-        t.Run(tt.name, func(t *testing.T) {
-            result := functionUnderTest(tt.input)
-            if result != tt.expected {
-                t.Errorf("got %q, want %q", result, tt.expected)
-            }
-        })
-    }
-}
-```
-
-- Use `%q` for strings in error messages (shows quotes and escapes)
-- Test files go in the same package (e.g., `dom/parser_test.go`)
-
 ---
 
 ## Dependencies
@@ -206,3 +174,35 @@ func TestSomething(t *testing.T) {
 | `layout/compute.go`   | Layout algorithm, positioning            |
 | `render/paint.go`     | Display commands, colors, font sizes     |
 | `render/window.go`    | Fyne window, browser chrome              |
+
+
+## Testing Conventions
+
+Use table-driven tests with `testify/assert`:
+
+```go
+func TestFunctionName(t *testing.T) {
+    tests := []struct {
+        name     string
+        input    string
+        expected string
+    }{
+        {"case one", "input1", "expected1"},
+        {"case two", "input2", "expected2"},
+    }
+
+    for _, tt := range tests {
+        t.Run(tt.name, func(t *testing.T) {
+            result := FunctionName(tt.input)
+            assert.Equal(t, tt.expected, result)
+        })
+    }
+}
+```
+
+Run tests:
+```bash
+go test ./... -v           # All tests
+go test ./layout/... -v    # Package tests
+go test ./... -cover       # With coverage
+```

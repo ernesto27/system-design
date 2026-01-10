@@ -54,3 +54,35 @@ go build -o browser
 *   **HTML**: Basic parsing and DOM tree construction are implemented.
 *   **Layout**: Basic block layout is working.
 *   **CSS**: In active development. The goal is to move to `tdewolff/parse` for robust CSS support. See `CSS_INTEGRATION_PLAN.md` for details.
+
+
+## Testing Conventions
+
+Use table-driven tests with `testify/assert`:
+
+```go
+func TestFunctionName(t *testing.T) {
+    tests := []struct {
+        name     string
+        input    string
+        expected string
+    }{
+        {"case one", "input1", "expected1"},
+        {"case two", "input2", "expected2"},
+    }
+
+    for _, tt := range tests {
+        t.Run(tt.name, func(t *testing.T) {
+            result := FunctionName(tt.input)
+            assert.Equal(t, tt.expected, result)
+        })
+    }
+}
+```
+
+Run tests:
+```bash
+go test ./... -v           # All tests
+go test ./layout/... -v    # Package tests
+go test ./... -cover       # With coverage
+```
