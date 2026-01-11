@@ -100,6 +100,43 @@
         </div>
     </div>
 
+    <h2>Float Test</h2>
+    <p>Testing CSS float property.</p>
+
+    <!-- Test 1: Single float left -->
+    <div style="width: 400px; background-color: lightgray; border: 2px solid black; padding: 10px;">
+        <div style="float: left; width: 100px; height: 60px; background-color: blue; color: white;">
+            float: left
+        </div>
+        <p>Normal content after the float.</p>
+    </div>
+
+    <br>
+
+    <!-- Test 2: Single float right -->
+    <div style="width: 400px; background-color: lightgray; border: 2px solid black; padding: 10px;">
+        <div style="float: right; width: 100px; height: 60px; background-color: green; color: white;">
+            float: right
+        </div>
+        <p>Normal content after the float.</p>
+    </div>
+
+    <br>
+
+    <!-- Test 3: Multiple floats stacking -->
+    <div style="width: 400px; background-color: lightgray; border: 2px solid black; padding: 10px;">
+        <div style="float: left; width: 80px; height: 50px; background-color: red; color: white;">
+            Left 1
+        </div>
+        <div style="float: left; width: 80px; height: 50px; background-color: orange; color: white;">
+            Left 2
+        </div>
+        <div style="float: right; width: 80px; height: 50px; background-color: purple; color: white;">
+            Right 1
+        </div>
+        <p>Content between floats.</p>
+    </div>
+
     <h2>Z-Index Test</h2>
     <p>Three overlapping boxes. Red should be behind, green in middle, blue in front.</p>
     <div style="position: relative; width: 300px; height: 150px; background-color: lightgray; border: 2px solid black;">

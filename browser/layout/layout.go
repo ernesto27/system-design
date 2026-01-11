@@ -73,6 +73,7 @@ func BuildBox(node *dom.Node, parent *LayoutBox, stylesheet css.Stylesheet) *Lay
 		box.Left = box.Style.Left
 		box.Right = box.Style.Right
 		box.Bottom = box.Style.Bottom
+		box.Float = box.Style.Float
 	}
 
 	switch node.Type {
@@ -270,5 +271,9 @@ func mergeStyles(base *css.Style, inline *css.Style) {
 	}
 	if inline.Bottom > 0 {
 		base.Bottom = inline.Bottom
+	}
+
+	if inline.Float != "" {
+		base.Float = inline.Float
 	}
 }

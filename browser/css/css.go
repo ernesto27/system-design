@@ -22,6 +22,7 @@ type Style struct {
 	PaddingRight    float64
 	TextAlign       string
 	Display         string
+	Float           string
 	Position        string
 	Top             float64
 	Left            float64
@@ -353,6 +354,8 @@ func applyDeclaration(style *Style, property, value string) {
 		style.TextAlign = value
 	case "display":
 		style.Display = value
+	case "float":
+		style.Float = value
 	case "position":
 		style.Position = value
 	case "top":

@@ -65,11 +65,14 @@ func ComputeLayout(root *LayoutBox, containerWidth float64) {
 func computeBlockLayout(box *LayoutBox, containerWidth float64, startX, startY float64, parentTag string) {
 	// Separate positioned children from normal flow
 	var positionedChildren []*LayoutBox
+	var floatedChildren []*LayoutBox
 	var normalChildren []*LayoutBox
 
 	for _, child := range box.Children {
 		if child.Position == "absolute" {
 			positionedChildren = append(positionedChildren, child)
+		} else if child.Float == "left" || child.Float == "right" {
+			floatedChildren = append(floatedChildren, child)
 		} else {
 			normalChildren = append(normalChildren, child)
 		}
@@ -402,6 +405,33 @@ func computeBlockLayout(box *LayoutBox, containerWidth float64, startX, startY f
 
 		box.Children = append(box.Children, child)
 	}
+
+	// Position floated children (inside padding area)
+	leftFloatX := innerX
+	rightFloatX := innerX + innerWidth
+	floatY := startY + box.Padding.Top + box.Style.BorderTopWidth
+
+	for _, child := range floatedChildren {
+		childWidth := child.Style.Width
+		if childWidth <= 0 {
+			childWidth = 100 // Default width for floats without explicit width
+		}
+
+		// Compute layout to determine dimensions
+		computeBlockLayout(child, childWidth, 0, 0, "")
+
+		switch child.Float {
+		case "left":
+			offsetBox(child, leftFloatX, floatY)
+			leftFloatX += child.Rect.Width
+		case "right":
+			offsetBox(child, rightFloatX-child.Rect.Width, floatY)
+			rightFloatX -= child.Rect.Width
+		}
+
+		box.Children = append(box.Children, child)
+	}
+
 }
 
 // offsetBox moves a box and all its children by (dx, dy)
