@@ -68,6 +68,11 @@ func BuildBox(node *dom.Node, parent *LayoutBox, stylesheet css.Stylesheet) *Lay
 			return nil
 		}
 
+		box.Position = box.Style.Position
+		box.Top = box.Style.Top
+		box.Left = box.Style.Left
+		box.Right = box.Style.Right
+		box.Bottom = box.Style.Bottom
 	}
 
 	switch node.Type {
@@ -248,5 +253,22 @@ func mergeStyles(base *css.Style, inline *css.Style) {
 
 	if inline.MaxHeight > 0 {
 		base.MaxHeight = inline.MaxHeight
+	}
+
+	// Position properties
+	if inline.Position != "" {
+		base.Position = inline.Position
+	}
+	if inline.Top > 0 {
+		base.Top = inline.Top
+	}
+	if inline.Left > 0 {
+		base.Left = inline.Left
+	}
+	if inline.Right > 0 {
+		base.Right = inline.Right
+	}
+	if inline.Bottom > 0 {
+		base.Bottom = inline.Bottom
 	}
 }

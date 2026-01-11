@@ -63,6 +63,19 @@ func ComputeLayout(root *LayoutBox, containerWidth float64) {
 }
 
 func computeBlockLayout(box *LayoutBox, containerWidth float64, startX, startY float64, parentTag string) {
+	// Separate positioned children from normal flow
+	var positionedChildren []*LayoutBox
+	var normalChildren []*LayoutBox
+
+	for _, child := range box.Children {
+		if child.Position == "absolute" {
+			positionedChildren = append(positionedChildren, child)
+		} else {
+			normalChildren = append(normalChildren, child)
+		}
+	}
+	box.Children = normalChildren
+
 	box.Rect.X = startX
 	box.Rect.Y = startY
 	box.Rect.Width = containerWidth
@@ -356,6 +369,47 @@ func computeBlockLayout(box *LayoutBox, containerWidth float64, startX, startY f
 
 	if box.Style.MaxHeight > 0 && box.Rect.Height > box.Style.MaxHeight {
 		box.Rect.Height = box.Style.MaxHeight
+	}
+
+	// Position absolute children
+	for _, child := range positionedChildren {
+		childWidth := child.Style.Width
+		if childWidth <= 0 {
+			childWidth = containerWidth
+		}
+
+		// First, compute layout to determine child dimensions
+		computeBlockLayout(child, childWidth, 0, 0, "")
+
+		// Calculate X position
+		childX := startX
+		if child.Left > 0 {
+			childX = startX + child.Left
+		} else if child.Right > 0 {
+			childX = startX + box.Rect.Width - child.Right - child.Rect.Width
+		}
+
+		// Calculate Y position
+		childY := startY
+		if child.Top > 0 {
+			childY = startY + child.Top
+		} else if child.Bottom > 0 {
+			childY = startY + box.Rect.Height - child.Bottom - child.Rect.Height
+		}
+
+		// Apply final position by offsetting the entire subtree
+		offsetBox(child, childX, childY)
+
+		box.Children = append(box.Children, child)
+	}
+}
+
+// offsetBox moves a box and all its children by (dx, dy)
+func offsetBox(box *LayoutBox, dx, dy float64) {
+	box.Rect.X += dx
+	box.Rect.Y += dy
+	for _, child := range box.Children {
+		offsetBox(child, dx, dy)
 	}
 }
 

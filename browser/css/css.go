@@ -22,6 +22,11 @@ type Style struct {
 	PaddingRight    float64
 	TextAlign       string
 	Display         string
+	Position        string
+	Top             float64
+	Left            float64
+	Right           float64
+	Bottom          float64
 	TextDecoration  string
 	Opacity         float64
 	Visibility      string
@@ -348,6 +353,17 @@ func applyDeclaration(style *Style, property, value string) {
 		style.TextAlign = value
 	case "display":
 		style.Display = value
+	case "position":
+		style.Position = value
+	case "top":
+		style.Top = ParseSize(value)
+	case "left":
+		style.Left = ParseSize(value)
+	case "right":
+		style.Right = ParseSize(value)
+	case "bottom":
+		style.Bottom = ParseSize(value)
+
 	case "text-decoration":
 		style.TextDecoration = value
 	case "text-transform":

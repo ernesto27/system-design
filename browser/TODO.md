@@ -8,6 +8,11 @@
   - Spaces between inline elements like `<strong>`, `<em>`, `<small>` are not rendering
   - Need to debug DOM parser to see if whitespace text nodes are preserved
   - Options: debug DOM output, add space normalization, or fix parser whitespace handling
+- [ ] `position: absolute` - text/color inside positioned elements not rendering
+  - Background colors and borders of positioned elements work
+  - Text inside positioned elements (like divs with `position: absolute`) is missing
+  - Children of positioned elements are not being painted correctly
+  - This affects z-index testing since z-index requires positioned elements
 
 ## Missing HTML Tags
 
@@ -78,12 +83,12 @@
 - [x] `max-height` - maximum height
 
 ### Positioning
-- [ ] `position` - static/relative/absolute/fixed/sticky
-- [ ] `top` - top offset
-- [ ] `right` - right offset
-- [ ] `bottom` - bottom offset
-- [ ] `left` - left offset
-- [ ] `z-index` - stacking order
+- [x] `position` - static/relative/absolute/fixed/sticky (partially: absolute works)
+- [x] `top` - top offset (works for absolute)
+- [x] `left` - left offset (works for absolute)
+- [x] `right` - right offset
+- [x] `bottom` - bottom offset
+- [x] `z-index` - stacking order (needs sorting in paint.go)
 - [ ] `float` - float left/right
 - [ ] `clear` - clear floats
 

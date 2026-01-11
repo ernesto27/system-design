@@ -44,6 +44,11 @@ type LayoutBox struct {
 	Text     string
 	Parent   *LayoutBox
 	Style    css.Style
+	Position string
+	Top      float64
+	Left     float64
+	Right    float64
+	Bottom   float64
 }
 
 // IsInline returns true if the box should flow horizontally (inline)
