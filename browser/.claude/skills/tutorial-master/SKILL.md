@@ -37,19 +37,86 @@ Example questions to ask:
 - "Which version/platform are you using?"
 - "Do you want a quick overview or a deep dive?"
 
-### 2. Structure Every Explanation
+### 2. Explain Like I'm 5 (ELI5) - BEFORE Code
+
+**Before writing ANY code**, explain the concept in the simplest possible terms:
+
+- Use **real-world analogies** (bulletin boards, mailboxes, restaurants, etc.)
+- Draw **ASCII diagrams** showing the flow
+- Avoid jargon - if you must use a term, define it with an analogy first
+- Show the "big picture" before diving into details
+
+**ELI5 Format:**
+```
+## The Big Idea: [Simple Analogy]
+
+[2-3 sentence explanation using the analogy]
+
+[ASCII diagram showing the concept visually]
+
+## How It Maps to Our Code
+
+| Real World        | Our Code          |
+|-------------------|-------------------|
+| Bulletin board    | EventManager      |
+| Posting a note    | addEventListener  |
+| Reading the note  | Dispatch          |
+```
+
+**Why this matters:** Learners remember analogies. When they see `EventManager`, they'll think "oh, the bulletin board!" This mental model helps them understand AND debug later.
+
+**Good ELI5 Example:**
+
+```
+# The Big Idea: A Restaurant Kitchen
+
+Imagine a restaurant. When you order food:
+
+1. WAITER writes your order on paper
+2. KITCHEN gets the paper and cooks
+3. WAITER brings food back to you
+
+    YOU ──order──▶ WAITER ──paper──▶ KITCHEN
+                     ▲                  │
+                     └────food──────────┘
+
+## How It Maps to Our Code
+
+| Restaurant     | Our HTTP Server    |
+|----------------|-------------------|
+| You (customer) | Web browser       |
+| Waiter         | Request handler   |
+| Order paper    | HTTP request      |
+| Kitchen        | Business logic    |
+| Food           | HTTP response     |
+
+Now when you see "handler", think "waiter" - it takes
+orders (requests) and brings back results (responses)!
+```
+
+**Common Analogies to Use:**
+- **Maps/Dictionaries** → Phone book (name → number)
+- **Arrays/Lists** → Train with numbered cars
+- **Callbacks** → "Call me when pizza is ready"
+- **Events** → Bulletin board / notification system
+- **Pointers** → Home address (not the house itself)
+- **Interfaces** → Job description (anyone who can do X)
+- **Channels** → Conveyor belt between workers
+
+### 3. Structure Every Explanation
 
 Follow this structure for all tutorials:
 
 ```
 1. WHAT: Brief overview - what we're doing and why it matters
-2. PREREQUISITES: What the learner needs to know/have before starting
-3. STEPS: Numbered, sequential actions (one thing at a time)
-4. VERIFICATION: How to confirm each step worked
-5. NEXT STEPS: Where to go from here
+2. ELI5: Simple analogy + ASCII diagram (BEFORE any code!)
+3. PREREQUISITES: What the learner needs to know/have before starting
+4. STEPS: Numbered, sequential actions (one thing at a time)
+5. VERIFICATION: How to confirm each step worked
+6. NEXT STEPS: Where to go from here
 ```
 
-### 3. Step-by-Step Rules
+### 4. Step-by-Step Rules
 
 **Each step must:**
 - Be a single, atomic action (one thing only)
@@ -74,7 +141,7 @@ Follow this structure for all tutorials:
 **If something went wrong:** [Common issues and fixes]
 ```
 
-### 4. Explanation Depth
+### 5. Explanation Depth
 
 Adjust detail based on complexity:
 
@@ -94,7 +161,7 @@ Adjust detail based on complexity:
 - Explain each line as they type it
 - Encourage typing rather than copy-pasting to build muscle memory
 
-### 5. Interactive Checkpoints
+### 6. Interactive Checkpoints
 
 After major sections, **pause and verify understanding**:
 

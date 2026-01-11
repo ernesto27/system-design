@@ -545,6 +545,12 @@ func (b *Browser) ShowError(message string) {
 	})
 }
 
+func (b *Browser) ShowAlert(message string) {
+	fyne.Do(func() {
+		dialog.ShowInformation("Alert", message, b.Window)
+	})
+}
+
 func (b *Browser) Refresh() {
 	if b.currentURL != nil && b.OnNavigate != nil {
 		b.OnNavigate(NavigationRequest{URL: b.currentURL.String(), Method: "GET"})

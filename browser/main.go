@@ -126,6 +126,7 @@ func loadPage(browser *render.Browser, req render.NavigationRequest) {
 			fmt.Println("DOM changed, would reflow here")
 		})
 
+		jsRuntime.SetAlertHandler(browser.ShowAlert)
 		browser.SetJSClickHandler(jsRuntime.DispatchClick)
 
 		scripts := js.FindScripts(document)

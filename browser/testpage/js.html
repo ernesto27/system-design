@@ -17,6 +17,7 @@
     <div id="output" class="box">Output will appear here</div>
 
     <button id="btn">Click Me</button>
+    <button id="alertBtn">Show Alert</button>
 
     <script>
         console.log("=== JavaScript Test ===");
@@ -56,6 +57,15 @@
         });
 
         console.log("Click the button to test events!");
+
+        // Test 8: alert on button click
+        var alertBtn = document.getElementById("alertBtn");
+        alertBtn.addEventListener("click", function() {
+            alert("Hello from JavaScript!");
+        });
+
+        // Test 9: alert on page load
+        alert("Page loaded! JS is working.");
     </script>
 </body>
 </html>

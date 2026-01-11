@@ -12,6 +12,7 @@ type JSRuntime struct {
 	vm       *goja.Runtime
 	document *dom.Node
 	onReflow func()
+	onAlert  func(message string)
 	Events   *EventManager
 }
 
@@ -41,6 +42,18 @@ func (rt *JSRuntime) setupGlobals() {
 	docObj := rt.vm.NewObject()
 	docObj.Set("getElementById", doc.GetElementById)
 	rt.vm.Set("document", docObj)
+
+	rt.vm.Set("alert", func(call goja.FunctionCall) goja.Value {
+		message := ""
+		if len(call.Arguments) > 0 {
+			message = call.Arguments[0].String()
+		}
+		if rt.onAlert != nil {
+			rt.onAlert(message)
+		}
+
+		return goja.Undefined()
+	})
 
 }
 
@@ -140,4 +153,8 @@ func (rt *JSRuntime) wrapElement(node *dom.Node) goja.Value {
 
 func (rt *JSRuntime) DispatchClick(node *dom.Node) {
 	rt.Events.Dispatch(rt, node, "click")
+}
+
+func (rt *JSRuntime) SetAlertHandler(handler func(message string)) {
+	rt.onAlert = handler
 }
