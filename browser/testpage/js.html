@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>JavaScript Test Page</title>
+    <style>
+        body { font-family: sans-serif; margin: 20px; }
+        .box { padding: 20px; margin: 10px 0; background: #e0e0e0; }
+        #output { background: #d4edda; }
+        button { padding: 10px 20px; font-size: 16px; cursor: pointer; }
+    </style>
+</head>
+<body>
+    <h1>JavaScript Test Page</h1>
+
+    <div id="greeting" class="box">Hello from HTML!</div>
+
+    <div id="output" class="box">Output will appear here</div>
+
+    <button id="btn">Click Me</button>
+
+    <script>
+        console.log("=== JavaScript Test ===");
+
+        // Test 1: getElementById
+        var greeting = document.getElementById("greeting");
+        console.log("1. getElementById:", greeting.tagName, greeting.id);
+
+        // Test 2: textContent getter
+        console.log("2. textContent:", greeting.textContent);
+
+        // Test 3: getAttribute
+        console.log("3. getAttribute class:", greeting.getAttribute("class"));
+
+        // Test 4: setAttribute
+        greeting.setAttribute("data-test", "hello");
+        console.log("4. setAttribute then get:", greeting.getAttribute("data-test"));
+
+        // Test 5: textContent setter (this modifies the DOM!)
+        var output = document.getElementById("output");
+        console.log("5. Before:", output.textContent);
+        output.textContent = "Changed by JavaScript!";
+        console.log("   After:", output.textContent);
+
+        // Test 6: parentElement
+        var btn = document.getElementById("btn");
+        console.log("6. parentElement:", btn.parentElement.tagName);
+
+        console.log("=== All Tests Passed ===");
+
+        // Test 7: addEventListener
+        var clickCount = 0;
+        btn.addEventListener("click", function(event) {
+            clickCount = clickCount + 1;
+            console.log("7. Button clicked!", clickCount, "times");
+            output.textContent = "Clicked " + clickCount + " times!";
+        });
+
+        console.log("Click the button to test events!");
+    </script>
+</body>
+</html>

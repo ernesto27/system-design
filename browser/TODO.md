@@ -89,7 +89,7 @@
 - [x] `right` - right offset
 - [x] `bottom` - bottom offset
 - [x] `z-index` - stacking order (needs sorting in paint.go)
-- [ ] `float` - float left/right
+- [x] `float` - float left/right
 - [ ] `clear` - clear floats
 
 ### Flexbox

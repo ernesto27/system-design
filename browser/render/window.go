@@ -55,6 +55,8 @@ type Browser struct {
 	radioValues      map[string]*dom.Node
 	checkboxValue    map[*dom.Node]bool
 	fileInputValues  map[*dom.Node]string
+
+	onJSClick func(node *dom.Node)
 }
 
 func NewBrowser(width, height float32) *Browser {
@@ -224,6 +226,10 @@ func (b *Browser) handleClick(x, y float64) {
 		return
 	}
 	fmt.Printf("  Hit: %+v\n", hit.Text)
+
+	if b.onJSClick != nil && hit.Node != nil {
+		b.onJSClick(hit.Node)
+	}
 
 	if hit.Type == layout.InputBox && hit.Node != nil {
 		if isNodeDisabled(hit.Node) {
@@ -1034,4 +1040,8 @@ func (b *Browser) addmultipartFiles(writer *multipart.Writer, node *dom.Node) {
 	for _, child := range node.Children {
 		b.addmultipartFiles(writer, child)
 	}
+}
+
+func (b *Browser) SetJSClickHandler(handler func(node *dom.Node)) {
+	b.onJSClick = handler
 }

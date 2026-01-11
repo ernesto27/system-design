@@ -10,6 +10,7 @@ import (
 
 	"browser/css"
 	"browser/dom"
+	"browser/js"
 	"browser/layout"
 	"browser/render"
 )
@@ -118,6 +119,20 @@ func loadPage(browser *render.Browser, req render.NavigationRequest) {
 		browser.SetStylesheet(stylesheet)
 		layoutTree := layout.BuildLayoutTree(document, stylesheet)
 		layout.ComputeLayout(layoutTree, 800)
+
+		// Execute JavaScript
+		fmt.Println("Executing JavaScript...")
+		jsRuntime := js.NewJSRuntime(document, func() {
+			fmt.Println("DOM changed, would reflow here")
+		})
+
+		browser.SetJSClickHandler(jsRuntime.DispatchClick)
+
+		scripts := js.FindScripts(document)
+		for i, script := range scripts {
+			fmt.Printf("Running script %d...\n", i+1)
+			jsRuntime.Execute(script)
+		}
 
 		browser.SetCurrentURL(pageURL)
 		browser.SetContent(layoutTree)

@@ -25,7 +25,7 @@ func convertNodeWithContext(n *html.Node, preserveWhitespace bool) *Node {
 
 	// Check if this element preserves whitespace
 	isPreserving := preserveWhitespace
-	if n.Type == html.ElementNode && n.Data == "pre" {
+	if n.Type == html.ElementNode && (n.Data == "pre" || n.Data == "script" || n.Data == "style") {
 		isPreserving = true
 	}
 
