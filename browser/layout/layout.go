@@ -119,7 +119,7 @@ func BuildBox(node *dom.Node, parent *LayoutBox, stylesheet css.Stylesheet) *Lay
 		}
 	case dom.Text:
 		box.Type = TextBox
-		box.Text = node.Text
+		box.Text = wrapInlineQuotes(node)
 	}
 
 	for _, child := range node.Children {
@@ -280,4 +280,13 @@ func mergeStyles(base *css.Style, inline *css.Style) {
 	if len(inline.FontFamily) > 0 {
 		base.FontFamily = inline.FontFamily
 	}
+}
+
+// wrapInlineQuotes adds quotation marks for <q> elements
+func wrapInlineQuotes(node *dom.Node) string {
+	text := node.Text
+	if node.Parent != nil && node.Parent.TagName == dom.TagQ {
+		text = "\u201C" + text + "\u201D"
+	}
+	return text
 }

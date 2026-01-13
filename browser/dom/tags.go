@@ -65,4 +65,6 @@ const (
 	TagSelect   = "select"
 	TagOption   = "option"
 	TagLabel    = "label"
+
+	TagQ = "q"
 )
