@@ -20,7 +20,7 @@
 
 ### Element Modification
 - [x] `element.innerHTML` getter - Get HTML content as string
-- [ ] `element.innerHTML` setter - Parse and replace children
+- [x] `element.innerHTML` setter - Parse and replace children
 - [ ] `element.innerText` getter/setter - Text without HTML tags
 - [ ] `element.appendChild(child)` - Add child at end
 - [ ] `element.removeChild(child)` - Remove a child

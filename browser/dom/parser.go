@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"golang.org/x/net/html"
+	"golang.org/x/net/html/atom"
 )
 
 func Parse(r io.Reader) *Node {
@@ -97,6 +98,30 @@ func normalizeWhitespace(s string) string {
 		result = result + " "
 	}
 
+	return result
+}
+
+// ParseFragment parses an HTML fragment (not a full document)
+// Returns a slice of nodes that were parsed
+func ParseFragment(htmlContent string) []*Node {
+	context := &html.Node{
+		Type:     html.ElementNode,
+		Data:     "div",
+		DataAtom: atom.Div,
+	}
+
+	nodes, err := html.ParseFragment(strings.NewReader(htmlContent), context)
+	if err != nil {
+		return nil
+	}
+
+	var result []*Node
+	for _, n := range nodes {
+		converted := convertNode(n)
+		if converted != nil {
+			result = append(result, converted)
+		}
+	}
 	return result
 }
 

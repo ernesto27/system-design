@@ -148,10 +148,16 @@ func (rt *JSRuntime) wrapElement(node *dom.Node) goja.Value {
 		return goja.Undefined()
 	})
 
-	obj.DefineAccessorProperty("innerHTML", rt.vm.ToValue(func(call goja.FunctionCall) goja.Value {
-		return rt.vm.ToValue(elem.GetInnerHTML())
-	}),
-		goja.Undefined(),
+	obj.DefineAccessorProperty("innerHTML",
+		rt.vm.ToValue(func(call goja.FunctionCall) goja.Value {
+			return rt.vm.ToValue(elem.GetInnerHTML())
+		}),
+		rt.vm.ToValue(func(call goja.FunctionCall) goja.Value {
+			if len(call.Arguments) > 0 {
+				elem.SetInnerHTML(call.Arguments[0].String())
+			}
+			return goja.Undefined()
+		}),
 		goja.FLAG_FALSE, goja.FLAG_TRUE)
 
 	return obj

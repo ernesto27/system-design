@@ -47,27 +47,31 @@
         console.log("6. parentElement:", btn.parentElement.tagName);
 
         // Test 7: innerHTML getter
-        console.log("7. innerHTML:", greeting.innerHTML);
+        console.log("7. innerHTML getter:", greeting.innerHTML);
+
+        // Test 8: innerHTML setter
+        output.innerHTML = "<strong>Set via innerHTML!</strong>";
+        console.log("8. innerHTML setter:", output.innerHTML);
 
         console.log("=== All Tests Passed ===");
 
-        // Test 8: addEventListener
+        // Test 9: addEventListener
         var clickCount = 0;
         btn.addEventListener("click", function(event) {
             clickCount = clickCount + 1;
-            console.log("8. Button clicked!", clickCount, "times");
+            console.log("9. Button clicked!", clickCount, "times");
             output.textContent = "Clicked " + clickCount + " times!";
         });
 
         console.log("Click the button to test events!");
 
-        // Test 9: alert on button click
+        // Test 10: alert on button click
         var alertBtn = document.getElementById("alertBtn");
         alertBtn.addEventListener("click", function() {
             alert("Hello from JavaScript!");
         });
 
-        // Test 10: alert on page load
+        // Test 11: alert on page load
         alert("Page loaded! JS is working.");
     </script>
 </body>

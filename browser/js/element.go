@@ -58,6 +58,20 @@ func (e *Element) GetInnerHTML() string {
 	return result.String()
 }
 
+func (e *Element) SetInnerHTML(htmlContent string) {
+	e.node.Children = []*dom.Node{}
+
+	parsed := dom.ParseFragment(htmlContent)
+
+	for _, child := range parsed {
+		e.node.AppendChild(child)
+	}
+
+	if e.rt != nil && e.rt.onReflow != nil {
+		e.rt.onReflow()
+	}
+}
+
 // serializeNode converts a DOM node back to HTML string
 func serializeNode(sb *strings.Builder, node *dom.Node) {
 	// Handle text nodes - just write the text

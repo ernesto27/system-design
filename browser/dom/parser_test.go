@@ -378,3 +378,97 @@ func TestParse(t *testing.T) {
 		})
 	}
 }
+
+func TestParseFragment(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    string
+		expected []*Node
+	}{
+		{
+			name:  "single text node",
+			input: "Hello World",
+			expected: []*Node{
+				NewText("Hello World"),
+			},
+		},
+		{
+			name:  "single element",
+			input: "<p>Hello</p>",
+			expected: func() []*Node {
+				p := NewElement("p", nil)
+				p.AppendChild(NewText("Hello"))
+				return []*Node{p}
+			}(),
+		},
+		{
+			name:  "multiple elements",
+			input: "<p>First</p><p>Second</p>",
+			expected: func() []*Node {
+				p1 := NewElement("p", nil)
+				p1.AppendChild(NewText("First"))
+				p2 := NewElement("p", nil)
+				p2.AppendChild(NewText("Second"))
+				return []*Node{p1, p2}
+			}(),
+		},
+		{
+			name:  "nested elements",
+			input: "<div><span>Nested</span></div>",
+			expected: func() []*Node {
+				div := NewElement("div", nil)
+				span := NewElement("span", nil)
+				span.AppendChild(NewText("Nested"))
+				div.AppendChild(span)
+				return []*Node{div}
+			}(),
+		},
+		{
+			name:  "element with attributes",
+			input: `<a href="https://example.com">Link</a>`,
+			expected: func() []*Node {
+				a := NewElement("a", map[string]string{"href": "https://example.com"})
+				a.AppendChild(NewText("Link"))
+				return []*Node{a}
+			}(),
+		},
+		{
+			name:  "mixed text and elements",
+			input: "Start <strong>bold</strong> end",
+			expected: func() []*Node {
+				text1 := NewText("Start ")
+				strong := NewElement("strong", nil)
+				strong.AppendChild(NewText("bold"))
+				text2 := NewText(" end")
+				return []*Node{text1, strong, text2}
+			}(),
+		},
+		{
+			name:     "empty string",
+			input:    "",
+			expected: nil,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := ParseFragment(tt.input)
+
+			if tt.expected == nil {
+				assert.Nil(t, result)
+				return
+			}
+
+			assert.Equal(t, len(tt.expected), len(result), "number of nodes")
+
+			for i := range tt.expected {
+				if !nodeEqual(result[i], tt.expected[i]) {
+					diff := nodeDiff(result[i], tt.expected[i], fmt.Sprintf("node[%d]", i))
+					assert.Fail(t, "ParseFragment() node mismatch",
+						"%s\n\nGot:\n%s\nWant:\n%s",
+						diff, printTree(result[i], ""), printTree(tt.expected[i], ""))
+				}
+			}
+		})
+	}
+}
