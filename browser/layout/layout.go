@@ -280,6 +280,10 @@ func mergeStyles(base *css.Style, inline *css.Style) {
 	if len(inline.FontFamily) > 0 {
 		base.FontFamily = inline.FontFamily
 	}
+
+	if inline.BorderRadius > 0 {
+		base.BorderRadius = inline.BorderRadius
+	}
 }
 
 // wrapInlineQuotes adds quotation marks for <q> elements

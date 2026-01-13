@@ -23,7 +23,7 @@
 - [ ] `<var>` - variable
 - [ ] `<abbr>` - abbreviation
 - [ ] `<cite>` - citation
-- [ ] `<q>` - inline quotation
+- [x] `<q>` - inline quotation
 - [ ] `<mark>` - highlighted text
 - [ ] `<sub>` - subscript
 - [ ] `<sup>` - superscript
@@ -140,7 +140,7 @@
 - [ ] `background-repeat` - repeat/no-repeat
 
 ### Border
-- [ ] `border-radius` - rounded corners
+- [x] `border-radius` - rounded corners
 - [ ] `border-top-left-radius` - individual corner
 - [ ] `border-top-right-radius` - individual corner
 - [ ] `border-bottom-left-radius` - individual corner

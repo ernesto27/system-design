@@ -54,6 +54,7 @@ type Style struct {
 	BorderRightStyle  string
 	BorderBottomStyle string
 	BorderLeftStyle   string
+	BorderRadius      float64
 }
 
 func DefaultStyle() Style {
@@ -465,6 +466,8 @@ func applyDeclaration(style *Style, property, value string) {
 		if h := ParseSize(value); h > 0 {
 			style.MaxHeight = h
 		}
+	case "border-radius":
+		style.BorderRadius = ParseSize(value)
 	}
 }
 

@@ -120,7 +120,8 @@ type DisplayCommand any
 
 type DrawRect struct {
 	layout.Rect
-	Color color.Color
+	Color        color.Color
+	CornerRadius float64
 }
 
 type DrawText struct {
@@ -228,8 +229,9 @@ func paintLayoutBoxWithInputs(box *layout.LayoutBox, commands *[]DisplayCommand,
 	// Draw background if set
 	if box.Style.BackgroundColor != nil && !isHidden {
 		*commands = append(*commands, DrawRect{
-			Rect:  box.Rect,
-			Color: applyOpacity(box.Style.BackgroundColor, currentStyle.Opacity),
+			Rect:         box.Rect,
+			Color:        applyOpacity(box.Style.BackgroundColor, currentStyle.Opacity),
+			CornerRadius: box.Style.BorderRadius,
 		})
 	}
 

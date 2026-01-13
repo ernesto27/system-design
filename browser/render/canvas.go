@@ -218,6 +218,7 @@ func RenderToCanvas(commands []DisplayCommand, baseURL string, useCache bool) []
 			rect := canvas.NewRectangle(c.Color)
 			rect.Resize(fyne.NewSize(float32(c.Width), float32(c.Height)))
 			rect.Move(fyne.NewPos(float32(c.X), float32(c.Y)))
+			rect.CornerRadius = float32(c.CornerRadius)
 			objects = append(objects, rect)
 
 		case DrawText:
