@@ -50,6 +50,47 @@ func (e *Element) SetTextContent(text string) {
 	}
 }
 
+func (e *Element) GetInnerHTML() string {
+	var result strings.Builder
+	for _, child := range e.node.Children {
+		serializeNode(&result, child)
+	}
+	return result.String()
+}
+
+// serializeNode converts a DOM node back to HTML string
+func serializeNode(sb *strings.Builder, node *dom.Node) {
+	// Handle text nodes - just write the text
+	if node.Type == dom.Text {
+		sb.WriteString(node.Text)
+		return
+	}
+
+	// Handle element nodes - write opening tag
+	sb.WriteString("<")
+	sb.WriteString(node.TagName)
+
+	// Write attributes
+	for name, value := range node.Attributes {
+		sb.WriteString(" ")
+		sb.WriteString(name)
+		sb.WriteString(`="`)
+		sb.WriteString(value)
+		sb.WriteString(`"`)
+	}
+	sb.WriteString(">")
+
+	// Recursively serialize children
+	for _, child := range node.Children {
+		serializeNode(sb, child)
+	}
+
+	// Write closing tag
+	sb.WriteString("</")
+	sb.WriteString(node.TagName)
+	sb.WriteString(">")
+}
+
 func collectText(node *dom.Node) string {
 	if node == nil {
 		return ""

@@ -19,7 +19,7 @@
 - [ ] `document.createTextNode(text)` - Create text nodes
 
 ### Element Modification
-- [ ] `element.innerHTML` getter - Get HTML content as string
+- [x] `element.innerHTML` getter - Get HTML content as string
 - [ ] `element.innerHTML` setter - Parse and replace children
 - [ ] `element.innerText` getter/setter - Text without HTML tags
 - [ ] `element.appendChild(child)` - Add child at end

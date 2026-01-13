@@ -121,7 +121,7 @@
 - [ ] `overflow-y` - vertical overflow
 
 ### Typography
-- [ ] `font-family` - font stack
+- [x] `font-family` - font stack
 - [ ] `line-height` - line spacing
 - [ ] `letter-spacing` - character spacing
 - [ ] `word-spacing` - word spacing

@@ -12,7 +12,7 @@
 <body>
     <h1>JavaScript Test Page</h1>
 
-    <div id="greeting" class="box">Hello from HTML!</div>
+    <div id="greeting" class="box">Hello from HTML dd!</div>
 
     <div id="output" class="box">Output will appear here</div>
 
@@ -46,25 +46,28 @@
         var btn = document.getElementById("btn");
         console.log("6. parentElement:", btn.parentElement.tagName);
 
+        // Test 7: innerHTML getter
+        console.log("7. innerHTML:", greeting.innerHTML);
+
         console.log("=== All Tests Passed ===");
 
-        // Test 7: addEventListener
+        // Test 8: addEventListener
         var clickCount = 0;
         btn.addEventListener("click", function(event) {
             clickCount = clickCount + 1;
-            console.log("7. Button clicked!", clickCount, "times");
+            console.log("8. Button clicked!", clickCount, "times");
             output.textContent = "Clicked " + clickCount + " times!";
         });
 
         console.log("Click the button to test events!");
 
-        // Test 8: alert on button click
+        // Test 9: alert on button click
         var alertBtn = document.getElementById("alertBtn");
         alertBtn.addEventListener("click", function() {
             alert("Hello from JavaScript!");
         });
 
-        // Test 9: alert on page load
+        // Test 10: alert on page load
         alert("Page loaded! JS is working.");
     </script>
 </body>
