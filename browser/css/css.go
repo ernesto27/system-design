@@ -39,6 +39,7 @@ type Style struct {
 	MaxWidth        float64
 	MinHeight       float64
 	MaxHeight       float64
+	FontFamily      []string
 
 	// Border properties
 	BorderTopWidth    float64
@@ -322,6 +323,8 @@ func applyDeclaration(style *Style, property, value string) {
 		style.Bold = (value == "bold")
 	case "font-style":
 		style.Italic = (value == "italic")
+	case "font-family":
+		style.FontFamily = ParseFontFamily(value)
 	case "margin":
 		m := ParseSize(value)
 		style.MarginTop = m
@@ -463,4 +466,44 @@ func applyDeclaration(style *Style, property, value string) {
 			style.MaxHeight = h
 		}
 	}
+}
+
+// ParseFontFamily parses a CSS font-family value into a slice of font names
+// Example: "Helvetica Neue", Arial, sans-serif → ["Helvetica Neue", "Arial", "sans-serif"]
+func ParseFontFamily(value string) []string {
+	var fonts []string
+	var current strings.Builder
+	inQuote := false
+	quoteChar := byte(0)
+
+	for i := 0; i < len(value); i++ {
+		c := value[i]
+
+		if !inQuote && (c == '"' || c == '\'') {
+			// Start of quoted font name
+			inQuote = true
+			quoteChar = c
+		} else if inQuote && c == quoteChar {
+			// End of quoted font name
+			inQuote = false
+			quoteChar = 0
+		} else if !inQuote && c == ',' {
+			// Separator - save current font
+			font := strings.TrimSpace(current.String())
+			if font != "" {
+				fonts = append(fonts, font)
+			}
+			current.Reset()
+		} else {
+			current.WriteByte(c)
+		}
+	}
+
+	// Don't forget the last font
+	font := strings.TrimSpace(current.String())
+	if font != "" {
+		fonts = append(fonts, font)
+	}
+
+	return fonts
 }

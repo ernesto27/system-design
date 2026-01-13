@@ -71,3 +71,18 @@ h1 {
     color: white;
     z-index: 3;
 }
+
+.mono {
+    font-family: "Courier New", Consolas, monospace;
+}
+
+.code-block {
+    font-family: Monaco, Menlo, monospace;
+    background-color: #282c34;
+    color: #abb2bf;
+    padding: 10px;
+}
+
+.sans {
+    font-family: "Helvetica Neue", Arial, sans-serif;
+}

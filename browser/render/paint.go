@@ -30,6 +30,7 @@ type TextStyle struct {
 	Bold           bool
 	Italic         bool
 	Monospace      bool
+	FontFamily     []string
 	TextDecoration string
 	TextTransform  string
 	Opacity        float64
@@ -204,6 +205,11 @@ func paintLayoutBoxWithInputs(box *layout.LayoutBox, commands *[]DisplayCommand,
 	if box.Style.Italic {
 		currentStyle.Italic = true
 	}
+
+	if len(box.Style.FontFamily) > 0 {
+		currentStyle.FontFamily = box.Style.FontFamily
+	}
+
 	if box.Style.TextDecoration != "" {
 		currentStyle.TextDecoration = box.Style.TextDecoration
 	}
@@ -351,8 +357,11 @@ func paintLayoutBoxWithInputs(box *layout.LayoutBox, commands *[]DisplayCommand,
 			for _, line := range lines {
 				*commands = append(*commands, DrawText{
 					Text: line, X: box.Rect.X, Y: y, Width: box.Rect.Width,
-					Size: currentStyle.Size, Color: applyOpacity(currentStyle.Color, currentStyle.Opacity),
-					Bold: currentStyle.Bold, Italic: currentStyle.Italic, Monospace: currentStyle.Monospace,
+					Size:          currentStyle.Size,
+					Color:         applyOpacity(currentStyle.Color, currentStyle.Opacity),
+					Bold:          currentStyle.Bold,
+					Italic:        currentStyle.Italic,
+					Monospace:     currentStyle.Monospace || fontStackHasMonospace(currentStyle.FontFamily),
 					Underline:     currentStyle.TextDecoration == "underline",
 					Strikethrough: currentStyle.TextDecoration == "line-through",
 				})
@@ -361,8 +370,11 @@ func paintLayoutBoxWithInputs(box *layout.LayoutBox, commands *[]DisplayCommand,
 		} else {
 			*commands = append(*commands, DrawText{
 				Text: text, X: box.Rect.X, Y: box.Rect.Y, Width: box.Rect.Width,
-				Size: currentStyle.Size, Color: applyOpacity(currentStyle.Color, currentStyle.Opacity),
-				Bold: currentStyle.Bold, Italic: currentStyle.Italic, Monospace: currentStyle.Monospace,
+				Size:          currentStyle.Size,
+				Color:         applyOpacity(currentStyle.Color, currentStyle.Opacity),
+				Bold:          currentStyle.Bold,
+				Italic:        currentStyle.Italic,
+				Monospace:     currentStyle.Monospace || fontStackHasMonospace(currentStyle.FontFamily),
 				Underline:     currentStyle.TextDecoration == "underline",
 				Strikethrough: currentStyle.TextDecoration == "line-through",
 			})
@@ -625,4 +637,16 @@ func isValidEmail(value string) bool {
 		return false
 	}
 	return true
+}
+
+// fontStackHasMonospace checks if any font in the stack is a monospace font
+func fontStackHasMonospace(fonts []string) bool {
+	for _, font := range fonts {
+		f := strings.ToLower(font)
+		if f == "monospace" || f == "courier" || f == "courier new" ||
+			f == "consolas" || f == "monaco" || f == "menlo" {
+			return true
+		}
+	}
+	return false
 }
