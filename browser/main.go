@@ -123,10 +123,11 @@ func loadPage(browser *render.Browser, req render.NavigationRequest) {
 		// Execute JavaScript
 		fmt.Println("Executing JavaScript...")
 		jsRuntime := js.NewJSRuntime(document, func() {
-			fmt.Println("DOM changed, would reflow here")
+			browser.Reflow(browser.Width)
 		})
 
 		jsRuntime.SetAlertHandler(browser.ShowAlert)
+		jsRuntime.SetConfirmHandler(browser.ShowConfirm)
 		browser.SetJSClickHandler(jsRuntime.DispatchClick)
 
 		scripts := js.FindScripts(document)

@@ -18,6 +18,9 @@
 
     <button id="btn">Click Me</button>
     <button id="alertBtn">Show Alert</button>
+    <button id="confirmBtn">Show Confirm</button>
+
+    <div id="confirmResult" class="box">Confirm result will appear here</div>
 
     <script>
         console.log("=== JavaScript Test ===");
@@ -71,7 +74,19 @@
             alert("Hello from JavaScript!");
         });
 
-        // Test 11: alert on page load
+        // Test 11: confirm dialog
+        var confirmBtn = document.getElementById("confirmBtn");
+        var confirmResult = document.getElementById("confirmResult");
+        confirmBtn.addEventListener("click", function() {
+            var answer = confirm("Do you like this browser?");
+            if (answer) {
+                confirmResult.innerHTML = "You clicked OK!";
+            } else {
+                confirmResult.innerHTML = "You clicked Cancel!";
+            }
+        });
+
+        // Test 12: alert on page load
         alert("Page loaded! JS is working.");
     </script>
 </body>

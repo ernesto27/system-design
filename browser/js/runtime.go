@@ -9,11 +9,12 @@ import (
 )
 
 type JSRuntime struct {
-	vm       *goja.Runtime
-	document *dom.Node
-	onReflow func()
-	onAlert  func(message string)
-	Events   *EventManager
+	vm        *goja.Runtime
+	document  *dom.Node
+	onReflow  func()
+	onAlert   func(message string)
+	Events    *EventManager
+	onConfirm func(string) bool
 }
 
 func NewJSRuntime(document *dom.Node, onReflow func()) *JSRuntime {
@@ -53,6 +54,20 @@ func (rt *JSRuntime) setupGlobals() {
 		}
 
 		return goja.Undefined()
+	})
+
+	rt.vm.Set("confirm", func(call goja.FunctionCall) goja.Value {
+		message := ""
+		if len(call.Arguments) > 0 {
+			message = call.Arguments[0].String()
+		}
+
+		result := false
+		if rt.onConfirm != nil {
+			result = rt.onConfirm(message)
+		}
+
+		return rt.vm.ToValue(result)
 	})
 
 }
@@ -144,7 +159,7 @@ func (rt *JSRuntime) wrapElement(node *dom.Node) goja.Value {
 			return goja.Undefined()
 		}
 
-		rt.Events.AddEventListener(eventType, callback)
+		rt.Events.AddEventListener(node, eventType, callback)
 		return goja.Undefined()
 	})
 
@@ -169,4 +184,8 @@ func (rt *JSRuntime) DispatchClick(node *dom.Node) {
 
 func (rt *JSRuntime) SetAlertHandler(handler func(message string)) {
 	rt.onAlert = handler
+}
+
+func (rt *JSRuntime) SetConfirmHandler(handler func(string) bool) {
+	rt.onConfirm = handler
 }

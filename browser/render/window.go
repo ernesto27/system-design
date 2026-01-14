@@ -228,7 +228,8 @@ func (b *Browser) handleClick(x, y float64) {
 	fmt.Printf("  Hit: %+v\n", hit.Text)
 
 	if b.onJSClick != nil && hit.Node != nil {
-		b.onJSClick(hit.Node)
+		// Run JS in goroutine so dialogs (confirm/prompt) don't block UI
+		go b.onJSClick(hit.Node)
 	}
 
 	if hit.Type == layout.InputBox && hit.Node != nil {
@@ -767,6 +768,18 @@ func (b *Browser) collectInputs(node *dom.Node, data url.Values) {
 	for _, child := range node.Children {
 		b.collectInputs(child, data)
 	}
+}
+
+func (b *Browser) ShowConfirm(message string) bool {
+	result := make(chan bool)
+
+	fyne.Do(func() {
+		dialog.ShowConfirm("Confirm", message, func(ok bool) {
+			result <- ok
+		}, b.Window)
+	})
+
+	return <-result
 }
 
 // isNodeDisabled checks if a DOM node has the disabled attribute

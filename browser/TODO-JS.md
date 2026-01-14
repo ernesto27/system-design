@@ -100,8 +100,8 @@
 - [ ] `clearInterval(id)` - Cancel interval
 
 ### Dialogs
-- [x] `alert(message)` - Show alert dialog - missing block js
-- [ ] `confirm(message)` - Yes/No dialog
+- [x] `alert(message)` - Show alert dialog (non-blocking)
+- [x] `confirm(message)` - Yes/No dialog (blocking, returns boolean)
 - [ ] `prompt(message)` - Input dialog
 
 ### Navigation
