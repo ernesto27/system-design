@@ -86,10 +86,10 @@ func matchesSelector(node *dom.Node, selector string) bool {
 	switch {
 	case strings.HasPrefix(selector, "#"):
 		id := strings.TrimPrefix(selector, "#")
-		return id != "" && node.Attributes["id"] == id
+		return id != "" && node.Attributes != nil && node.Attributes["id"] == id
 	case strings.HasPrefix(selector, "."):
 		className := strings.TrimPrefix(selector, ".")
-		return className != "" && hasClass(node.Attributes["class"], className)
+		return className != "" && node.Attributes != nil && hasClass(node.Attributes["class"], className)
 	default:
 		return strings.EqualFold(node.TagName, selector)
 	}
