@@ -57,7 +57,20 @@ Current test coverage analysis for the browser project.
 
 ---
 
-## Render Package (0% coverage - CRITICAL)
+## Render Package
+
+### `canvas.go` - PARTIAL
+- [x] `TestIsLocalFile` - Local file detection (10 test cases)
+  - file:// protocol
+  - Absolute paths
+  - HTTP URLs (should return false)
+  - Protocol-relative URLs (should return false)
+- [x] `TestToLocalPath` - file:// URL to path conversion (5 test cases)
+- [x] `TestResolveImageURL` - URL resolution (8 test cases)
+  - HTTP/HTTPS absolute URLs
+  - Protocol-relative URLs
+  - Local file paths
+  - Relative paths with base URL
 
 ### `display.go`
 - [ ] `TestBuildDisplayList` - Creates drawing commands
@@ -74,7 +87,6 @@ Current test coverage analysis for the browser project.
 ### `utils.go`
 - [ ] `TestApplyOpacity` - Opacity calculation
 - [ ] `TestIsValidEmail` - Email validation
-- [ ] `TestResolveImageURL` - URL resolution
 
 ---
 
