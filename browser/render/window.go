@@ -62,7 +62,8 @@ type Browser struct {
 func NewBrowser(width, height float32) *Browser {
 	a := app.New()
 	w := a.NewWindow("Go Browser")
-	w.Resize(fyne.NewSize(width, height))
+	// Maximize window to fill screen (Fyne clamps to screen bounds)
+	w.Resize(fyne.NewSize(9999, 9999))
 
 	// Set up accurate text measurement using Fyne
 	layout.TextMeasurer = func(text string, fontSize float64, bold bool, italic bool) float64 {

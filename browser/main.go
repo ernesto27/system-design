@@ -135,7 +135,7 @@ func loadPage(browser *render.Browser, req render.NavigationRequest) {
 		browser.SetStylesheet(stylesheet)
 		browser.SetDocument(document)
 		layoutTree := layout.BuildLayoutTree(document, stylesheet)
-		layout.ComputeLayout(layoutTree, 800)
+		layout.ComputeLayout(layoutTree, float64(browser.Width))
 
 		// Execute JavaScript
 		fmt.Println("Executing JavaScript...")
