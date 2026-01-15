@@ -235,6 +235,13 @@ func paintLayoutBoxWithInputs(box *layout.LayoutBox, commands *[]DisplayCommand,
 		})
 	}
 
+	if box.Style.BackgroundImage != "" && !isHidden {
+		*commands = append(*commands, DrawImage{
+			Rect: box.Rect,
+			URL:  box.Style.BackgroundImage,
+		})
+	}
+
 	// Draw borders if set
 	if !isHidden {
 		if box.Style.BorderTopWidth > 0 && box.Style.BorderTopStyle != "none" && box.Style.BorderTopColor != nil {

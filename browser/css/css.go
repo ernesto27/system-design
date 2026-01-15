@@ -9,6 +9,7 @@ import (
 type Style struct {
 	Color           color.Color
 	BackgroundColor color.Color
+	BackgroundImage string
 	FontSize        float64
 	Bold            bool
 	Italic          bool
@@ -315,6 +316,15 @@ func applyDeclaration(style *Style, property, value string) {
 	case "background-color":
 		if c := ParseColor(value); c != nil {
 			style.BackgroundColor = c
+		}
+	case "background-image":
+		if strings.HasPrefix(value, "url(") && strings.HasSuffix(value, ")") {
+			url := value[4 : len(value)-1]
+			url = strings.Trim(url, `"'`)
+			url = strings.TrimSpace(url)
+			style.BackgroundImage = url
+		} else if value == "none" {
+			style.BackgroundImage = ""
 		}
 	case "font-size":
 		if size := ParseSize(value); size > 0 {

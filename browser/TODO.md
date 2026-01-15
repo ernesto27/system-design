@@ -134,7 +134,8 @@
 
 ### Background
 - [ ] `background` - shorthand
-- [ ] `background-image` - image/gradient
+- [x] `background-image` - url() images (gradients not supported)
+- [ ] `background-image` local files - support file:// and relative paths for local HTML files
 - [ ] `background-position` - position
 - [ ] `background-size` - cover/contain/size
 - [ ] `background-repeat` - repeat/no-repeat

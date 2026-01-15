@@ -8,7 +8,7 @@
 - [x] **Step 4:** Implement event system (addEventListener)
 - [ ] **Step 5:** Add DOM mutation (innerHTML, appendChild)
 - [x] **Step 6:** Execute script tags in rendering pipeline
-- [ ] **Step 7:** Trigger reflow on DOM changes
+- [x] **Step 7:** Trigger reflow on DOM changes
 
 ---
 

@@ -284,6 +284,10 @@ func mergeStyles(base *css.Style, inline *css.Style) {
 	if inline.BorderRadius > 0 {
 		base.BorderRadius = inline.BorderRadius
 	}
+
+	if inline.BackgroundImage != "" {
+		base.BackgroundImage = inline.BackgroundImage
+	}
 }
 
 // wrapInlineQuotes adds quotation marks for <q> elements
