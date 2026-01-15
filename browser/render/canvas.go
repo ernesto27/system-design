@@ -8,6 +8,7 @@ import (
 	_ "image/jpeg"
 	_ "image/png"
 	"net/http"
+	"os"
 	"strings"
 	"sync"
 
@@ -550,22 +551,67 @@ func createImageFromCache(src, baseURL string, width, height float64) *canvas.Im
 }
 
 func resolveImageURL(src, baseURL string) string {
-	if len(src) > 4 && (src[:4] == "http" || src[:2] == "//") {
-		if src[:2] == "//" {
-			return "https:" + src
-		}
+	// Already absolute HTTP URL
+	if len(src) > 4 && src[:4] == "http" {
 		return src
 	}
 
+	// Protocol-relative URL (//example.com/img.png)
+	if len(src) > 2 && src[:2] == "//" {
+		return "https:" + src
+	}
+
+	// Local file - don't modify
+	if isLocalFile(src) {
+		return src
+	}
+
+	// No base URL - return as-is
 	if baseURL == "" {
 		return src
 	}
 
+	// Relative path from root
 	if len(src) > 0 && src[0] == '/' {
 		return baseURL + src
 	}
 
 	return baseURL + "/" + src
+}
+
+// isLocalFile checks if the path is a local file (file:// or absolute path)
+func isLocalFile(path string) bool {
+	if strings.HasPrefix(path, "file://") {
+		return true
+	}
+	// Absolute paths on Unix/Mac start with /
+	// But not // (which is protocol-relative URL)
+	if len(path) > 0 && path[0] == '/' && (len(path) < 2 || path[1] != '/') {
+		return true
+	}
+	return false
+}
+
+// toLocalPath converts a file:// URL to a filesystem path
+func toLocalPath(url string) string {
+	if strings.HasPrefix(url, "file://") {
+		return url[7:] // Remove "file://"
+	}
+	return url
+}
+
+// loadLocalImage loads an image from the local filesystem
+func loadLocalImage(path string) (image.Image, error) {
+	localPath := toLocalPath(path)
+
+	file, err := os.Open(localPath)
+	if err != nil {
+		return nil, err
+	}
+	defer file.Close()
+
+	img, _, err := image.Decode(file)
+	return img, err
 }
 
 func renderFileInput(x, y, width, height float64, filename string, isDisabled bool) []fyne.CanvasObject {
@@ -613,27 +659,39 @@ func renderFileInput(x, y, width, height float64, filename string, isDisabled bo
 
 	return objects
 }
-
 func fetchimageToCache(fullURL string) {
-	fmt.Println("Fetching image ", fullURL)
-	resp, err := http.Get(fullURL)
-	if err != nil {
-		fmt.Println("Error fetching image:", err)
-		return
-	}
-	defer resp.Body.Close()
+	fmt.Println("Fetching image:", fullURL)
 
-	img, _, err := image.Decode(resp.Body)
-	if err != nil {
-		fmt.Println("Error decoding image:", err)
-		return
+	var img image.Image
+	var err error
+
+	// Check if it's a local file
+	if isLocalFile(fullURL) {
+		img, err = loadLocalImage(fullURL)
+		if err != nil {
+			fmt.Println("Error loading local image:", err)
+			return
+		}
+	} else {
+		// Remote URL - fetch via HTTP
+		resp, err := http.Get(fullURL)
+		if err != nil {
+			fmt.Println("Error fetching image:", err)
+			return
+		}
+		defer resp.Body.Close()
+
+		img, _, err = image.Decode(resp.Body)
+		if err != nil {
+			fmt.Println("Error decoding image:", err)
+			return
+		}
 	}
 
 	imageCacheMu.Lock()
 	imageCache[fullURL] = img
 	imageCacheMu.Unlock()
 }
-
 func getImageOrPlaceholder(src, baseURL string, width, height float64, onLoad func()) *canvas.Image {
 	fullURL := resolveImageURL(src, baseURL)
 

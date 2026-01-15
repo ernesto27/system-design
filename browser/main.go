@@ -26,7 +26,7 @@ func main() {
 	startURL := os.Args[1]
 
 	// Create browser window
-	browser := render.NewBrowser(800, 600)
+	browser := render.NewBrowser(900, 600)
 
 	// When link is clicked or Go pressed, load the page
 	browser.OnNavigate = func(req render.NavigationRequest) {

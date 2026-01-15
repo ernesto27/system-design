@@ -40,6 +40,27 @@
 
     <hr>
 
+    <h2>Local Background Image Test</h2>
+    <p>Testing background-image with local files.</p>
+
+    <div style="width: 300px; height: 100px; background-image: url(sample-bg.png); border: 2px solid orange;">
+    </div>
+    <p>Box above: relative path (works in HTTP server AND your browser)</p>
+
+    <br>
+
+    <div style="width: 300px; height: 100px; background-image: url(file:///home/eponce/code/system-design/browser/testpage/sample-bg.png); border: 2px solid green;">
+    </div>
+    <p>Box above: file:// protocol (only works in YOUR browser, not Chrome via HTTP)</p>
+
+    <br>
+
+    <div style="width: 300px; height: 100px; background-image: url(/home/eponce/code/system-design/browser/testpage/sample-bg.png); border: 2px solid blue;">
+    </div>
+    <p>Box above: absolute path (only works in YOUR browser, not Chrome)</p>
+
+    <hr>
+
     <h2>Min-Width Test</h2>
    <!-- The width says 50px, but min-width says 200px. -->
    <!-- If successful, this red box will be 200px wide. -->
