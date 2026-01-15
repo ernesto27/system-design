@@ -2,6 +2,7 @@ package js
 
 import (
 	"browser/dom"
+	"fmt"
 
 	"github.com/dop251/goja"
 )
@@ -36,17 +37,28 @@ func (em *EventManager) AddEventListener(node *dom.Node, eventType string, callb
 
 // Dispatch fires all listeners for the given node and event type
 func (em *EventManager) Dispatch(rt *JSRuntime, node *dom.Node, eventType string) {
-	nodeListeners := em.listeners[node]
-	if nodeListeners == nil {
-		return
+	fmt.Printf("Dispatch: eventType=%s, node=%p, tagName=%s\n", eventType, node, node.TagName)
+	fmt.Printf("  Total registered nodes: %d\n", len(em.listeners))
+	for n := range em.listeners {
+		fmt.Printf("    Registered node: %p tagName=%s id=%s\n", n, n.TagName, n.Attributes["id"])
 	}
 
-	listeners := nodeListeners[eventType]
-	for _, l := range listeners {
-		event := rt.vm.NewObject()
-		event.Set("type", eventType)
-		event.Set("target", rt.wrapElement(node))
-
-		l.callback(goja.Undefined(), event)
+	// Bubble up through the DOM tree
+	current := node
+	for current != nil {
+		fmt.Printf("  Checking node: %p tagName=%s\n", current, current.TagName)
+		nodeListeners := em.listeners[current]
+		if nodeListeners != nil {
+			listeners := nodeListeners[eventType]
+			fmt.Printf("    Found %d listeners for %s\n", len(listeners), eventType)
+			for _, l := range listeners {
+				event := rt.vm.NewObject()
+				event.Set("type", eventType)
+				event.Set("target", rt.wrapElement(node)) // original target
+				event.Set("currentTarget", rt.wrapElement(current))
+				l.callback(goja.Undefined(), event)
+			}
+		}
+		current = current.Parent
 	}
 }

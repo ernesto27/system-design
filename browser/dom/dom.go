@@ -38,6 +38,16 @@ func (n *Node) AppendChild(child *Node) {
 	n.Children = append(n.Children, child)
 }
 
+func (n *Node) RemoveChild(child *Node) {
+	for i, c := range n.Children {
+		if c == child {
+			n.Children = append(n.Children[:i], n.Children[i+1:]...)
+			child.Parent = nil
+			return
+		}
+	}
+}
+
 func FindTitle(node *Node) string {
 	if node == nil {
 		return ""

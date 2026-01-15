@@ -214,6 +214,25 @@ func (rt *JSRuntime) wrapElement(node *dom.Node) goja.Value {
 		return call.Arguments[0]
 	})
 
+	obj.Set("removeChild", func(call goja.FunctionCall) goja.Value {
+		if len(call.Arguments) < 1 {
+			return goja.Undefined()
+		}
+
+		childNode := unwrapNode(rt, call.Arguments[0])
+		if childNode == nil {
+			return goja.Undefined()
+		}
+
+		node.RemoveChild(childNode)
+
+		if rt.onReflow != nil {
+			rt.onReflow()
+		}
+
+		return call.Arguments[0]
+	})
+
 	obj.Set("_elem", elem)
 
 	return obj

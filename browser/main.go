@@ -154,6 +154,10 @@ func loadPage(browser *render.Browser, req render.NavigationRequest) {
 		}
 
 		browser.SetCurrentURL(pageURL)
+
+		// Rebuild layout tree AFTER JavaScript has modified the DOM
+		layoutTree = layout.BuildLayoutTree(document, stylesheet)
+		layout.ComputeLayout(layoutTree, float64(browser.Width))
 		browser.SetContent(layoutTree)
 		browser.AddToHistory(pageURL)
 

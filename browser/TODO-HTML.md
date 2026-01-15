@@ -38,6 +38,9 @@
 - [x] `<ul>` - unordered list
 - [x] `<ol>` - ordered list
 - [x] `<li>` - list item
+- [x] `<dl>` - description list
+- [x] `<dt>` - description term
+- [x] `<dd>` - description details
 
 ### Tables
 - [x] `<table>` - table
@@ -81,11 +84,6 @@
 - [ ] `<sup>` - superscript
 - [ ] `<time>` - date/time
 - [ ] `<dfn>` - definition term
-
-### Lists
-- [ ] `<dl>` - description list
-- [ ] `<dt>` - description term
-- [ ] `<dd>` - description details
 
 ### Media
 - [ ] `<video>` - video player

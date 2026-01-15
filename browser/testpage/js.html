@@ -111,7 +111,24 @@
         body.appendChild(container);
         console.log("13. Created nested elements with createTextNode");
 
-        // Test 14: alert on page load
+        // Test 14: removeChild
+        console.log("=== Testing removeChild ===");
+        
+        var removeBtn = document.createElement("button");
+        removeBtn.textContent = "Remove Greeting";
+        removeBtn.setAttribute("id", "removeBtn");
+        body.appendChild(removeBtn);
+        
+        removeBtn.addEventListener("click", function() {
+            var greetingEl = document.getElementById("greeting");
+            if (greetingEl) {
+                greetingEl.parentElement.removeChild(greetingEl);
+                console.log("14. Removed greeting element");
+                output.textContent = "Greeting was removed!";
+            }
+        });
+
+        // Test 15: alert on page load
         alert("Page loaded! JS is working.");
     </script>
 </body>

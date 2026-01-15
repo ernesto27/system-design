@@ -15,15 +15,15 @@
 ## Step 5: DOM Mutation (Next Up)
 
 ### Element Creation
-- [ ] `document.createElement(tagName)` - Create new elements
-- [ ] `document.createTextNode(text)` - Create text nodes
+- [x] `document.createElement(tagName)` - Create new elements
+- [x] `document.createTextNode(text)` - Create text nodes
 
 ### Element Modification
 - [x] `element.innerHTML` getter - Get HTML content as string
 - [x] `element.innerHTML` setter - Parse and replace children
 - [ ] `element.innerText` getter/setter - Text without HTML tags
-- [ ] `element.appendChild(child)` - Add child at end
-- [ ] `element.removeChild(child)` - Remove a child
+- [x] `element.appendChild(child)` - Add child at end
+- [x] `element.removeChild(child)` - Remove a child
 - [ ] `element.insertBefore(new, ref)` - Insert before reference node
 - [ ] `element.replaceChild(new, old)` - Replace a child
 - [ ] `element.remove()` - Remove self from parent
