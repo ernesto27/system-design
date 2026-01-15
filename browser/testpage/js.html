@@ -86,7 +86,32 @@
             }
         });
 
-        // Test 12: alert on page load
+        // Test 12: createElement and appendChild
+        console.log("=== Testing createElement/appendChild ===");
+
+        var newDiv = document.createElement("div");
+        newDiv.textContent = "I was created by JavaScript!";
+        newDiv.setAttribute("class", "box");
+
+        var body = document.getElementById("greeting").parentElement;
+        body.appendChild(newDiv);
+        console.log("12. Created and appended new div");
+
+        // Test 13: appendChild with nested elements
+        var container = document.createElement("div");
+        container.setAttribute("class", "box");
+
+        var strong = document.createElement("strong");
+        strong.textContent = "Bold text";
+        container.appendChild(strong);
+
+        var text = document.createTextNode(" and normal text");
+        container.appendChild(text);
+
+        body.appendChild(container);
+        console.log("13. Created nested elements with createTextNode");
+
+        // Test 14: alert on page load
         alert("Page loaded! JS is working.");
     </script>
 </body>

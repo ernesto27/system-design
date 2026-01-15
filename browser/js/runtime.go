@@ -70,6 +70,26 @@ func (rt *JSRuntime) setupGlobals() {
 		return rt.vm.ToValue(result)
 	})
 
+	docObj.Set("createElement", func(call goja.FunctionCall) goja.Value {
+		if len(call.Arguments) < 1 {
+			return goja.Null()
+		}
+
+		tagName := call.Arguments[0].String()
+		newNode := dom.NewElement(tagName, nil)
+		return rt.wrapElement(newNode)
+	})
+
+	docObj.Set("createTextNode", func(call goja.FunctionCall) goja.Value {
+		text := ""
+		if len(call.Arguments) > 0 {
+			text = call.Arguments[0].String()
+		}
+
+		newNode := dom.NewText(text)
+		return rt.wrapElement(newNode)
+	})
+
 }
 
 func (rt *JSRuntime) Execute(code string) error {
@@ -174,6 +194,27 @@ func (rt *JSRuntime) wrapElement(node *dom.Node) goja.Value {
 			return goja.Undefined()
 		}),
 		goja.FLAG_FALSE, goja.FLAG_TRUE)
+
+	obj.Set("appendChild", func(call goja.FunctionCall) goja.Value {
+		if len(call.Arguments) < 1 {
+			return goja.Undefined()
+		}
+
+		childNode := unwrapNode(rt, call.Arguments[0])
+		if childNode == nil {
+			return goja.Undefined()
+		}
+
+		node.AppendChild(childNode)
+
+		if rt.onReflow != nil {
+			rt.onReflow()
+		}
+
+		return call.Arguments[0]
+	})
+
+	obj.Set("_elem", elem)
 
 	return obj
 }

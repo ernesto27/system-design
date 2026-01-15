@@ -120,3 +120,26 @@ func collectText(node *dom.Node) string {
 	}
 	return sb.String()
 }
+
+func unwrapNode(rt *JSRuntime, val goja.Value) *dom.Node {
+	if val == nil || goja.IsNull(val) || goja.IsUndefined(val) {
+		return nil
+	}
+
+	obj := val.ToObject(rt.vm)
+	if obj == nil {
+		return nil
+	}
+
+	elemval := obj.Get("_elem")
+	if elemval == nil || goja.IsUndefined(elemval) {
+		return nil
+	}
+
+	elem, ok := elemval.Export().(*Element)
+	if !ok || elem == nil {
+		return nil
+	}
+
+	return elem.node
+}

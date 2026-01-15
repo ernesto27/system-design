@@ -133,6 +133,7 @@ func loadPage(browser *render.Browser, req render.NavigationRequest) {
 		fmt.Println("Building layout...")
 		stylesheet := css.Parse(fullCSS.String())
 		browser.SetStylesheet(stylesheet)
+		browser.SetDocument(document)
 		layoutTree := layout.BuildLayoutTree(document, stylesheet)
 		layout.ComputeLayout(layoutTree, 800)
 
