@@ -9,13 +9,18 @@ import (
 	_ "image/png"
 	"net/http"
 	"strings"
+	"sync"
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/canvas"
 )
 
-// Image cache to avoid re-fetching on reflow
-var imageCache = make(map[string]image.Image)
+var (
+	imageCache      = make(map[string]image.Image)
+	imageCacheMu    sync.Mutex
+	pendingFeteches = make(map[string]bool)
+	pendingMu       sync.Mutex
+)
 
 // renderTextFieldObjects creates canvas objects for input/textarea fields
 func renderTextFieldObjects(x, y, width, height float64, value, placeholder string, isFocused, isDisabled, isValid bool) []fyne.CanvasObject {
@@ -208,7 +213,7 @@ func renderNumberInput(x, y, width, height float64, value, placeholder string, i
 	return objects
 }
 
-func RenderToCanvas(commands []DisplayCommand, baseURL string, useCache bool) []fyne.CanvasObject {
+func RenderToCanvas(commands []DisplayCommand, baseURL string, useCache bool, onImageLoad func()) []fyne.CanvasObject {
 	var objects []fyne.CanvasObject
 	var dropdownOverlays []fyne.CanvasObject // Collect dropdowns to render LAST (on top)
 
@@ -248,15 +253,17 @@ func RenderToCanvas(commands []DisplayCommand, baseURL string, useCache bool) []
 			}
 
 		case DrawImage:
-			var img *canvas.Image
-			if useCache {
-				img = createImageFromCache(c.URL, baseURL, c.Width, c.Height)
-			} else {
-				img = fetchAndCreateImage(c.URL, baseURL, c.Width, c.Height)
-			}
+			img := getImageOrPlaceholder(c.URL, baseURL, c.Width, c.Height, onImageLoad)
+
 			if img != nil {
 				img.Move(fyne.NewPos(float32(c.X), float32(c.Y)))
 				objects = append(objects, img)
+			} else {
+				// Not cached yet - show gray placeholder
+				placeholder := canvas.NewRectangle(color.RGBA{220, 220, 220, 255})
+				placeholder.Resize(fyne.NewSize(float32(c.Width), float32(c.Height)))
+				placeholder.Move(fyne.NewPos(float32(c.X), float32(c.Y)))
+				objects = append(objects, placeholder)
 			}
 
 		case DrawHR:
@@ -605,4 +612,62 @@ func renderFileInput(x, y, width, height float64, filename string, isDisabled bo
 	objects = append(objects, filenameText)
 
 	return objects
+}
+
+func fetchimageToCache(fullURL string) {
+	fmt.Println("Fetching image ", fullURL)
+	resp, err := http.Get(fullURL)
+	if err != nil {
+		fmt.Println("Error fetching image:", err)
+		return
+	}
+	defer resp.Body.Close()
+
+	img, _, err := image.Decode(resp.Body)
+	if err != nil {
+		fmt.Println("Error decoding image:", err)
+		return
+	}
+
+	imageCacheMu.Lock()
+	imageCache[fullURL] = img
+	imageCacheMu.Unlock()
+}
+
+func getImageOrPlaceholder(src, baseURL string, width, height float64, onLoad func()) *canvas.Image {
+	fullURL := resolveImageURL(src, baseURL)
+
+	imageCacheMu.Lock()
+	cached, found := imageCache[fullURL]
+	imageCacheMu.Unlock()
+
+	if found {
+		fyneImg := canvas.NewImageFromImage(cached)
+		fyneImg.Resize(fyne.NewSize(float32(width), float32(height)))
+		fyneImg.FillMode = canvas.ImageFillContain
+		return fyneImg
+	}
+
+	pendingMu.Lock()
+	alreadyFetching := pendingFeteches[fullURL]
+	if !alreadyFetching {
+		pendingFeteches[fullURL] = true
+	}
+	pendingMu.Unlock()
+
+	if !alreadyFetching {
+		go func() {
+			fetchimageToCache(fullURL)
+
+			pendingMu.Lock()
+			delete(pendingFeteches, fullURL)
+			pendingMu.Unlock()
+
+			if onLoad != nil {
+				fyne.Do(onLoad)
+			}
+		}()
+	}
+
+	return nil
 }

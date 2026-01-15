@@ -7,6 +7,8 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"strings"
+	"sync"
 
 	"browser/css"
 	"browser/dom"
@@ -94,28 +96,42 @@ func loadPage(browser *render.Browser, req render.NavigationRequest) {
 		browser.SetDocument(document)
 
 		fmt.Println("Fetching CSS...")
-		var fullCSS string
 
-		// 1. Fetch external stylesheets
+		// 1. Fetch external stylesheets in parallel
 		links := dom.FindStylesheetLinks(document)
-		for _, link := range links {
-			absURL := resolveURL(pageURL, link)
-			fmt.Println("Fetching CSS:", absURL)
-			cssResp, err := http.Get(absURL)
-			if err == nil {
-				data, _ := io.ReadAll(cssResp.Body)
-				fullCSS += string(data) + "\n"
-				cssResp.Body.Close()
-			} else {
-				fmt.Println("Failed to fetch CSS:", err)
-			}
+		cssResults := make([]string, len(links))
+		var wg sync.WaitGroup
+
+		for i, link := range links {
+			wg.Add(1)
+			go func(idx int, href string) {
+				defer wg.Done()
+				absURL := resolveURL(pageURL, href)
+				fmt.Println("Fetching CSS:", absURL)
+				cssResp, err := http.Get(absURL)
+				if err == nil {
+					data, _ := io.ReadAll(cssResp.Body)
+					cssResults[idx] = string(data)
+					cssResp.Body.Close()
+				} else {
+					fmt.Println("Failed to fetch CSS:", err)
+				}
+			}(i, link)
+		}
+
+		wg.Wait()
+
+		// Combine CSS in order
+		var fullCSS strings.Builder
+		for _, css := range cssResults {
+			fullCSS.WriteString(css + "\n")
 		}
 
 		// 2. Add internal <style> content
-		fullCSS += dom.FindStyleContent(document)
+		fullCSS.WriteString(dom.FindStyleContent(document))
 
 		fmt.Println("Building layout...")
-		stylesheet := css.Parse(fullCSS)
+		stylesheet := css.Parse(fullCSS.String())
 		browser.SetStylesheet(stylesheet)
 		layoutTree := layout.BuildLayoutTree(document, stylesheet)
 		layout.ComputeLayout(layoutTree, 800)

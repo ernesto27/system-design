@@ -165,8 +165,7 @@ func (b *Browser) SetContent(layoutTree *layout.LayoutBox) {
 		baseURL = b.currentURL.Scheme + "://" + b.currentURL.Host
 	}
 
-	objects := RenderToCanvas(commands, baseURL, false) // false = fetch fresh
-
+	objects := RenderToCanvas(commands, baseURL, false, b.triggerRepaint)
 	// content := container.NewWithoutLayout(objects...
 	// Create clickable container
 	clickable := NewClickableContainer(objects, func(x, y float32) {
@@ -498,7 +497,7 @@ func (b *Browser) Reflow(width float32) {
 	}
 
 	// Use cached images on reflow (don't re-fetch)
-	objects := RenderToCanvas(commands, baseURL, true) // true = use cache
+	objects := RenderToCanvas(commands, baseURL, true, b.triggerRepaint) // true = use cache
 
 	// UI updates must be on main thread
 	fyne.Do(func() {
@@ -686,7 +685,7 @@ func (b *Browser) repaint() {
 		baseURL = b.currentURL.Scheme + "://" + b.currentURL.Host
 	}
 
-	objects := RenderToCanvas(commands, baseURL, true)
+	objects := RenderToCanvas(commands, baseURL, true, nil)
 
 	fyne.Do(func() {
 		// Preserve scroll position
@@ -1063,4 +1062,8 @@ func (b *Browser) addmultipartFiles(writer *multipart.Writer, node *dom.Node) {
 
 func (b *Browser) SetJSClickHandler(handler func(node *dom.Node)) {
 	b.onJSClick = handler
+}
+
+func (b *Browser) triggerRepaint() {
+	b.repaint()
 }
