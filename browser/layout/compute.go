@@ -125,6 +125,11 @@ func computeBlockLayout(box *LayoutBox, containerWidth float64, startX, startY f
 		innerWidth = containerWidth - 30
 	}
 
+	if currentTag == dom.TagDD {
+		innerX = startX + 40
+		innerWidth = containerWidth - 40
+	}
+
 	// Default margins for block elements
 	switch currentTag {
 	case dom.TagP:

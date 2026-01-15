@@ -67,4 +67,8 @@ const (
 	TagLabel    = "label"
 
 	TagQ = "q"
+
+	TagDL = "dl"
+	TagDT = "dt"
+	TagDD = "dd"
 )

@@ -26,6 +26,9 @@ var blockElements = map[string]bool{
 	"pre":        true,
 	"form":       true,
 	"textarea":   true,
+	"dl":         true,
+	"dt":         true,
+	"dd":         true,
 }
 
 var skipElements = map[string]bool{
