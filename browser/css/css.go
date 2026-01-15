@@ -60,12 +60,10 @@ type Style struct {
 
 func DefaultStyle() Style {
 	return Style{
-		Color:           color.Black,
-		BackgroundColor: color.White,
-		FontSize:        16,
-		Bold:            false,
-		Italic:          false,
-		Opacity:         1.0,
+		FontSize: 16,
+		Bold:     false,
+		Italic:   false,
+		Opacity:  1.0,
 	}
 }
 

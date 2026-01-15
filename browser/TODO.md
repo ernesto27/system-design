@@ -11,6 +11,11 @@
 
 ---
 
+
+# BUGS 
+
+[] - Text overlapp with bold and normal text
+
 ## In Progress
 - [ ] Word wrapping for long text that exceeds container width
 
@@ -50,3 +55,4 @@
 - [ ] http://acid1.acidtests.org
 - [ ] http://acid2.acidtests.org
 - https://github.com/web-platform-tests/wpt
+  
