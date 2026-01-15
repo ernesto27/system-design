@@ -47,7 +47,7 @@ func findNodeById(node *dom.Node, id string) *dom.Node {
 		return nil
 	}
 
-	if node.Type == dom.Element && node.Attributes["id"] == id {
+	if node.Type == dom.Element && node.Attributes != nil && node.Attributes["id"] == id {
 		return node
 	}
 
