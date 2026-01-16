@@ -372,6 +372,36 @@
 
     <hr>
 
+    <h2>Box-Sizing Test</h2>
+    <p>Testing box-sizing: content-box (default) vs border-box.</p>
+
+    <p><strong>content-box (default):</strong> width/height = content only. Padding and border are added outside.</p>
+    <div style="width: 200px; height: 50px; padding: 20px; border: 5px solid red; background-color: lightcoral; box-sizing: content-box;">
+        200px + 40px padding + 10px border = 250px total
+    </div>
+
+    <br>
+
+    <p><strong>border-box:</strong> width/height = content + padding + border. Total size stays 200px.</p>
+    <div style="width: 200px; height: 50px; padding: 20px; border: 5px solid blue; background-color: lightblue; box-sizing: border-box;">
+        200px total (content shrinks to fit)
+    </div>
+
+    <br>
+
+    <p>Side-by-side comparison (both have width: 200px):</p>
+    <div style="background-color: #eee; padding: 10px;">
+        <div style="width: 200px; padding: 20px; border: 5px solid green; background-color: lightgreen; box-sizing: content-box;">
+            content-box: wider than 200px
+        </div>
+        <br>
+        <div style="width: 200px; padding: 20px; border: 5px solid purple; background-color: plum; box-sizing: border-box;">
+            border-box: exactly 200px
+        </div>
+    </div>
+
+    <hr>
+
     <h2>Border Radius Test</h2>
     <p>Testing rounded corners with border-radius.</p>
 

@@ -130,6 +130,32 @@
 - [ ] `rgb()` / `rgba()` - color functions
 - [ ] `hsl()` / `hsla()` - color functions
 
+### Selectors
+- [ ] Descendant selectors - `div p`, `ul li`
+- [ ] Child selectors - `ul > li`
+- [ ] Pseudo-classes - `:hover`, `:focus`, `:active`, `:first-child`, `:last-child`
+- [ ] Pseudo-elements - `::before`, `::after`
+- [ ] Attribute selectors - `[type="text"]`, `[href^="https"]`
+- [ ] Sibling selectors - `h1 + p`, `h1 ~ p`
+
+### Cascade & Specificity
+- [ ] Specificity calculation - proper weighting (inline > id > class > tag)
+- [ ] `!important` - override rules
+- [ ] Inheritance - properties inheriting from parent elements
+
+### Shorthand Expansion
+- [ ] `margin` multi-value - `margin: 10px 20px`, `margin: 10px 20px 30px 40px`
+- [ ] `padding` multi-value - `padding: 10px 20px`
+- [ ] `border-radius` multi-value - per-corner values
+
+---
+
+## Parsed But Not Applied
+- [ ] `cursor` - parsed but not applied in render
+- [ ] `display: block/inline` - only `none` actually works
+- [ ] `position: relative/fixed/sticky` - only `absolute` works
+- [ ] `z-index` - parsed but stacking may not work correctly
+
 ---
 
 ## Known Issues
