@@ -195,6 +195,21 @@ func (rt *JSRuntime) wrapElement(node *dom.Node) goja.Value {
 		}),
 		goja.FLAG_FALSE, goja.FLAG_TRUE)
 
+	obj.DefineAccessorProperty("innerText",
+		rt.vm.ToValue(func(call goja.FunctionCall) goja.Value {
+			return rt.vm.ToValue(node.InnerText())
+		}),
+		rt.vm.ToValue(func(call goja.FunctionCall) goja.Value {
+			if len(call.Arguments) > 0 {
+				node.SetInnerText(call.Arguments[0].String())
+				if rt.onReflow != nil {
+					rt.onReflow()
+				}
+			}
+			return goja.Undefined()
+		}),
+		goja.FLAG_FALSE, goja.FLAG_TRUE)
+
 	obj.Set("appendChild", func(call goja.FunctionCall) goja.Value {
 		if len(call.Arguments) < 1 {
 			return goja.Undefined()

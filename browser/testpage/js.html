@@ -45,6 +45,13 @@
         output.textContent = "Changed by JavaScript!";
         console.log("   After:", output.textContent);
 
+        // Test 5b: innerText getter
+        console.log("5b. innerText getter:", greeting.innerText);
+
+        // Test 5c: innerText setter
+        output.innerText = "Set via innerText!";
+        console.log("5c. innerText setter:", output.innerText);
+
         // Test 6: parentElement
         var btn = document.getElementById("btn");
         console.log("6. parentElement:", btn.parentElement.tagName);

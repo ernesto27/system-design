@@ -7,7 +7,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestExtractText(t *testing.T) {
+func TestInnerText(t *testing.T) {
 	tests := []struct {
 		name     string
 		build    func() *Node
@@ -38,7 +38,7 @@ func TestExtractText(t *testing.T) {
 				div.AppendChild(p2)
 				return div
 			},
-			// ExtractText adds space after text nodes
+			// InnerText adds space after text nodes
 			expected: "First \nSecond",
 		},
 		{
@@ -107,7 +107,7 @@ func TestExtractText(t *testing.T) {
 				div.AppendChild(p)
 				return div
 			},
-			// ExtractText adds space after text nodes
+			// InnerText adds space after text nodes
 			expected: "Title \nParagraph",
 		},
 		{
@@ -155,7 +155,7 @@ func TestExtractText(t *testing.T) {
 				body.AppendChild(p)
 				return body
 			},
-			// ExtractText adds space after text nodes
+			// InnerText adds space after text nodes
 			expected: "Welcome \nThis is important text.",
 		},
 		{
@@ -177,7 +177,7 @@ func TestExtractText(t *testing.T) {
 				ul.AppendChild(li3)
 				return ul
 			},
-			// ExtractText adds space after text nodes
+			// InnerText adds space after text nodes
 			expected: "Item 1 \nItem 2 \nItem 3",
 		},
 	}
@@ -185,13 +185,75 @@ func TestExtractText(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			node := tt.build()
-			result := node.ExtractText()
+			result := node.InnerText()
 
 			// Normalize expected for comparison (trim and normalize newlines)
 			expected := strings.TrimSpace(tt.expected)
 			result = strings.TrimSpace(result)
 
 			assert.Equal(t, expected, result)
+		})
+	}
+}
+
+func TestSetInnerText(t *testing.T) {
+	tests := []struct {
+		name     string
+		build    func() *Node
+		setText  string
+		expected string
+	}{
+		{
+			name: "replace simple text",
+			build: func() *Node {
+				p := NewElement("p", nil)
+				p.AppendChild(NewText("Old text"))
+				return p
+			},
+			setText:  "New text",
+			expected: "New text",
+		},
+		{
+			name: "replace nested children",
+			build: func() *Node {
+				div := NewElement("div", nil)
+				p := NewElement("p", nil)
+				p.AppendChild(NewText("Paragraph"))
+				span := NewElement("span", nil)
+				span.AppendChild(NewText("Span"))
+				div.AppendChild(p)
+				div.AppendChild(span)
+				return div
+			},
+			setText:  "All replaced",
+			expected: "All replaced",
+		},
+		{
+			name: "set empty string clears content",
+			build: func() *Node {
+				p := NewElement("p", nil)
+				p.AppendChild(NewText("Will be cleared"))
+				return p
+			},
+			setText:  "",
+			expected: "",
+		},
+		{
+			name: "set text on empty element",
+			build: func() *Node {
+				return NewElement("div", nil)
+			},
+			setText:  "Brand new",
+			expected: "Brand new",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			node := tt.build()
+			node.SetInnerText(tt.setText)
+			result := node.InnerText()
+			assert.Equal(t, tt.expected, result)
 		})
 	}
 }

@@ -18,13 +18,22 @@ var skipElements = map[string]bool{
 	"meta": true, "link": true, "noscript": true,
 }
 
-func (n *Node) ExtractText() string {
+func (n *Node) InnerText() string {
 	var sb strings.Builder
-	n.extractTextRecursive(&sb, false)
+	n.innerTextRecursive(&sb, false)
 	return strings.TrimSpace(sb.String())
 }
 
-func (n *Node) extractTextRecursive(sb *strings.Builder, prevBlock bool) bool {
+func (n *Node) SetInnerText(text string) {
+	n.Children = []*Node{}
+
+	if text != "" {
+		texNode := NewText(text)
+		n.AppendChild(texNode)
+	}
+}
+
+func (n *Node) innerTextRecursive(sb *strings.Builder, prevBlock bool) bool {
 	if n.Type == Element && skipElements[n.TagName] {
 		return prevBlock
 	}
@@ -43,7 +52,7 @@ func (n *Node) extractTextRecursive(sb *strings.Builder, prevBlock bool) bool {
 
 	lastWasBlock := isBlock
 	for _, child := range n.Children {
-		lastWasBlock = child.extractTextRecursive(sb, lastWasBlock)
+		lastWasBlock = child.innerTextRecursive(sb, lastWasBlock)
 	}
 
 	if isBlock {
