@@ -21,7 +21,7 @@
 ### Element Modification
 - [x] `element.innerHTML` getter - Get HTML content as string
 - [x] `element.innerHTML` setter - Parse and replace children
-- [ ] `element.innerText` getter/setter - Text without HTML tags
+- [x] `element.innerText` getter/setter - Text without HTML tags
 - [x] `element.appendChild(child)` - Add child at end
 - [x] `element.removeChild(child)` - Remove a child
 - [ ] `element.insertBefore(new, ref)` - Insert before reference node
