@@ -59,11 +59,17 @@ func BuildBox(node *dom.Node, parent *LayoutBox, stylesheet css.Stylesheet) *Lay
 			classes = strings.Fields(classAttr)
 		}
 
-		box.Style = css.ApplyStylesheet(stylesheet, node.TagName, id, classes)
+		// Get parent's font-size for em unit resolution
+		parentFontSize := 16.0 // Default browser font-size
+		if parent != nil && parent.Style.FontSize > 0 {
+			parentFontSize = parent.Style.FontSize
+		}
+
+		box.Style = css.ApplyStylesheetWithContext(stylesheet, node.TagName, id, classes, parentFontSize)
 
 		// Then apply inline styles (override stylesheet)
 		if styleAttr, ok := node.Attributes["style"]; ok {
-			inlineStyle := css.ParseInlineStyle(styleAttr)
+			inlineStyle := css.ParseInlineStyleWithContext(styleAttr, parentFontSize)
 			mergeStyles(&box.Style, &inlineStyle)
 		}
 

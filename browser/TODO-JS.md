@@ -105,8 +105,9 @@
 - [ ] `prompt(message)` - Input dialog
 
 ### Navigation
-- [ ] `window.location.href` - Get/set URL
-- [ ] `window.location.reload()` - Refresh page
+- [x] `window.location.href` - Get URL (getter only)
+- [x] `window.location.reload()` - Refresh page
+- [ ] `window.location.href` setter - Navigate to URL
 - [ ] `window.history.back()` - Go back
 - [ ] `window.history.forward()` - Go forward
 

@@ -34,6 +34,8 @@
 - [x] `opacity` - transparency
 - [x] `visibility` - visible/hidden
 - [x] `cursor` - pointer/text/crosshair
+- [x] `em` unit - relative to parent font size
+- [x] User-agent default styles (margins for p, h1-h6, ul, ol, blockquote, hr)
 
 ---
 
@@ -121,7 +123,7 @@
 - [ ] `user-select` - text selection
 
 ### Units (parsing)
-- [ ] `em` - relative to font size
+- [x] `em` - relative to font size
 - [ ] `rem` - relative to root font size
 - [ ] `%` - percentage
 - [ ] `vw` - viewport width

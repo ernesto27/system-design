@@ -402,6 +402,32 @@
 
     <hr>
 
+    <h2>EM Unit Test</h2>
+    <p>Testing the em relative unit.</p>
+
+    <div style="font-size: 20px; background-color: #f0f0f0; padding: 10px; margin-bottom: 20px;">
+        <p>Parent: font-size: 20px</p>
+        <p style="font-size: 1.5em; background-color: lightblue;">Child: font-size: 1.5em = 30px (1.5 × 20)</p>
+        <p style="font-size: 2em; background-color: lightgreen;">Child: font-size: 2em = 40px (2 × 20)</p>
+        <p style="font-size: 0.5em; background-color: lightyellow;">Child: font-size: 0.5em = 10px (0.5 × 20)</p>
+    </div>
+
+    <div style="font-size: 16px; background-color: #e0e0e0; padding: 10px; margin-bottom: 20px;">
+        <p>Parent: font-size: 16px (browser default)</p>
+        <p style="margin: 1em; background-color: lightcoral;">margin: 1em = 16px margin all around</p>
+        <p style="padding: 2em; background-color: lightpink;">padding: 2em = 32px padding all around</p>
+    </div>
+
+    <div style="font-size: 24px; background-color: #d0d0d0; padding: 10px;">
+        <p>Parent: font-size: 24px</p>
+        <div style="font-size: 0.75em; background-color: lavender; padding: 1em;">
+            <p>Nested: font-size: 0.75em = 18px</p>
+            <p>padding: 1em = 18px (uses THIS element's computed font-size)</p>
+        </div>
+    </div>
+
+    <hr>
+
     <h2>Border Radius Test</h2>
     <p>Testing rounded corners with border-radius.</p>
 

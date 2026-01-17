@@ -63,10 +63,10 @@
 ### Semantic
 - [x] `<header>` - header section
 - [x] `<footer>` - footer section
-- [x] `<main>` - main content
-- [x] `<nav>` - navigation
-- [x] `<section>` - section
-- [x] `<article>` - article
+- [ ] `<main>` - main content (defined in tags.go but not in blockElements)
+- [ ] `<nav>` - navigation (defined in tags.go but not in blockElements)
+- [ ] `<section>` - section (defined in tags.go but not in blockElements)
+- [ ] `<article>` - article (defined in tags.go but not in blockElements)
 
 ---
 
@@ -120,8 +120,121 @@
 - [ ] `<address>` - contact info
 - [ ] `<hgroup>` - heading group
 
+### Document Metadata
+- [ ] `<base>` - base URL for relative links
+- [ ] `<meta>` - document metadata (viewport, charset, etc.)
+- [ ] `<noscript>` - fallback for no JavaScript
+
+### Embedded Content
+- [ ] `<embed>` - external content plugin
+- [ ] `<object>` - embedded object
+- [ ] `<param>` - object parameter
+- [ ] `<map>` - image map container
+- [ ] `<area>` - image map clickable area
+
+### Ruby Annotations (East Asian text)
+- [ ] `<ruby>` - ruby annotation container
+- [ ] `<rt>` - ruby text (pronunciation)
+- [ ] `<rp>` - ruby fallback parenthesis
+
+### Text Direction & Breaks
+- [ ] `<wbr>` - word break opportunity
+- [ ] `<bdi>` - bidirectional isolation
+- [ ] `<bdo>` - bidirectional override
+
+### Web Components
+- [ ] `<template>` - content template (not rendered)
+- [ ] `<slot>` - web component slot
+
+---
+
+## Missing Input Types
+- [ ] `type="date"` - date picker
+- [ ] `type="time"` - time picker
+- [ ] `type="datetime-local"` - date and time picker
+- [ ] `type="month"` - month picker
+- [ ] `type="week"` - week picker
+- [ ] `type="color"` - color picker
+- [ ] `type="range"` - slider control
+- [ ] `type="search"` - search field
+- [ ] `type="tel"` - telephone input
+- [ ] `type="url"` - URL input
+- [ ] `type="hidden"` - hidden field
+
+---
+
+## Missing Attributes & Features
+
+### Form Validation
+- [ ] `required` - required field validation
+- [ ] `pattern` - regex validation
+- [ ] `min` / `max` - number range validation
+- [ ] `minlength` / `maxlength` - text length validation
+- [ ] `step` - number increment
+- [ ] `:valid` / `:invalid` pseudo-classes
+
+### Table Features
+- [ ] `colspan` - cell column span
+- [ ] `rowspan` - cell row span
+- [ ] `scope` - header cell scope
+
+### Link Features
+- [x] `target="_blank"` - open in new window (basic implementation)
+- [ ] `rel="noopener"` - security for external links (parsed but not enforced)
+- [ ] `download` - download link
+
+### Image Features
+- [ ] `srcset` - responsive image sources
+- [ ] `sizes` - responsive image sizes
+- [ ] `loading="lazy"` - lazy loading
+- [ ] `alt` text display on error
+
+### Accessibility (ARIA)
+- [ ] `role` - element role
+- [ ] `aria-label` - accessible label
+- [ ] `aria-hidden` - hide from screen readers
+- [ ] `aria-expanded` - expandable state
+- [ ] `aria-describedby` - description reference
+- [ ] `tabindex` - keyboard navigation order
+
+### Global Attributes
+- [ ] `contenteditable` - editable content
+- [ ] `draggable` - drag and drop
+- [ ] `hidden` - hide element
+- [ ] `title` - tooltip on hover
+- [ ] `lang` - language specification
+- [ ] `data-*` - custom data attributes
+
 ---
 
 ## Known Issues
 - [ ] Whitespace between inline elements missing (e.g., `<strong>`, `<em>`)
 - [ ] Text inside `position: absolute` elements not rendering
+- [ ] `<main>`, `<nav>`, `<section>`, `<article>` not in blockElements map
+- [ ] No keyboard navigation between form elements (Tab key)
+- [ ] No form validation feedback UI
+- [ ] Images don't show alt text on load failure
+
+---
+
+## Future Enhancements
+
+### Performance
+- [ ] Incremental layout (don't recompute entire tree)
+- [ ] Virtual scrolling for long pages
+- [ ] Image caching to disk
+- [ ] Lazy image loading
+
+### User Experience
+- [ ] Text selection and copy
+- [ ] Find in page (Ctrl+F)
+- [ ] Zoom in/out
+- [ ] Print page
+- [ ] View page source
+- [ ] Developer tools panel
+
+### Standards Compliance
+- [ ] DOCTYPE handling
+- [ ] Character encoding detection
+- [ ] Quirks mode vs standards mode
+- [ ] HTML entity decoding (`&nbsp;`, `&amp;`, etc.)

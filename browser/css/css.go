@@ -108,18 +108,35 @@ func parseBorderShorthand(value string) (float64, string, color.Color) {
 	return width, borderStyle, borderColor
 }
 
-// ParseSize converts "10px" to float64
 func ParseSize(value string) float64 {
+	return ParseSizeWithContext(value, 16.0)
+}
+
+func ParseSizeWithContext(value string, baseFontSize float64) float64 {
 	value = strings.TrimSpace(strings.ToLower(value))
+
+	// Handle em units
+	if strings.HasSuffix(value, "em") {
+		num := strings.TrimSuffix(value, "em")
+		if multiplier, err := strconv.ParseFloat(num, 64); err == nil {
+			return multiplier * baseFontSize
+		}
+		return 0
+	}
+
+	// Handle px units
 	if strings.HasSuffix(value, "px") {
 		num := strings.TrimSuffix(value, "px")
 		if size, err := strconv.ParseFloat(num, 64); err == nil {
 			return size
 		}
 	}
+
+	// Plain number (treat as px)
 	if size, err := strconv.ParseFloat(value, 64); err == nil {
 		return size
 	}
+
 	return 0
 }
 
@@ -517,4 +534,197 @@ func ParseFontFamily(value string) []string {
 	}
 
 	return fonts
+}
+
+func applyDeclarationWithContext(style *Style, property, value string, baseFontSize float64) {
+	switch property {
+	case "font-size":
+		// font-size em is relative to PARENT's font-size
+		if size := ParseSizeWithContext(value, baseFontSize); size > 0 {
+			style.FontSize = size
+		}
+	case "margin":
+		m := ParseSizeWithContext(value, style.FontSize)
+		style.MarginTop = m
+		style.MarginBottom = m
+		style.MarginLeft = m
+		style.MarginRight = m
+	case "margin-top":
+		style.MarginTop = ParseSizeWithContext(value, style.FontSize)
+	case "margin-bottom":
+		style.MarginBottom = ParseSizeWithContext(value, style.FontSize)
+	case "margin-left":
+		style.MarginLeft = ParseSizeWithContext(value, style.FontSize)
+	case "margin-right":
+		style.MarginRight = ParseSizeWithContext(value, style.FontSize)
+	case "padding":
+		p := ParseSizeWithContext(value, style.FontSize)
+		style.PaddingTop = p
+		style.PaddingBottom = p
+		style.PaddingLeft = p
+		style.PaddingRight = p
+	case "padding-top":
+		style.PaddingTop = ParseSizeWithContext(value, style.FontSize)
+	case "padding-bottom":
+		style.PaddingBottom = ParseSizeWithContext(value, style.FontSize)
+	case "padding-left":
+		style.PaddingLeft = ParseSizeWithContext(value, style.FontSize)
+	case "padding-right":
+		style.PaddingRight = ParseSizeWithContext(value, style.FontSize)
+	default:
+		// Fall back to original for non-size properties
+		applyDeclaration(style, property, value)
+	}
+}
+
+// ApplyStylesheetWithContext applies matching rules with parent font-size for em units
+func ApplyStylesheetWithContext(sheet Stylesheet, tagName string, id string, classes []string, parentFontSize float64) Style {
+	style := DefaultStyle()
+
+	// Apply user-agent default styles based on tag
+	applyUserAgentDefaults(&style, tagName, parentFontSize)
+
+	// First pass: find font-size (uses parent's font-size for em)
+	for _, rule := range sheet.Rules {
+		matches := false
+		for _, sel := range rule.Selectors {
+			if MatchSelector(sel, tagName, id, classes) {
+				matches = true
+				break
+			}
+		}
+		if !matches {
+			continue
+		}
+
+		for _, decl := range rule.Declarations {
+			if decl.Property == "font-size" {
+				if size := ParseSizeWithContext(decl.Value, parentFontSize); size > 0 {
+					style.FontSize = size
+				}
+			}
+		}
+	}
+
+	// If no font-size was set, inherit from parent
+	if style.FontSize == 0 {
+		style.FontSize = parentFontSize
+	}
+
+	// Second pass: apply other properties (using computed font-size for em)
+	for _, rule := range sheet.Rules {
+		matches := false
+		for _, sel := range rule.Selectors {
+			if MatchSelector(sel, tagName, id, classes) {
+				matches = true
+				break
+			}
+		}
+		if !matches {
+			continue
+		}
+
+		for _, decl := range rule.Declarations {
+			if decl.Property != "font-size" {
+				applyDeclarationWithContext(&style, decl.Property, decl.Value, style.FontSize)
+			}
+		}
+	}
+
+	return style
+}
+
+// ParseInlineStyleWithContext parses inline style with font-size context for em units
+func ParseInlineStyleWithContext(styleAttr string, parentFontSize float64) Style {
+	style := DefaultStyle()
+
+	parts := strings.Split(styleAttr, ";")
+
+	// First pass: find font-size
+	for _, part := range parts {
+		part = strings.TrimSpace(part)
+		if part == "" {
+			continue
+		}
+
+		kv := strings.SplitN(part, ":", 2)
+		if len(kv) != 2 {
+			continue
+		}
+
+		property := strings.TrimSpace(kv[0])
+		value := strings.TrimSpace(kv[1])
+
+		if property == "font-size" {
+			if size := ParseSizeWithContext(value, parentFontSize); size > 0 {
+				style.FontSize = size
+			}
+		}
+	}
+
+	// If no font-size was set, use parent's
+	if style.FontSize == 0 {
+		style.FontSize = parentFontSize
+	}
+
+	// Second pass: apply other properties
+	for _, part := range parts {
+		part = strings.TrimSpace(part)
+		if part == "" {
+			continue
+		}
+
+		kv := strings.SplitN(part, ":", 2)
+		if len(kv) != 2 {
+			continue
+		}
+
+		property := strings.TrimSpace(kv[0])
+		value := strings.TrimSpace(kv[1])
+
+		if property != "font-size" {
+			applyDeclarationWithContext(&style, property, value, style.FontSize)
+		}
+	}
+
+	return style
+}
+
+// applyUserAgentDefaults applies browser default styles for HTML elements
+func applyUserAgentDefaults(style *Style, tagName string, fontSize float64) {
+	switch tagName {
+	case "p", "dl":
+		style.MarginTop = fontSize * 1.2    // 1.5em
+		style.MarginBottom = fontSize * 1.2 // 1.5em
+	case "h1":
+		style.MarginTop = fontSize * 0.67
+		style.MarginBottom = fontSize * 0.67
+	case "h2":
+		style.MarginTop = fontSize * 0.83
+		style.MarginBottom = fontSize * 0.83
+	case "h3":
+		style.MarginTop = fontSize
+		style.MarginBottom = fontSize
+	case "h4":
+		style.MarginTop = fontSize * 1.33
+		style.MarginBottom = fontSize * 1.33
+	case "h5":
+		style.MarginTop = fontSize * 1.67
+		style.MarginBottom = fontSize * 1.67
+	case "h6":
+		style.MarginTop = fontSize * 2.33
+		style.MarginBottom = fontSize * 2.33
+	case "ul", "ol":
+		style.MarginTop = fontSize
+		style.MarginBottom = fontSize
+		style.PaddingLeft = 40 // Standard list indentation
+	case "blockquote":
+		style.MarginTop = fontSize
+		style.MarginBottom = fontSize
+		style.MarginLeft = 40
+		style.MarginRight = 40
+	case "hr":
+		style.MarginTop = fontSize * 0.5
+		style.MarginBottom = fontSize * 0.5
+	}
 }
