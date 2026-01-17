@@ -9,12 +9,14 @@ import (
 )
 
 type JSRuntime struct {
-	vm        *goja.Runtime
-	document  *dom.Node
-	onReflow  func()
-	onAlert   func(message string)
-	Events    *EventManager
-	onConfirm func(string) bool
+	vm         *goja.Runtime
+	document   *dom.Node
+	onReflow   func()
+	onAlert    func(message string)
+	Events     *EventManager
+	onConfirm  func(string) bool
+	currentURL string
+	onReload   func()
 }
 
 func NewJSRuntime(document *dom.Node, onReflow func()) *JSRuntime {
@@ -89,6 +91,21 @@ func (rt *JSRuntime) setupGlobals() {
 		newNode := dom.NewText(text)
 		return rt.wrapElement(newNode)
 	})
+
+	window := rt.vm.NewObject()
+	location := rt.vm.NewObject()
+
+	location.Set("href", rt.currentURL)
+
+	location.Set("reload", func(call goja.FunctionCall) goja.Value {
+		if rt.onReload != nil {
+			rt.onReload()
+		}
+		return goja.Undefined()
+	})
+
+	window.Set("location", location)
+	rt.vm.Set("window", window)
 
 }
 
@@ -263,4 +280,12 @@ func (rt *JSRuntime) SetAlertHandler(handler func(message string)) {
 
 func (rt *JSRuntime) SetConfirmHandler(handler func(string) bool) {
 	rt.onConfirm = handler
+}
+
+func (rt *JSRuntime) SetCurrentURL(url string) {
+	rt.currentURL = url
+}
+
+func (rt *JSRuntime) SetReloadHandler(handler func()) {
+	rt.onReload = handler
 }

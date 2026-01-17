@@ -147,6 +147,8 @@ func loadPage(browser *render.Browser, req render.NavigationRequest) {
 		jsRuntime.SetConfirmHandler(browser.ShowConfirm)
 		browser.SetJSClickHandler(jsRuntime.DispatchClick)
 
+		jsRuntime.SetCurrentURL(pageURL)
+
 		scripts := js.FindScripts(document)
 		for i, script := range scripts {
 			fmt.Printf("Running script %d...\n", i+1)
@@ -154,6 +156,9 @@ func loadPage(browser *render.Browser, req render.NavigationRequest) {
 		}
 
 		browser.SetCurrentURL(pageURL)
+		jsRuntime.SetReloadHandler(func() {
+			browser.Refresh()
+		})
 
 		// Rebuild layout tree AFTER JavaScript has modified the DOM
 		layoutTree = layout.BuildLayoutTree(document, stylesheet)

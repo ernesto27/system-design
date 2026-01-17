@@ -19,6 +19,7 @@
     <button id="btn">Click Me</button>
     <button id="alertBtn">Show Alert</button>
     <button id="confirmBtn">Show Confirm</button>
+    <button id="reloadBtn">Reload Page</button>
 
     <div id="confirmResult" class="box">Confirm result will appear here</div>
 
@@ -135,7 +136,16 @@
             }
         });
 
-        // Test 15: alert on page load
+        // Test 16: window.location.reload
+        console.log("=== Testing window.location ===");
+        var reloadBtn = document.getElementById("reloadBtn");
+        reloadBtn.addEventListener("click", function() {
+            console.log("16. Calling window.location.reload()");
+            window.location.reload();
+        });
+        console.log("Current URL:", window.location.href);
+
+        // Test 17: alert on page load
         alert("Page loaded! JS is working.");
     </script>
 </body>
