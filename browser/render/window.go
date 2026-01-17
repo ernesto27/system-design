@@ -384,9 +384,8 @@ func (b *Browser) handleClick(x, y float64) {
 		}
 	}
 
-	// Check if it's a link
-	href := hit.FindLink()
-	if href == "" {
+	linkInfo := hit.FindLinkInfo()
+	if linkInfo == nil {
 		fmt.Println("  Not a link")
 		if b.focusedInputNode != nil || b.openSelectNode != nil {
 			b.focusedInputNode = nil
@@ -395,16 +394,37 @@ func (b *Browser) handleClick(x, y float64) {
 		}
 		return
 	}
-	fmt.Println("  Found link:", href)
+	fmt.Println("  Found link:", linkInfo.Href, "target:", linkInfo.Target, "rel:", linkInfo.Rel)
 
-	// Resolve relative URL
-	fullURL := b.resolveURL(href)
+	fullURL := b.resolveURL(linkInfo.Href)
+
 	fmt.Println("Link clicked:", fullURL)
+
+	if linkInfo.Target == "_blank" {
+		b.openNewWindow(fullURL)
+		return
+	}
 
 	// Call navigation callback
 	if b.OnNavigate != nil {
 		b.OnNavigate(NavigationRequest{URL: fullURL, Method: "GET"})
 	}
+}
+
+func (b *Browser) openNewWindow(targetURL string) {
+	fmt.Printf("Opening new window: %s\n", targetURL)
+
+	// Create a new Fyne window
+	newWindow := b.App.NewWindow("Go Browser")
+	newWindow.Resize(fyne.NewSize(800, 600))
+
+	// For now, just show the URL - user can copy/paste
+	// Full implementation would create another Browser instance
+	label := canvas.NewText("New window: "+targetURL, ColorBlack)
+	label.TextSize = 16
+	newWindow.SetContent(container.NewCenter(label))
+
+	newWindow.Show()
 }
 
 func (b *Browser) resolveURL(href string) string {

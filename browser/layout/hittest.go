@@ -39,3 +39,29 @@ func (box *LayoutBox) FindLink() string {
 
 	return ""
 }
+
+type LinkInfo struct {
+	Href   string
+	Target string
+	Rel    string
+}
+
+func (box *LayoutBox) FindLinkInfo() *LinkInfo {
+	current := box
+
+	for current != nil {
+		if current.Node != nil && current.Node.TagName == "a" {
+			href, hasHref := current.Node.Attributes["href"]
+			if hasHref {
+				return &LinkInfo{
+					Href:   href,
+					Target: current.Node.Attributes["target"],
+					Rel:    current.Node.Attributes["rel"],
+				}
+			}
+		}
+		current = current.Parent
+	}
+
+	return nil
+}
