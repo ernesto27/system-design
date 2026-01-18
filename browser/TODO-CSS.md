@@ -142,7 +142,7 @@
 
 ### Cascade & Specificity
 - [ ] Specificity calculation - proper weighting (inline > id > class > tag)
-- [ ] `!important` - override rules
+- [x] `!important` - override rules
 - [ ] Inheritance - properties inheriting from parent elements
 
 ### Shorthand Expansion

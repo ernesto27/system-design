@@ -102,7 +102,7 @@
 ### Dialogs
 - [x] `alert(message)` - Show alert dialog (non-blocking)
 - [x] `confirm(message)` - Yes/No dialog (blocking, returns boolean)
-- [ ] `prompt(message)` - Input dialog
+- [x] `prompt(message)` - Input dialog (blocking, returns string or null)
 
 ### Navigation
 - [x] `window.location.href` - Get URL (getter only)

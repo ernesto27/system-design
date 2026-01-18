@@ -17,6 +17,7 @@ type JSRuntime struct {
 	onConfirm  func(string) bool
 	currentURL string
 	onReload   func()
+	onPrompt   func(message, defaultValue string) *string
 }
 
 func NewJSRuntime(document *dom.Node, onReflow func()) *JSRuntime {
@@ -70,6 +71,29 @@ func (rt *JSRuntime) setupGlobals() {
 		}
 
 		return rt.vm.ToValue(result)
+	})
+
+	rt.vm.Set("prompt", func(call goja.FunctionCall) goja.Value {
+		message := ""
+		defaultValue := ""
+
+		if len(call.Arguments) > 0 {
+			message = call.Arguments[0].String()
+		}
+
+		if len(call.Arguments) > 1 {
+			defaultValue = call.Arguments[1].String()
+		}
+
+		if rt.onPrompt != nil {
+			result := rt.onPrompt(message, defaultValue)
+			if result == nil {
+				return goja.Null()
+			}
+			return rt.vm.ToValue(*result)
+		}
+
+		return goja.Null()
 	})
 
 	docObj.Set("createElement", func(call goja.FunctionCall) goja.Value {
@@ -288,4 +312,8 @@ func (rt *JSRuntime) SetCurrentURL(url string) {
 
 func (rt *JSRuntime) SetReloadHandler(handler func()) {
 	rt.onReload = handler
+}
+
+func (rt *JSRuntime) SetPromptHandler(handler func(message, defaultValue string) *string) {
+	rt.onPrompt = handler
 }

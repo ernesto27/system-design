@@ -802,6 +802,32 @@ func (b *Browser) ShowConfirm(message string) bool {
 	return <-result
 }
 
+func (b *Browser) ShowPrompt(message, defaultValue string) *string {
+	result := make(chan *string)
+
+	fyne.Do(func() {
+		entry := widget.NewEntry()
+		entry.SetText(defaultValue)
+
+		// Create a wider container for the entry
+		label := widget.NewLabel(message)
+		entryContainer := container.NewGridWrap(fyne.NewSize(300, 36), entry)
+		content := container.NewVBox(label, entryContainer)
+
+		d := dialog.NewCustomConfirm("Prompt", "OK", "Cancel", content, func(ok bool) {
+			if ok {
+				text := entry.Text
+				result <- &text
+			} else {
+				result <- nil
+			}
+		}, b.Window)
+		d.Show()
+	})
+
+	return <-result
+}
+
 // isNodeDisabled checks if a DOM node has the disabled attribute
 func isNodeDisabled(node *dom.Node) bool {
 	if node == nil {

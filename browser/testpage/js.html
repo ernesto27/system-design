@@ -19,6 +19,7 @@
     <button id="btn">Click Me</button>
     <button id="alertBtn">Show Alert</button>
     <button id="confirmBtn">Show Confirm</button>
+    <button id="promptBtn">Show Prompt</button>
     <button id="reloadBtn">Reload Page</button>
 
     <div class="box">
@@ -29,6 +30,7 @@
     </div>
 
     <div id="confirmResult" class="box">Confirm result will appear here</div>
+    <div id="promptResult" class="box">Prompt result will appear here</div>
 
     <script>
         console.log("=== JavaScript Test ===");
@@ -95,9 +97,21 @@
         confirmBtn.addEventListener("click", function() {
             var answer = confirm("Do you like this browser?");
             if (answer) {
-                confirmResult.innerHTML = "You clicked OK!";
+                confirmResult.textContent = "You clicked OK!";
             } else {
-                confirmResult.innerHTML = "You clicked Cancel!";
+                confirmResult.textContent = "You clicked Cancel!";
+            }
+        });
+
+        // Test 15: prompt dialog
+        var promptBtn = document.getElementById("promptBtn");
+        var promptResult = document.getElementById("promptResult");
+        promptBtn.addEventListener("click", function() {
+            var name = prompt("What is your name?", "Anonymous");
+            if (name === null) {
+                promptResult.textContent = "You cancelled the prompt!";
+            } else {
+                promptResult.textContent = "Hello, " + name + "!";
             }
         });
 

@@ -145,6 +145,7 @@ func loadPage(browser *render.Browser, req render.NavigationRequest) {
 
 		jsRuntime.SetAlertHandler(browser.ShowAlert)
 		jsRuntime.SetConfirmHandler(browser.ShowConfirm)
+		jsRuntime.SetPromptHandler(browser.ShowPrompt)
 		browser.SetJSClickHandler(jsRuntime.DispatchClick)
 
 		jsRuntime.SetCurrentURL(pageURL)
