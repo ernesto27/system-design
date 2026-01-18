@@ -5,18 +5,18 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "Launch Package",
+            "name": "Debug Browser (Localhost)",
             "type": "go",
             "request": "launch",
             "mode": "auto",
-            "program": "${fileDirname}",
-            "args": ["http://localhost:8080"],
+            "program": "${workspaceFolder}",
+            "args": ["http://localhost:8080/index.html"],
             "env": {
                 "FYNE_RENDER": "software"
             }
         },
         {
-            "name": "Launch Local File",
+            "name": "Debug Browser (Local File)",
             "type": "go",
             "request": "launch",
             "mode": "auto",
