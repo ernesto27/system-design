@@ -32,6 +32,8 @@ const (
 	RadioBox
 	CheckboxBox
 	FileInputBox
+	FieldsetBox
+	LegendBox
 )
 
 type LayoutBox struct {

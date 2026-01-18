@@ -65,6 +65,8 @@ const (
 	TagSelect   = "select"
 	TagOption   = "option"
 	TagLabel    = "label"
+	TagFieldSet = "fieldset"
+	TagLegend   = "legend"
 
 	TagQ = "q"
 

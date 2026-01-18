@@ -153,6 +153,16 @@ type DrawFileInput struct {
 	IsDisabled bool
 }
 
+type DrawFieldset struct {
+	layout.Rect
+	LegendX      float64
+	LegendY      float64
+	LegendWidth  float64
+	LegendHeight float64
+	LegendText   string
+	HasLegend    bool
+}
+
 func BuildDisplayList(root *layout.LayoutBox) []DisplayCommand {
 	var commands []DisplayCommand
 
@@ -542,6 +552,34 @@ func paintLayoutBoxWithInputs(box *layout.LayoutBox, commands *[]DisplayCommand,
 		})
 	}
 
+	if box.Type == layout.FieldsetBox {
+		var legendX, legendY, legendWidth, legendHeight float64
+		var legendText string
+		var hasLegend bool
+
+		for _, child := range box.Children {
+			if child.Type == layout.LegendBox {
+				hasLegend = true
+				legendX = child.Rect.X
+				legendY = child.Rect.Y
+				legendWidth = child.Rect.Width
+				legendHeight = child.Rect.Height
+				legendText = layout.GetLegendText(child)
+				break
+			}
+		}
+
+		*commands = append(*commands, DrawFieldset{
+			Rect:         box.Rect,
+			LegendX:      legendX,
+			LegendY:      legendY,
+			LegendWidth:  legendWidth,
+			LegendHeight: legendHeight,
+			LegendText:   legendText,
+			HasLegend:    hasLegend,
+		})
+	}
+
 	if box.Type == layout.FileInputBox && box.Node != nil && !isHidden {
 		filename := state.FileInputValues[box.Node]
 		_, isDisabled := box.Node.Attributes["disabled"]
@@ -566,6 +604,10 @@ func paintLayoutBoxWithInputs(box *layout.LayoutBox, commands *[]DisplayCommand,
 	// Skip children for elements that render their own content
 	if box.Type != layout.ButtonBox && box.Type != layout.SelectBox {
 		for _, child := range box.Children {
+			// Skip LegendBox - DrawFieldset already renders the legend text
+			if child.Type == layout.LegendBox {
+				continue
+			}
 			paintLayoutBoxWithInputs(child, commands, currentStyle, state)
 		}
 	}

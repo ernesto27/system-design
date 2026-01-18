@@ -498,6 +498,67 @@ func RenderToCanvas(commands []DisplayCommand, baseURL string, useCache bool, on
 			}
 		case DrawFileInput:
 			objects = append(objects, renderFileInput(c.X, c.Y, c.Width, c.Height, c.Filename, c.IsDisabled)...)
+
+		case DrawFieldset:
+			borderColor := color.Gray{Y: 128} // Gray border like real browsers
+			borderWidth := float32(1)
+
+			// Calculate where the top border should be (at legend's vertical center)
+			topBorderY := c.Y
+			if c.HasLegend {
+				topBorderY = c.LegendY + c.LegendHeight/2
+			}
+
+			if c.HasLegend {
+				// Top-left segment (before legend) - 6px gap before legend
+				topLeftWidth := c.LegendX - c.X - 6
+				if topLeftWidth > 0 {
+					topLeft := canvas.NewRectangle(borderColor)
+					topLeft.Resize(fyne.NewSize(float32(topLeftWidth), borderWidth))
+					topLeft.Move(fyne.NewPos(float32(c.X), float32(topBorderY)))
+					objects = append(objects, topLeft)
+				}
+
+				// Top-right segment (after legend) - 6px gap after legend
+				topRightX := c.LegendX + c.LegendWidth + 6
+				topRightWidth := c.X + c.Width - topRightX
+				if topRightWidth > 0 {
+					topRight := canvas.NewRectangle(borderColor)
+					topRight.Resize(fyne.NewSize(float32(topRightWidth), borderWidth))
+					topRight.Move(fyne.NewPos(float32(topRightX), float32(topBorderY)))
+					objects = append(objects, topRight)
+				}
+
+				// Legend text (centered in legend box)
+				legendText := canvas.NewText(c.LegendText, ColorBlack)
+				legendText.TextSize = 14
+				legendText.Move(fyne.NewPos(float32(c.LegendX+8), float32(c.LegendY+3)))
+				objects = append(objects, legendText)
+			} else {
+				// No legend - draw full top border
+				top := canvas.NewRectangle(borderColor)
+				top.Resize(fyne.NewSize(float32(c.Width), borderWidth))
+				top.Move(fyne.NewPos(float32(c.X), float32(topBorderY)))
+				objects = append(objects, top)
+			}
+
+			// Left border (from top border down)
+			left := canvas.NewRectangle(borderColor)
+			left.Resize(fyne.NewSize(borderWidth, float32(c.Y+c.Height-topBorderY)))
+			left.Move(fyne.NewPos(float32(c.X), float32(topBorderY)))
+			objects = append(objects, left)
+
+			// Right border (from top border down)
+			right := canvas.NewRectangle(borderColor)
+			right.Resize(fyne.NewSize(borderWidth, float32(c.Y+c.Height-topBorderY)))
+			right.Move(fyne.NewPos(float32(c.X+c.Width-1), float32(topBorderY)))
+			objects = append(objects, right)
+
+			// Bottom border
+			bottom := canvas.NewRectangle(borderColor)
+			bottom.Resize(fyne.NewSize(float32(c.Width), borderWidth))
+			bottom.Move(fyne.NewPos(float32(c.X), float32(c.Y+c.Height-1)))
+			objects = append(objects, bottom)
 		}
 	}
 

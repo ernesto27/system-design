@@ -130,6 +130,15 @@ func computeBlockLayout(box *LayoutBox, containerWidth float64, startX, startY f
 		innerWidth = containerWidth - 40
 	}
 
+	// Fieldset default styling
+	if box.Type == FieldsetBox {
+		box.Padding = EdgeSizes{Top: 10, Right: 10, Bottom: 10, Left: 10}
+		box.Style.BorderTopWidth = 1
+		box.Style.BorderRightWidth = 1
+		box.Style.BorderBottomWidth = 1
+		box.Style.BorderLeftWidth = 1
+	}
+
 	// Default margins for block elements
 	switch currentTag {
 	case dom.TagP:
@@ -201,7 +210,52 @@ func computeBlockLayout(box *LayoutBox, containerWidth float64, startX, startY f
 	lineHeight := 0.0
 	var lineBoxes []*LayoutBox
 
+	// Handle legend for fieldset
+	var legendBox *LayoutBox
+	if box.Type == FieldsetBox {
+		for i, child := range box.Children {
+			if child.Type == LegendBox {
+				legendBox = child
+				// Remove legend from normal children flow
+				box.Children = append(box.Children[:i], box.Children[i+1:]...)
+				break
+			}
+		}
+
+		// Position legend on the border
+		if legendBox != nil {
+			legendText := GetLegendText(legendBox)
+			legendWidth := MeasureText(legendText, 16) + 16 // 8px padding each side
+			legendHeight := 20.0
+
+			legendBox.Rect.X = innerX + 12 // 12px from left edge
+			legendBox.Rect.Y = startY + box.Margin.Top - legendHeight/2 // Centered on border
+			legendBox.Rect.Width = legendWidth
+			legendBox.Rect.Height = legendHeight
+
+			// Layout legend's children (the text)
+			textX := legendBox.Rect.X + 4
+			for _, child := range legendBox.Children {
+				if child.Type == TextBox {
+					child.Rect.X = textX
+					child.Rect.Y = legendBox.Rect.Y
+					child.Rect.Width = MeasureText(child.Text, 16)
+					child.Rect.Height = legendHeight
+				}
+			}
+
+			// Add legend back to children so paint.go can find it
+			box.Children = append([]*LayoutBox{legendBox}, box.Children...)
+		}
+	}
+
+
 	for _, child := range box.Children {
+		// Skip LegendBox - already positioned above
+		if child.Type == LegendBox {
+			continue
+		}
+
 		var childWidth, childHeight float64
 
 		switch child.Type {
@@ -759,4 +813,14 @@ func getButtonText(box *LayoutBox) string {
 		}
 	}
 	return "Button"
+}
+
+// GetLegendText extracts text content from a legend element
+func GetLegendText(box *LayoutBox) string {
+	for _, child := range box.Children {
+		if child.Type == TextBox {
+			return child.Text
+		}
+	}
+	return ""
 }

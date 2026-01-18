@@ -59,6 +59,8 @@
 - [x] `<select>` - dropdown
 - [x] `<option>` - select option
 - [x] `<label>` - form label
+- [x] `<fieldset>` - form group (basic implementation, see Known Issues)
+- [x] `<legend>` - fieldset caption (basic implementation, see Known Issues)
 
 ### Semantic
 - [x] `<header>` - header section
@@ -102,8 +104,6 @@
 - [ ] `<col>` - column properties
 
 ### Forms
-- [ ] `<fieldset>` - form group
-- [ ] `<legend>` - fieldset caption
 - [ ] `<datalist>` - input suggestions
 - [ ] `<output>` - calculation result
 - [ ] `<progress>` - progress bar
@@ -214,6 +214,8 @@
 - [ ] No keyboard navigation between form elements (Tab key)
 - [ ] No form validation feedback UI
 - [ ] Images don't show alt text on load failure
+- [ ] `<fieldset>` legend spacing needs fine-tuning (gap between legend text and border)
+- [ ] `<fieldset>` without legend shows no top border (basic fieldset case)
 
 ---
 

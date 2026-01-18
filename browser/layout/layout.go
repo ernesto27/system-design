@@ -29,6 +29,7 @@ var blockElements = map[string]bool{
 	"dl":         true,
 	"dt":         true,
 	"dd":         true,
+	"fieldset":   true,
 }
 
 var skipElements = map[string]bool{
@@ -115,6 +116,10 @@ func BuildBox(node *dom.Node, parent *LayoutBox, stylesheet css.Stylesheet) *Lay
 			box.Type = TextareaBox
 		} else if node.TagName == dom.TagSelect {
 			box.Type = SelectBox
+		} else if node.TagName == dom.TagFieldSet {
+			box.Type = FieldsetBox
+		} else if node.TagName == dom.TagLegend {
+			box.Type = LegendBox
 		} else if blockElements[node.TagName] {
 			box.Type = BlockBox
 		} else if node.TagName == dom.TagTable || node.TagName == dom.TagTBody || node.TagName == dom.TagTHead || node.TagName == dom.TagTFoot {
