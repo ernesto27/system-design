@@ -313,3 +313,137 @@ func TestParseInlineStyle(t *testing.T) {
 		})
 	}
 }
+
+// TestImportantOverride tests that !important declarations win in the cascade
+func TestImportantOverride(t *testing.T) {
+	tests := []struct {
+		name          string
+		css           string
+		expectedColor color.Color
+	}{
+		{
+			name: "important wins over later rule",
+			css: `
+				p { color: blue !important; }
+				p { color: red; }
+			`,
+			expectedColor: color.RGBA{0, 0, 255, 255}, // blue
+		},
+		{
+			name: "later important wins over earlier important",
+			css: `
+				p { color: blue !important; }
+				p { color: red !important; }
+			`,
+			expectedColor: color.RGBA{255, 0, 0, 255}, // red
+		},
+		{
+			name: "non-important cannot override important",
+			css: `
+				p { color: green !important; }
+				p { color: yellow; }
+				p { color: orange; }
+			`,
+			expectedColor: color.RGBA{0, 128, 0, 255}, // green
+		},
+		{
+			name: "important on different property does not affect others",
+			css: `
+				p { color: blue !important; font-size: 20px; }
+				p { color: red; font-size: 30px; }
+			`,
+			expectedColor: color.RGBA{0, 0, 255, 255}, // blue (font-size would be 30px)
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			sheet := Parse(tt.css)
+			style := ApplyStylesheet(sheet, "p", "", nil)
+			assert.True(t, colorsEqual(style.Color, tt.expectedColor),
+				"expected %v, got %v", tt.expectedColor, style.Color)
+		})
+	}
+}
+
+// TestImportantWithContext tests !important with ApplyStylesheetWithContext
+func TestImportantWithContext(t *testing.T) {
+	tests := []struct {
+		name             string
+		css              string
+		expectedFontSize float64
+	}{
+		{
+			name: "important font-size wins",
+			css: `
+				p { font-size: 20px !important; }
+				p { font-size: 30px; }
+			`,
+			expectedFontSize: 20,
+		},
+		{
+			name: "later important font-size wins",
+			css: `
+				p { font-size: 20px !important; }
+				p { font-size: 30px !important; }
+			`,
+			expectedFontSize: 30,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			sheet := Parse(tt.css)
+			style := ApplyStylesheetWithContext(sheet, "p", "", nil, 16)
+			assert.Equal(t, tt.expectedFontSize, style.FontSize)
+		})
+	}
+}
+
+// TestInlineStyleImportant tests that !important is handled in inline styles
+func TestInlineStyleImportant(t *testing.T) {
+	tests := []struct {
+		name          string
+		input         string
+		expectedColor color.Color
+	}{
+		{
+			name:          "inline style with !important",
+			input:         "color: red !important",
+			expectedColor: color.RGBA{255, 0, 0, 255},
+		},
+		{
+			name:          "inline style with !important no space",
+			input:         "color: blue!important",
+			expectedColor: color.RGBA{0, 0, 255, 255},
+		},
+		{
+			name:          "inline style with !IMPORTANT uppercase",
+			input:         "color: green !IMPORTANT",
+			expectedColor: color.RGBA{0, 128, 0, 255},
+		},
+		{
+			name:          "important beats later non-important in same inline",
+			input:         "color: green !important; color: blue",
+			expectedColor: color.RGBA{0, 128, 0, 255}, // green wins
+		},
+		{
+			name:          "later important beats earlier important in same inline",
+			input:         "color: red !important; color: blue !important",
+			expectedColor: color.RGBA{0, 0, 255, 255}, // blue wins
+		},
+		{
+			name:          "multiple non-important after important",
+			input:         "color: green !important; color: red; color: blue",
+			expectedColor: color.RGBA{0, 128, 0, 255}, // green stays
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			style := ParseInlineStyle(tt.input)
+			assert.True(t, colorsEqual(style.Color, tt.expectedColor),
+				"expected %v, got %v", tt.expectedColor, style.Color)
+		})
+	}
+}

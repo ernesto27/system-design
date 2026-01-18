@@ -116,7 +116,10 @@ func (p *Parser) parseDeclaration() Declaration {
 		p.pos++ // skip ;
 	}
 
-	return Declaration{Property: property, Value: value}
+	// Check for !important flag
+	value, important := stripImportant(value)
+
+	return Declaration{Property: property, Value: value, Important: important}
 }
 
 func (p *Parser) parseIdentifier() string {

@@ -19,6 +19,53 @@
 
     <hr>
 
+    <h2>!important Override Test</h2>
+    <p>Testing CSS !important flag - should override normal cascade rules.</p>
+
+    <style>
+        /* Test 1: !important beats later rules */
+        .important-test-1 { color: blue !important; }
+        .important-test-1 { color: red; }
+
+        /* Test 2: !important beats higher specificity */
+        p.important-test-2 { color: green; }
+        .important-test-2 { color: purple !important; }
+
+        /* Test 3: Later !important beats earlier !important */
+        .important-test-3 { color: orange !important; }
+        .important-test-3 { color: pink !important; }
+
+        /* Test 4: Non-important cannot override important */
+        #important-id { color: brown; }
+        .important-test-4 { color: cyan !important; }
+    </style>
+
+    <p class="important-test-1">
+        <strong>Test 1:</strong> Should be BLUE (blue !important beats later red)
+    </p>
+
+    <p class="important-test-2">
+        <strong>Test 2:</strong> Should be PURPLE (purple !important beats p.class green)
+    </p>
+
+    <p class="important-test-3">
+        <strong>Test 3:</strong> Should be PINK (later !important wins over earlier !important)
+    </p>
+
+    <p id="important-id" class="important-test-4">
+        <strong>Test 4:</strong> Should be CYAN (!important class beats non-important ID)
+    </p>
+
+    <p style="color: red !important;">
+        <strong>Test 5:</strong> Should be RED (inline !important)
+    </p>
+
+    <p style="color: green !important; color: blue;">
+        <strong>Test 6:</strong> Should be GREEN (!important in inline beats later non-important in same inline)
+    </p>
+
+    <hr>
+
     <h2>Background Image Test</h2>
     <p>Testing background-image property with url().</p>
 

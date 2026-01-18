@@ -172,6 +172,59 @@ func TestParse(t *testing.T) {
 				},
 			},
 		},
+		// !important tests
+		{
+			name:  "declaration with !important",
+			input: "div { color: red !important; }",
+			expected: Stylesheet{
+				Rules: []Rule{
+					{
+						Selectors:    []Selector{{TagName: "div"}},
+						Declarations: []Declaration{{Property: "color", Value: "red", Important: true}},
+					},
+				},
+			},
+		},
+		{
+			name:  "declaration with !important no space",
+			input: "div { color: red!important; }",
+			expected: Stylesheet{
+				Rules: []Rule{
+					{
+						Selectors:    []Selector{{TagName: "div"}},
+						Declarations: []Declaration{{Property: "color", Value: "red", Important: true}},
+					},
+				},
+			},
+		},
+		{
+			name:  "declaration with !IMPORTANT uppercase",
+			input: "div { color: red !IMPORTANT; }",
+			expected: Stylesheet{
+				Rules: []Rule{
+					{
+						Selectors:    []Selector{{TagName: "div"}},
+						Declarations: []Declaration{{Property: "color", Value: "red", Important: true}},
+					},
+				},
+			},
+		},
+		{
+			name:  "mixed important and normal declarations",
+			input: "div { color: red !important; font-size: 16px; margin: 10px !important; }",
+			expected: Stylesheet{
+				Rules: []Rule{
+					{
+						Selectors: []Selector{{TagName: "div"}},
+						Declarations: []Declaration{
+							{Property: "color", Value: "red", Important: true},
+							{Property: "font-size", Value: "16px", Important: false},
+							{Property: "margin", Value: "10px", Important: true},
+						},
+					},
+				},
+			},
+		},
 	}
 
 	for _, tt := range tests {

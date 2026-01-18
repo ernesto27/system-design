@@ -67,8 +67,19 @@ func DefaultStyle() Style {
 	}
 }
 
+// stripImportant checks if a CSS value ends with !important,
+// returns the clean value and whether !important was present
+func stripImportant(value string) (cleanValue string, isImportant bool) {
+	lowerValue := strings.ToLower(value)
+	if strings.HasSuffix(lowerValue, "!important") {
+		return strings.TrimSpace(value[:len(value)-10]), true
+	}
+	return value, false
+}
+
 func ParseInlineStyle(styleAttr string) Style {
 	style := DefaultStyle()
+	importantProps := make(map[string]bool) // Track !important properties
 
 	parts := strings.Split(styleAttr, ";")
 	for _, part := range parts {
@@ -85,7 +96,19 @@ func ParseInlineStyle(styleAttr string) Style {
 		property := strings.TrimSpace(kv[0])
 		value := strings.TrimSpace(kv[1])
 
+		// Check for !important flag
+		value, important := stripImportant(value)
+
+		// Skip if property was set with !important and new value is not
+		if importantProps[property] && !important {
+			continue
+		}
+
 		applyDeclaration(&style, property, value)
+
+		if important {
+			importantProps[property] = true
+		}
 	}
 	return style
 }
@@ -251,8 +274,9 @@ type Selector struct {
 }
 
 type Declaration struct {
-	Property string
-	Value    string
+	Property  string
+	Value     string
+	Important bool
 }
 
 type Rule struct {
@@ -296,6 +320,7 @@ func MatchSelector(sel Selector, tagName string, id string, classes []string) bo
 // ApplyStylesheet applies matching rules from stylesheet to a base style
 func ApplyStylesheet(sheet Stylesheet, tagName string, id string, classes []string) Style {
 	style := DefaultStyle()
+	importantProps := make(map[string]bool)
 
 	// Check each rule
 	for _, rule := range sheet.Rules {
@@ -314,7 +339,15 @@ func ApplyStylesheet(sheet Stylesheet, tagName string, id string, classes []stri
 
 		// Apply declarations
 		for _, decl := range rule.Declarations {
+			if importantProps[decl.Property] && !decl.Important {
+				continue
+			}
+
 			applyDeclaration(&style, decl.Property, decl.Value)
+
+			if decl.Important {
+				importantProps[decl.Property] = true
+			}
 		}
 	}
 
@@ -580,6 +613,7 @@ func applyDeclarationWithContext(style *Style, property, value string, baseFontS
 // ApplyStylesheetWithContext applies matching rules with parent font-size for em units
 func ApplyStylesheetWithContext(sheet Stylesheet, tagName string, id string, classes []string, parentFontSize float64) Style {
 	style := DefaultStyle()
+	importantProps := make(map[string]bool)
 
 	// Apply user-agent default styles based on tag
 	applyUserAgentDefaults(&style, tagName, parentFontSize)
@@ -599,8 +633,16 @@ func ApplyStylesheetWithContext(sheet Stylesheet, tagName string, id string, cla
 
 		for _, decl := range rule.Declarations {
 			if decl.Property == "font-size" {
+				if importantProps["font-size"] && !decl.Important {
+					continue
+				}
+
 				if size := ParseSizeWithContext(decl.Value, parentFontSize); size > 0 {
 					style.FontSize = size
+				}
+
+				if decl.Important {
+					importantProps["font-size"] = true
 				}
 			}
 		}
@@ -626,7 +668,15 @@ func ApplyStylesheetWithContext(sheet Stylesheet, tagName string, id string, cla
 
 		for _, decl := range rule.Declarations {
 			if decl.Property != "font-size" {
+				if importantProps[decl.Property] && !decl.Important {
+					continue
+				}
+
 				applyDeclarationWithContext(&style, decl.Property, decl.Value, style.FontSize)
+
+				if decl.Important {
+					importantProps[decl.Property] = true
+				}
 			}
 		}
 	}
@@ -637,6 +687,7 @@ func ApplyStylesheetWithContext(sheet Stylesheet, tagName string, id string, cla
 // ParseInlineStyleWithContext parses inline style with font-size context for em units
 func ParseInlineStyleWithContext(styleAttr string, parentFontSize float64) Style {
 	style := DefaultStyle()
+	importantProps := make(map[string]bool) // Track !important properties
 
 	parts := strings.Split(styleAttr, ";")
 
@@ -655,9 +706,21 @@ func ParseInlineStyleWithContext(styleAttr string, parentFontSize float64) Style
 		property := strings.TrimSpace(kv[0])
 		value := strings.TrimSpace(kv[1])
 
+		// Check for !important flag
+		value, important := stripImportant(value)
+
 		if property == "font-size" {
+			// Skip if already set with !important and new value is not
+			if importantProps["font-size"] && !important {
+				continue
+			}
+
 			if size := ParseSizeWithContext(value, parentFontSize); size > 0 {
 				style.FontSize = size
+			}
+
+			if important {
+				importantProps["font-size"] = true
 			}
 		}
 	}
@@ -682,8 +745,20 @@ func ParseInlineStyleWithContext(styleAttr string, parentFontSize float64) Style
 		property := strings.TrimSpace(kv[0])
 		value := strings.TrimSpace(kv[1])
 
+		// Check for !important flag
+		value, important := stripImportant(value)
+
 		if property != "font-size" {
+			// Skip if already set with !important and new value is not
+			if importantProps[property] && !important {
+				continue
+			}
+
 			applyDeclarationWithContext(&style, property, value, style.FontSize)
+
+			if important {
+				importantProps[property] = true
+			}
 		}
 	}
 
