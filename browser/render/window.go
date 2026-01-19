@@ -55,6 +55,7 @@ type Browser struct {
 	radioValues      map[string]*dom.Node
 	checkboxValue    map[*dom.Node]bool
 	fileInputValues  map[*dom.Node]string
+	invalidNodes     map[*dom.Node]bool
 
 	onJSClick func(node *dom.Node)
 }
@@ -83,6 +84,7 @@ func NewBrowser(width, height float32) *Browser {
 		radioValues:     make(map[string]*dom.Node),
 		checkboxValue:   make(map[*dom.Node]bool),
 		fileInputValues: make(map[*dom.Node]string),
+		invalidNodes:    make(map[*dom.Node]bool),
 	}
 	// Create URL entry
 	b.urlEntry = widget.NewEntry()
@@ -510,6 +512,7 @@ func (b *Browser) Reflow(width float32) {
 		RadioValues:     b.radioValues,
 		CheckboxValues:  b.checkboxValue,
 		FileInputValues: b.fileInputValues,
+		InvalidNodes:    b.invalidNodes,
 	})
 
 	baseURL := ""
@@ -699,6 +702,7 @@ func (b *Browser) repaint() {
 		RadioValues:     b.radioValues,
 		CheckboxValues:  b.checkboxValue,
 		FileInputValues: b.fileInputValues,
+		InvalidNodes:    b.invalidNodes,
 	})
 
 	baseURL := ""
@@ -883,6 +887,18 @@ func findParentForm(node *dom.Node) *dom.Node {
 
 // submitForm handles form submission
 func (b *Browser) submitForm(formNode *dom.Node) {
+
+	invalid := b.validateForm(formNode)
+	if len(invalid) > 0 {
+		b.invalidNodes = make(map[*dom.Node]bool)
+		for _, node := range invalid {
+			b.invalidNodes[node] = true
+		}
+		b.repaint()
+		return
+	}
+	b.invalidNodes = make(map[*dom.Node]bool)
+
 	// Get form attributes
 	action := formNode.Attributes["action"]
 	method := strings.ToUpper(formNode.Attributes["method"])
@@ -1104,6 +1120,56 @@ func (b *Browser) addmultipartFiles(writer *multipart.Writer, node *dom.Node) {
 
 	for _, child := range node.Children {
 		b.addmultipartFiles(writer, child)
+	}
+}
+
+func (b *Browser) validateForm(formNode *dom.Node) []*dom.Node {
+	var invalidNodes []*dom.Node
+	b.validateInputs(formNode, &invalidNodes)
+	return invalidNodes
+}
+
+func (b *Browser) validateInputs(node *dom.Node, invalidNodes *[]*dom.Node) {
+	if node == nil {
+		return
+	}
+
+	if node.Type == dom.Element {
+		_, isRequired := node.Attributes["required"]
+
+		if isRequired {
+			isEmpty := false
+
+			switch node.TagName {
+			case "input":
+				inputType := node.Attributes["type"]
+				switch inputType {
+				case "checkbox", "radio":
+					isEmpty = !b.isChecked(node)
+				case "file":
+					isEmpty = b.fileInputValues[node] == ""
+				default:
+					value := b.inputValues[node]
+					if value == "" {
+						value = node.Attributes["value"]
+					}
+					isEmpty = value == ""
+				}
+			case "textarea":
+				isEmpty = b.inputValues[node] == ""
+			case "select":
+				isEmpty = b.getSelectedValue(node) == ""
+			}
+
+			if isEmpty {
+				*invalidNodes = append(*invalidNodes, node)
+			}
+		}
+	}
+
+	// Recurse into children
+	for _, child := range node.Children {
+		b.validateInputs(child, invalidNodes)
 	}
 }
 

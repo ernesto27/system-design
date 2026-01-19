@@ -93,6 +93,7 @@ type InputState struct {
 	RadioValues     map[string]*dom.Node // Selected radio per group (key: name attr)
 	CheckboxValues  map[*dom.Node]bool   // Checked state per check
 	FileInputValues map[*dom.Node]string // Selected filename per file input
+	InvalidNodes    map[*dom.Node]bool   // Nodes with invalid input
 }
 
 // DefaultStyle returns the default text style
@@ -442,6 +443,10 @@ func paintLayoutBoxWithInputs(box *layout.LayoutBox, commands *[]DisplayCommand,
 		isValid := true
 		if inputType == "email" && value != "" {
 			isValid = isValidEmail(value)
+		}
+
+		if state.InvalidNodes != nil && state.InvalidNodes[box.Node] {
+			isValid = false
 		}
 
 		*commands = append(*commands, DrawInput{

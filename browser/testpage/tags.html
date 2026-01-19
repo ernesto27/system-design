@@ -386,6 +386,25 @@ func (b *Browser) Navigate(url string) {
 
     <hr>
 
+    <h2>Required Field Validation Test</h2>
+    <p>Try submitting with empty required fields - they should show red borders!</p>
+    <form action="https://httpbin.org/get" method="get">
+        <p>Name (required): <input type="text" name="name" required placeholder="Enter your name"></p>
+        <p>Email (required): <input type="email" name="email" required placeholder="Enter your email"></p>
+        <p>Phone (optional): <input type="text" name="phone" placeholder="Enter your phone"></p>
+        <p>Comments (required):</p>
+        <textarea name="comments" required placeholder="Enter comments"></textarea>
+        <p><button type="submit">Submit</button></p>
+    </form>
+    <p><strong>How to test:</strong></p>
+    <ol>
+        <li>Click Submit with empty fields - Name, Email, Comments get red borders</li>
+        <li>Fill Name only, click Submit - Email and Comments stay red</li>
+        <li>Fill all required fields, click Submit - form submits to httpbin.org</li>
+    </ol>
+
+    <hr>
+
     <h2>Fieldset Test</h2>
 
     <h3>Basic Fieldset (no legend)</h3>

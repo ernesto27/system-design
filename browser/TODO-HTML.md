@@ -166,7 +166,7 @@
 ## Missing Attributes & Features
 
 ### Form Validation
-- [ ] `required` - required field validation
+- [x] `required` - required field validation (red border + prevents submit)
 - [ ] `pattern` - regex validation
 - [ ] `min` / `max` - number range validation
 - [ ] `minlength` / `maxlength` - text length validation
@@ -212,7 +212,7 @@
 - [ ] Text inside `position: absolute` elements not rendering
 - [ ] `<main>`, `<nav>`, `<section>`, `<article>` not in blockElements map
 - [ ] No keyboard navigation between form elements (Tab key)
-- [ ] No form validation feedback UI
+- [x] No form validation feedback UI (implemented red border for required fields)
 - [ ] Images don't show alt text on load failure
 - [ ] `<fieldset>` legend spacing needs fine-tuning (gap between legend text and border)
 - [ ] `<fieldset>` without legend shows no top border (basic fieldset case)
