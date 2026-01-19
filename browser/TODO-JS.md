@@ -50,7 +50,7 @@
 ## Future: Document Methods
 
 ### Query Methods
-- [ ] `document.querySelector(selector)` - Find first match
+- [x] `document.querySelector(selector)` - Find first match
 - [ ] `document.querySelectorAll(selector)` - Find all matches
 - [ ] `document.getElementsByClassName(class)` - Find by class
 - [ ] `document.getElementsByTagName(tag)` - Find by tag

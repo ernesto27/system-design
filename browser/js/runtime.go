@@ -45,6 +45,7 @@ func (rt *JSRuntime) setupGlobals() {
 	doc := newDocument(rt, rt.document)
 	docObj := rt.vm.NewObject()
 	docObj.Set("getElementById", doc.GetElementById)
+	docObj.Set("querySelector", doc.QuerySelector)
 	rt.vm.Set("document", docObj)
 
 	rt.vm.Set("alert", func(call goja.FunctionCall) goja.Value {

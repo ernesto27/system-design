@@ -39,6 +39,10 @@
         var greeting = document.getElementById("greeting");
         console.log("1. getElementById:", greeting.tagName, greeting.id);
 
+        // Test 1b: querySelector
+        var greetingBySelector = document.querySelector("#greeting");
+        console.log("1b. querySelector:", greetingBySelector.tagName, greetingBySelector.id);
+
         // Test 2: textContent getter
         console.log("2. textContent:", greeting.textContent);
 
