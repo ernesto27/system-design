@@ -357,8 +357,9 @@ func TestComputeLayout(t *testing.T) {
 			containerWidth: 800,
 			verify: func(t *testing.T, tree *LayoutBox) {
 				p := findBoxByTag(tree, "p")
-				assert.Equal(t, 12.0, p.Margin.Top)
-				assert.Equal(t, 12.0, p.Margin.Bottom)
+				// Browser default: 1.2em margin (16px * 1.2 = 19.2)
+				assert.Equal(t, 19.2, p.Margin.Top)
+				assert.Equal(t, 19.2, p.Margin.Bottom)
 			},
 		},
 		{
@@ -367,8 +368,9 @@ func TestComputeLayout(t *testing.T) {
 			containerWidth: 800,
 			verify: func(t *testing.T, tree *LayoutBox) {
 				h1 := findBoxByTag(tree, "h1")
-				assert.Equal(t, 6.0, h1.Margin.Top)
-				assert.Equal(t, 6.0, h1.Margin.Bottom)
+				// Browser default: 0.67em margin (16px * 0.67 = 10.72)
+				assert.Equal(t, 10.72, h1.Margin.Top)
+				assert.Equal(t, 10.72, h1.Margin.Bottom)
 			},
 		},
 		{
