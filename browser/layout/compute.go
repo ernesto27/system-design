@@ -14,8 +14,8 @@ const (
 	DefaultImageHeight = 150.0
 )
 
-// Heights for different elements
-func getLineHeight(tagName string) float64 {
+// getDefaultLineHeight returns default line heights for different elements
+func getDefaultLineHeight(tagName string) float64 {
 	switch tagName {
 	case dom.TagH1:
 		return 40.0
@@ -228,7 +228,7 @@ func computeBlockLayout(box *LayoutBox, containerWidth float64, startX, startY f
 			legendWidth := MeasureText(legendText, 16) + 16 // 8px padding each side
 			legendHeight := 20.0
 
-			legendBox.Rect.X = innerX + 12 // 12px from left edge
+			legendBox.Rect.X = innerX + 12                              // 12px from left edge
 			legendBox.Rect.Y = startY + box.Margin.Top - legendHeight/2 // Centered on border
 			legendBox.Rect.Width = legendWidth
 			legendBox.Rect.Height = legendHeight
@@ -248,7 +248,6 @@ func computeBlockLayout(box *LayoutBox, containerWidth float64, startX, startY f
 			box.Children = append([]*LayoutBox{legendBox}, box.Children...)
 		}
 	}
-
 
 	for _, child := range box.Children {
 		// Skip LegendBox - already positioned above
@@ -280,7 +279,7 @@ func computeBlockLayout(box *LayoutBox, containerWidth float64, startX, startY f
 				childHeight = float64(len(lines)) * lineHeight
 			} else {
 				childWidth = MeasureText(child.Text, fontSize)
-				childHeight = getLineHeight(parentTag)
+				childHeight = getLineHeightFromStyle(box.Style, parentTag)
 			}
 
 		case InlineBox:
@@ -338,7 +337,7 @@ func computeBlockLayout(box *LayoutBox, containerWidth float64, startX, startY f
 			if lineHeight > 0 {
 				yOffset = lineStartY + lineHeight
 			} else {
-				yOffset += getLineHeight(parentTag)
+				yOffset += getLineHeightFromStyle(box.Style, parentTag)
 			}
 			child.Rect.X = currentX
 			child.Rect.Y = yOffset
@@ -547,7 +546,7 @@ func computeInlineSize(box *LayoutBox, parentTag string) (float64, float64) {
 			fontSize := getFontSize(tagForSize)
 			text := css.ApplyTextTransform(child.Text, box.Style.TextTransform)
 			w = MeasureText(text, fontSize)
-			h = getLineHeight(tagForSize)
+			h = getLineHeightFromStyle(box.Style, tagForSize)
 		case InlineBox:
 			w, h = computeInlineSize(child, parentTag)
 		case ImageBox:
@@ -574,8 +573,8 @@ func layoutInlineChildren(box *LayoutBox, parentTag string) {
 	}
 
 	// Calculate vertical offset for baseline alignment
-	parentLineHeight := getLineHeight(parentTag)
-	childLineHeight := getLineHeight(tagForSize)
+	parentLineHeight := getDefaultLineHeight(parentTag)
+	childLineHeight := getLineHeightFromStyle(box.Style, tagForSize)
 	baselineOffset := (parentLineHeight - childLineHeight) / 2
 
 	offsetX := 0.0
@@ -585,7 +584,7 @@ func layoutInlineChildren(box *LayoutBox, parentTag string) {
 			fontSize := getFontSize(tagForSize)
 			text := css.ApplyTextTransform(child.Text, box.Style.TextTransform)
 			w := MeasureText(text, fontSize)
-			h := getLineHeight(tagForSize)
+			h := getLineHeightFromStyle(box.Style, tagForSize)
 			child.Rect.X = box.Rect.X + offsetX
 			child.Rect.Y = box.Rect.Y + baselineOffset
 			child.Rect.Width = w
@@ -823,4 +822,11 @@ func GetLegendText(box *LayoutBox) string {
 		}
 	}
 	return ""
+}
+
+func getLineHeightFromStyle(style css.Style, tagName string) float64 {
+	if style.LineHeight > 0 {
+		return style.LineHeight
+	}
+	return getDefaultLineHeight(tagName)
 }

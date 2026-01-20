@@ -11,6 +11,7 @@ type Style struct {
 	BackgroundColor color.Color
 	BackgroundImage string
 	FontSize        float64
+	LineHeight      float64
 	Bold            bool
 	Italic          bool
 	MarginTop       float64
@@ -378,6 +379,8 @@ func applyDeclaration(style *Style, property, value string) {
 		if size := ParseSize(value); size > 0 {
 			style.FontSize = size
 		}
+	case "line-height":
+		style.LineHeight = parseLineHeight(value, style.FontSize)
 	case "font-weight":
 		style.Bold = (value == "bold")
 	case "font-style":
@@ -604,6 +607,8 @@ func applyDeclarationWithContext(style *Style, property, value string, baseFontS
 		style.PaddingLeft = ParseSizeWithContext(value, style.FontSize)
 	case "padding-right":
 		style.PaddingRight = ParseSizeWithContext(value, style.FontSize)
+	case "line-height":
+		style.LineHeight = parseLineHeight(value, style.FontSize)
 	default:
 		// Fall back to original for non-size properties
 		applyDeclaration(style, property, value)
@@ -802,4 +807,30 @@ func applyUserAgentDefaults(style *Style, tagName string, fontSize float64) {
 		style.MarginTop = fontSize * 0.5
 		style.MarginBottom = fontSize * 0.5
 	}
+}
+
+// parseLineHeight handles: unitless (1.5), px (24px), normal
+func parseLineHeight(value string, fontSize float64) float64 {
+	value = strings.TrimSpace(strings.ToLower(value))
+
+	// "normal" keyword = ~1.2 multiplier
+	if value == "normal" {
+		return fontSize * 1.2
+	}
+
+	// Pixel value (e.g., "24px")
+	if strings.HasSuffix(value, "px") {
+		num := strings.TrimSuffix(value, "px")
+		if size, err := strconv.ParseFloat(num, 64); err == nil {
+			return size
+		}
+		return 0
+	}
+
+	// Unitless multiplier (e.g., "1.5")
+	if multiplier, err := strconv.ParseFloat(value, 64); err == nil {
+		return multiplier * fontSize
+	}
+
+	return 0
 }

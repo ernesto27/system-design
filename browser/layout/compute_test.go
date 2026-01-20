@@ -1,6 +1,7 @@
 package layout
 
 import (
+	"browser/css"
 	"browser/dom"
 	"testing"
 
@@ -28,7 +29,31 @@ func TestGetLineHeight(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.tag, func(t *testing.T) {
-			result := getLineHeight(tt.tag)
+			result := getDefaultLineHeight(tt.tag)
+			assert.Equal(t, tt.expected, result)
+		})
+	}
+}
+
+func TestGetLineHeightFromStyle(t *testing.T) {
+	tests := []struct {
+		name        string
+		lineHeight  float64
+		tagName     string
+		expected    float64
+	}{
+		{"style has line-height", 32.0, "p", 32.0},
+		{"style has line-height overrides tag default", 50.0, "h1", 50.0},
+		{"no line-height falls back to h1 default", 0, "h1", 40.0},
+		{"no line-height falls back to h2 default", 0, "h2", 32.0},
+		{"no line-height falls back to p default", 0, "p", 24.0},
+		{"small line-height value", 12.0, "p", 12.0},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			style := css.Style{LineHeight: tt.lineHeight}
+			result := getLineHeightFromStyle(style, tt.tagName)
 			assert.Equal(t, tt.expected, result)
 		})
 	}

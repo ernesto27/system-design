@@ -36,6 +36,7 @@
 - [x] `cursor` - pointer/text/crosshair
 - [x] `em` unit - relative to parent font size
 - [x] User-agent default styles (margins for p, h1-h6, ul, ol, blockquote, hr)
+- [x] `line-height` - line spacing (unitless, px, normal keyword)
 
 ---
 
@@ -66,7 +67,7 @@
 - [ ] `clear` - clear floats
 
 ### Typography
-- [ ] `line-height` - line spacing
+- [x] `line-height` - line spacing
 - [ ] `letter-spacing` - character spacing
 - [ ] `word-spacing` - word spacing
 - [ ] `text-shadow` - text shadow

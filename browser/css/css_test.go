@@ -447,3 +447,30 @@ func TestInlineStyleImportant(t *testing.T) {
 		})
 	}
 }
+
+func TestParseLineHeight(t *testing.T) {
+	tests := []struct {
+		name     string
+		value    string
+		fontSize float64
+		expected float64
+	}{
+		{"unitless 1", "1", 16.0, 16.0},
+		{"unitless 1.5", "1.5", 16.0, 24.0},
+		{"unitless 2", "2", 16.0, 32.0},
+		{"unitless with larger font", "1.5", 20.0, 30.0},
+		{"pixel value", "24px", 16.0, 24.0},
+		{"pixel value ignores font-size", "40px", 20.0, 40.0},
+		{"normal keyword", "normal", 16.0, 19.2},
+		{"normal keyword larger font", "normal", 20.0, 24.0},
+		{"zero", "0", 16.0, 0.0},
+		{"invalid", "invalid", 16.0, 0.0},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := parseLineHeight(tt.value, tt.fontSize)
+			assert.Equal(t, tt.expected, result)
+		})
+	}
+}
