@@ -119,6 +119,107 @@ func TestSerializeNode(t *testing.T) {
 	}
 }
 
+func TestGetClasses(t *testing.T) {
+	tests := []struct {
+		name     string
+		class    string
+		expected []string
+	}{
+		{"empty string", "", []string{}},
+		{"single class", "container", []string{"container"}},
+		{"multiple classes", "foo bar baz", []string{"foo", "bar", "baz"}},
+		{"extra whitespace", "  foo   bar  ", []string{"foo", "bar"}},
+		{"tabs and newlines", "foo\tbar\nbaz", []string{"foo", "bar", "baz"}},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			node := dom.NewElement("div", map[string]string{"class": tt.class})
+			elem := &Element{node: node}
+			result := elem.getClasses()
+			assert.Equal(t, tt.expected, result)
+		})
+	}
+}
+
+func TestSetClasses(t *testing.T) {
+	tests := []struct {
+		name     string
+		classes  []string
+		expected string
+	}{
+		{"empty slice", []string{}, ""},
+		{"single class", []string{"container"}, "container"},
+		{"multiple classes", []string{"foo", "bar", "baz"}, "foo bar baz"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			node := dom.NewElement("div", nil)
+			elem := &Element{node: node}
+			elem.setClasses(tt.classes)
+			assert.Equal(t, tt.expected, node.Attributes["class"])
+		})
+	}
+
+	t.Run("nil attributes map", func(t *testing.T) {
+		node := &dom.Node{Type: dom.Element, TagName: "div", Attributes: nil}
+		elem := &Element{node: node}
+		elem.setClasses([]string{"test"})
+		assert.Equal(t, "test", node.Attributes["class"])
+	})
+}
+
+func TestClassListAdd(t *testing.T) {
+	tests := []struct {
+		name          string
+		initialClass  string
+		addClass      string
+		expectedClass string
+	}{
+		{"add to empty", "", "highlight", "highlight"},
+		{"add new class", "box", "highlight", "box highlight"},
+		{"add duplicate", "box highlight", "highlight", "box highlight"},
+		{"add to multiple", "a b c", "d", "a b c d"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			node := dom.NewElement("div", map[string]string{"class": tt.initialClass})
+			rt := &JSRuntime{}
+			elem := &Element{node: node, rt: rt}
+			elem.ClassListAdd(tt.addClass)
+			assert.Equal(t, tt.expectedClass, node.Attributes["class"])
+		})
+	}
+}
+
+func TestClassListRemove(t *testing.T) {
+	tests := []struct {
+		name          string
+		initialClass  string
+		removeClass   string
+		expectedClass string
+	}{
+		{"remove existing class", "box blue", "blue", "box"},
+		{"remove only class", "highlight", "highlight", ""},
+		{"remove non-existent class", "box", "blue", "box"},
+		{"remove from multiple", "a b c", "b", "a c"},
+		{"remove first class", "first second", "first", "second"},
+		{"remove from empty", "", "anything", ""},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			node := dom.NewElement("div", map[string]string{"class": tt.initialClass})
+			rt := &JSRuntime{}
+			elem := &Element{node: node, rt: rt}
+			elem.ClassListRemove(tt.removeClass)
+			assert.Equal(t, tt.expectedClass, node.Attributes["class"])
+		})
+	}
+}
+
 func TestGetInnerHTML(t *testing.T) {
 	tests := []struct {
 		name     string

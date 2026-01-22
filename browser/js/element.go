@@ -2,6 +2,7 @@ package js
 
 import (
 	"browser/dom"
+	"slices"
 	"strings"
 
 	"github.com/dop251/goja"
@@ -68,6 +69,47 @@ func (e *Element) SetInnerHTML(htmlContent string) {
 	}
 
 	if e.rt != nil && e.rt.onReflow != nil {
+		e.rt.onReflow()
+	}
+}
+
+func (e *Element) getClasses() []string {
+	classAttr := e.node.Attributes["class"]
+	if classAttr == "" {
+		return []string{}
+	}
+	return strings.Fields(classAttr)
+}
+
+func (e *Element) setClasses(classes []string) {
+	if e.node.Attributes == nil {
+		e.node.Attributes = make(map[string]string)
+	}
+	e.node.Attributes["class"] = strings.Join(classes, " ")
+}
+
+func (e *Element) ClassListAdd(className string) {
+	classes := e.getClasses()
+	if slices.Contains(classes, className) {
+		return
+	}
+
+	classes = append(classes, className)
+	e.setClasses(classes)
+
+	if e.rt.onReflow != nil {
+		e.rt.onReflow()
+	}
+}
+
+func (e *Element) ClassListRemove(className string) {
+	classes := e.getClasses()
+	classes = slices.DeleteFunc(classes, func(c string) bool {
+		return c == className
+	})
+	e.setClasses(classes)
+
+	if e.rt.onReflow != nil {
 		e.rt.onReflow()
 	}
 }

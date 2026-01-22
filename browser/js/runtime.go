@@ -289,6 +289,23 @@ func (rt *JSRuntime) wrapElement(node *dom.Node) goja.Value {
 		return call.Arguments[0]
 	})
 
+	classList := rt.vm.NewObject()
+	classList.Set("add", func(call goja.FunctionCall) goja.Value {
+		if len(call.Arguments) > 0 {
+			elem.ClassListAdd(call.Arguments[0].String())
+		}
+		return goja.Undefined()
+	})
+
+	classList.Set("remove", func(call goja.FunctionCall) goja.Value {
+		if len(call.Arguments) > 0 {
+			elem.ClassListRemove(call.Arguments[0].String())
+		}
+		return goja.Undefined()
+	})
+
+	obj.Set("classList", classList)
+
 	obj.Set("_elem", elem)
 
 	return obj

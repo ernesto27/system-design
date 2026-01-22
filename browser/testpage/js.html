@@ -7,6 +7,8 @@
         .box { padding: 20px; margin: 10px 0; background: #e0e0e0; }
         #output { background: #d4edda; }
         button { padding: 10px 20px; font-size: 16px; cursor: pointer; }
+        .highlight { background-color: #ffeb3b; }
+        .border-red { border: 3px solid red; }
     </style>
 </head>
 <body>
@@ -31,6 +33,19 @@
 
     <div id="confirmResult" class="box">Confirm result will appear here</div>
     <div id="promptResult" class="box">Prompt result will appear here</div>
+
+    <div class="box">
+        <h3>JSON.parse Tests</h3>
+        <div id="jsonResult">Running JSON tests...</div>
+    </div>
+
+    <div class="box">
+        <h3>classList.add Test</h3>
+        <div id="classListTarget" class="box">Click button to add highlight class</div>
+        <button id="addHighlightBtn">Add Highlight</button>
+        <button id="addBorderBtn">Add Red Border</button>
+        <button id="removeHighlightBtn">Remove Highlight</button>
+    </div>
 
     <script>
         console.log("=== JavaScript Test ===");
@@ -166,7 +181,96 @@
         });
         console.log("Current URL:", window.location.href);
 
-        // Test 17: alert on page load
+        // Test 17: JSON.parse
+        console.log("=== Testing JSON.parse ===");
+        var jsonResult = document.getElementById("jsonResult");
+        var jsonTests = [];
+
+        // Test 17a: Basic object parsing
+        var obj = JSON.parse('{"name": "Alice", "age": 30}');
+        var test1 = "name=" + obj.name + ", age=" + obj.age;
+        jsonTests.push("17a. Object: " + test1);
+        console.log("17a. JSON.parse object:", test1);
+
+        // Test 17b: Array parsing
+        var arr = JSON.parse('[1, 2, 3, "four"]');
+        var test2 = "length=" + arr.length + ", last=" + arr[3];
+        jsonTests.push("17b. Array: " + test2);
+        console.log("17b. JSON.parse array:", test2);
+
+        // Test 17c: Nested structure
+        var nested = JSON.parse('{"user": {"name": "Bob"}, "scores": [10, 20]}');
+        var test3 = "user.name=" + nested.user.name + ", scores[1]=" + nested.scores[1];
+        jsonTests.push("17c. Nested: " + test3);
+        console.log("17c. JSON.parse nested:", test3);
+
+        // Test 17d: Reviver function (doubles all numbers)
+        var revived = JSON.parse('{"a": 1, "b": 2}', function(key, value) {
+            if (typeof value === "number") {
+                return value * 2;
+            }
+            return value;
+        });
+        var test4 = "a=" + revived.a + ", b=" + revived.b;
+        jsonTests.push("17d. Reviver: " + test4);
+        console.log("17d. JSON.parse with reviver:", test4);
+
+        // Display results
+        jsonResult.innerHTML = jsonTests.join("<br>");
+        console.log("=== JSON.parse Tests Complete ===");
+
+        // Test 18: classList.add
+        console.log("=== Testing classList.add ===");
+        var testDiv = document.createElement("div");
+        testDiv.setAttribute("class", "original");
+        console.log("18a. Before:", testDiv.getAttribute("class"));
+
+        testDiv.classList.add("newclass");
+        console.log("18b. After add:", testDiv.getAttribute("class"));
+
+        testDiv.classList.add("another");
+        console.log("18c. After second add:", testDiv.getAttribute("class"));
+
+        testDiv.classList.add("newclass"); // duplicate - should not add
+        console.log("18d. After duplicate:", testDiv.getAttribute("class"));
+        console.log("=== classList.add Tests Complete ===");
+
+        // Test 18e: Visual classList.add test
+        var classListTarget = document.getElementById("classListTarget");
+        var addHighlightBtn = document.getElementById("addHighlightBtn");
+        var addBorderBtn = document.getElementById("addBorderBtn");
+
+        addHighlightBtn.addEventListener("click", function() {
+            classListTarget.classList.add("highlight");
+            console.log("18e. Added highlight, class is now:", classListTarget.getAttribute("class"));
+        });
+
+        addBorderBtn.addEventListener("click", function() {
+            classListTarget.classList.add("border-red");
+            console.log("18f. Added border-red, class is now:", classListTarget.getAttribute("class"));
+        });
+
+        // Test 19: classList.remove
+        console.log("=== Testing classList.remove ===");
+        var removeTestDiv = document.createElement("div");
+        removeTestDiv.setAttribute("class", "one two three");
+        console.log("19a. Before:", removeTestDiv.getAttribute("class"));
+
+        removeTestDiv.classList.remove("two");
+        console.log("19b. After remove:", removeTestDiv.getAttribute("class"));
+
+        removeTestDiv.classList.remove("nonexistent");
+        console.log("19c. Remove non-existent:", removeTestDiv.getAttribute("class"));
+        console.log("=== classList.remove Tests Complete ===");
+
+        // Visual classList.remove test
+        var removeHighlightBtn = document.getElementById("removeHighlightBtn");
+        removeHighlightBtn.addEventListener("click", function() {
+            classListTarget.classList.remove("highlight");
+            console.log("19d. Removed highlight, class is now:", classListTarget.getAttribute("class"));
+        });
+
+        // Test 20: alert on page load
         alert("Page loaded! JS is working.");
     </script>
 </body>
