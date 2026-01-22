@@ -662,6 +662,30 @@ func computeTableLayout(table *LayoutBox, containerWidth float64, startX, startY
 
 	yOffset := startY
 
+	// Handle caption first (renders above the table rows, centered)
+	for _, child := range table.Children {
+		if child.Type == TableCaptionBox {
+			child.Rect.X = startX
+			child.Rect.Y = yOffset
+			child.Rect.Width = containerWidth
+
+			// Center the caption text
+			captionHeight := 24.0
+			for _, textChild := range child.Children {
+				if textChild.Type == TextBox {
+					fontSize := 16.0
+					textWidth := MeasureText(textChild.Text, fontSize)
+					textChild.Rect.X = startX + (containerWidth-textWidth)/2 // centered
+					textChild.Rect.Y = yOffset
+					textChild.Rect.Width = textWidth
+					textChild.Rect.Height = 24.0
+				}
+			}
+			child.Rect.Height = captionHeight
+			yOffset += captionHeight + 4
+		}
+	}
+
 	// Layout each row
 	for _, row := range rows {
 		row.Rect.X = startX

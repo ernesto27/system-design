@@ -25,6 +25,7 @@ const (
 	TableBox
 	TableRowBox
 	TableCellBox
+	TableCaptionBox
 	InputBox
 	ButtonBox
 	TextareaBox

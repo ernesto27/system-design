@@ -128,6 +128,8 @@ func BuildBox(node *dom.Node, parent *LayoutBox, stylesheet css.Stylesheet) *Lay
 			box.Type = TableRowBox
 		} else if node.TagName == dom.TagTD || node.TagName == dom.TagTH {
 			box.Type = TableCellBox
+		} else if node.TagName == dom.TagCaption {
+			box.Type = TableCaptionBox
 		} else {
 			box.Type = InlineBox
 		}

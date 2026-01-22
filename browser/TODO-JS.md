@@ -29,8 +29,8 @@
 - [ ] `element.remove()` - Remove self from parent
 
 ### Attribute Manipulation
-- [ ] `element.classList.add(class)` - Add CSS class
-- [ ] `element.classList.remove(class)` - Remove CSS class
+- [x] `element.classList.add(class)` - Add CSS class
+- [x] `element.classList.remove(class)` - Remove CSS class
 - [ ] `element.classList.toggle(class)` - Toggle CSS class
 - [ ] `element.classList.contains(class)` - Check for class
 - [ ] `element.style.property` - Get/set inline styles
@@ -146,8 +146,8 @@
 - [ ] `Promise.all()`, `Promise.race()`
 
 ### JSON
-- [ ] `JSON.parse(string)` - Parse JSON
-- [ ] `JSON.stringify(obj)` - Convert to JSON
+- [x] `JSON.parse(string)` - Parse JSON (built-in to goja)
+- [x] `JSON.stringify(obj)` - Convert to JSON (built-in to goja)
 
 ### Console
 - [x] `console.log()` - Basic logging

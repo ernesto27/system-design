@@ -65,10 +65,10 @@
 ### Semantic
 - [x] `<header>` - header section
 - [x] `<footer>` - footer section
-- [ ] `<main>` - main content (defined in tags.go but not in blockElements)
-- [ ] `<nav>` - navigation (defined in tags.go but not in blockElements)
-- [ ] `<section>` - section (defined in tags.go but not in blockElements)
-- [ ] `<article>` - article (defined in tags.go but not in blockElements)
+- [x] `<main>` - main content
+- [x] `<nav>` - navigation
+- [x] `<section>` - section
+- [x] `<article>` - article
 
 ---
 
@@ -99,7 +99,7 @@
 - [ ] `<iframe>` - embedded frame
 
 ### Tables
-- [ ] `<caption>` - table caption
+- [x] `<caption>` - table caption (centered text)
 - [ ] `<colgroup>` - column group
 - [ ] `<col>` - column properties
 
@@ -210,7 +210,7 @@
 ## Known Issues
 - [ ] Whitespace between inline elements missing (e.g., `<strong>`, `<em>`)
 - [ ] Text inside `position: absolute` elements not rendering
-- [ ] `<main>`, `<nav>`, `<section>`, `<article>` not in blockElements map
+- [x] `<main>`, `<nav>`, `<section>`, `<article>` added to blockElements map
 - [ ] No keyboard navigation between form elements (Tab key)
 - [x] No form validation feedback UI (implemented red border for required fields)
 - [ ] Images don't show alt text on load failure
