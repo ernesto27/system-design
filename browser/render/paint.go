@@ -387,6 +387,24 @@ func paintLayoutBoxWithInputs(box *layout.LayoutBox, commands *[]DisplayCommand,
 				})
 				y += lineHeight
 			}
+		} else if len(box.WrappedLines) > 1 {
+			// Render wrapped lines
+			lineHeight := float64(currentStyle.Size) * 1.2
+			y := box.Rect.Y
+			for _, line := range box.WrappedLines {
+				transformedLine := css.ApplyTextTransform(line, currentStyle.TextTransform)
+				*commands = append(*commands, DrawText{
+					Text: transformedLine, X: box.Rect.X, Y: y, Width: box.Rect.Width,
+					Size:          currentStyle.Size,
+					Color:         applyOpacity(currentStyle.Color, currentStyle.Opacity),
+					Bold:          currentStyle.Bold,
+					Italic:        currentStyle.Italic,
+					Monospace:     currentStyle.Monospace || fontStackHasMonospace(currentStyle.FontFamily),
+					Underline:     currentStyle.TextDecoration == "underline",
+					Strikethrough: currentStyle.TextDecoration == "line-through",
+				})
+				y += lineHeight
+			}
 		} else {
 			*commands = append(*commands, DrawText{
 				Text: text, X: box.Rect.X, Y: box.Rect.Y, Width: box.Rect.Width,

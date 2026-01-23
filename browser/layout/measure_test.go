@@ -116,3 +116,39 @@ func TestMeasureTextFormula(t *testing.T) {
 		})
 	}
 }
+
+func TestWrapText(t *testing.T) {
+	// Use default estimation: len(text) * fontSize * 0.5
+	originalMeasurer := TextMeasurer
+	TextMeasurer = nil
+	defer func() { TextMeasurer = originalMeasurer }()
+
+	tests := []struct {
+		name          string
+		text          string
+		fontSize      float64
+		maxWidth      float64
+		expectedLines int
+		expectedFirst string
+	}{
+		{"empty text", "", 16, 100, 0, ""},
+		{"fits in one line", "short", 16, 100, 1, "short"},
+		{"single word too long still one line", "superlongword", 16, 50, 1, "superlongword"},
+		{"wraps to two lines", "hello world", 16, 50, 2, "hello"},
+		{"wraps to three lines", "one two three", 16, 40, 3, "one"},
+		{"zero maxWidth no wrap", "hello world", 16, 0, 1, "hello world"},
+		{"negative maxWidth no wrap", "hello world", 16, -10, 1, "hello world"},
+		{"exact fit one line", "ab", 16, 16, 1, "ab"},
+		{"just over wraps", "abc de", 16, 24, 2, "abc"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := WrapText(tt.text, tt.fontSize, tt.maxWidth)
+			assert.Equal(t, tt.expectedLines, len(result), "wrong number of lines")
+			if tt.expectedLines > 0 && tt.expectedFirst != "" {
+				assert.Equal(t, tt.expectedFirst, result[0], "first line mismatch")
+			}
+		})
+	}
+}

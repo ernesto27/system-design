@@ -278,8 +278,25 @@ func computeBlockLayout(box *LayoutBox, containerWidth float64, startX, startY f
 				childWidth = maxWidth
 				childHeight = float64(len(lines)) * lineHeight
 			} else {
-				childWidth = MeasureText(child.Text, fontSize)
-				childHeight = getLineHeightFromStyle(box.Style, parentTag)
+				// Wrap text to fit container width
+				child.WrappedLines = WrapText(child.Text, fontSize, innerWidth)
+
+				lineHeight := getLineHeightFromStyle(box.Style, parentTag)
+				numLines := len(child.WrappedLines)
+				if numLines == 0 {
+					numLines = 1
+				}
+
+				// Width is the widest wrapped line
+				maxLineWidth := 0.0
+				for _, line := range child.WrappedLines {
+					w := MeasureText(line, fontSize)
+					if w > maxLineWidth {
+						maxLineWidth = w
+					}
+				}
+				childWidth = maxLineWidth
+				childHeight = float64(numLines) * lineHeight
 			}
 
 		case InlineBox:
