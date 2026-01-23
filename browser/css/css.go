@@ -375,6 +375,16 @@ func applyDeclaration(style *Style, property, value string) {
 		} else if value == "none" {
 			style.BackgroundImage = ""
 		}
+	case "background":
+		bgColor, bgImage := parseBackgroundShorthand(value)
+		if bgColor != nil {
+			style.BackgroundColor = bgColor
+		}
+
+		if bgImage != "" {
+			style.BackgroundImage = bgImage
+		}
+
 	case "font-size":
 		if size := ParseSize(value); size > 0 {
 			style.FontSize = size
@@ -833,4 +843,71 @@ func parseLineHeight(value string, fontSize float64) float64 {
 	}
 
 	return 0
+}
+
+func parseBackgroundShorthand(value string) (color.Color, string) {
+	var bgColor color.Color
+	var bgImage string
+
+	parts := splitBackgroundValue(value)
+
+	for _, part := range parts {
+		part = strings.TrimSpace(part)
+		if part == "" {
+			continue
+		}
+
+		if strings.HasPrefix(part, "url(") && strings.HasSuffix(part, ")") {
+			url := part[4 : len(part)-1]
+			url = strings.Trim(url, `"'`)
+			bgImage = strings.TrimSpace(url)
+			continue
+		}
+
+		if part == "none" {
+			bgImage = ""
+			continue
+		}
+
+		if part == "none" {
+			bgImage = ""
+			continue
+		}
+
+		if c := ParseColor(part); c != nil {
+			bgColor = c
+		}
+	}
+
+	return bgColor, bgImage
+}
+
+func splitBackgroundValue(value string) []string {
+	var parts []string
+	var current strings.Builder
+	parenDepth := 0
+
+	for _, ch := range value {
+		if ch == '(' {
+			parenDepth++
+		}
+		if ch == ')' {
+			parenDepth--
+		}
+
+		if ch == ' ' && parenDepth == 0 {
+			if current.Len() > 0 {
+				parts = append(parts, current.String())
+				current.Reset()
+			}
+		} else {
+			current.WriteRune(ch)
+		}
+	}
+
+	if current.Len() > 0 {
+		parts = append(parts, current.String())
+	}
+
+	return parts
 }

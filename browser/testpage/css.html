@@ -108,6 +108,64 @@
 
     <hr>
 
+    <h2>Background Shorthand Test</h2>
+    <p>Testing the background shorthand property (combines color and image).</p>
+
+    <!-- Test 1: Color only -->
+    <div style="width: 200px; height: 60px; background: red; color: white; padding: 10px;">
+        background: red (color only)
+    </div>
+
+    <br>
+
+    <!-- Test 2: Hex color only -->
+    <div style="width: 200px; height: 60px; background: #00ff00; color: black; padding: 10px;">
+        background: #00ff00 (hex color)
+    </div>
+
+    <br>
+
+    <!-- Test 3: URL only -->
+    <div style="width: 250px; height: 100px; background: url(https://picsum.photos/250/100); border: 2px solid black;">
+    </div>
+    <p>Box above: background: url(...) only</p>
+
+    <br>
+
+    <!-- Test 4: Color + URL -->
+    <div style="width: 250px; height: 100px; background: lightblue url(https://picsum.photos/250/100); border: 2px solid blue;">
+    </div>
+    <p>Box above: background: lightblue url(...) - blue shows while loading</p>
+
+    <br>
+
+    <!-- Test 5: URL + Color (reversed order) -->
+    <div style="width: 250px; height: 100px; background: url(https://picsum.photos/250/100) orange; border: 2px solid orange;">
+    </div>
+    <p>Box above: background: url(...) orange - order reversed, should still work</p>
+
+    <br>
+
+    <!-- Test 6: None keyword -->
+    <div style="width: 200px; height: 60px; background: none; border: 2px dashed gray; padding: 10px;">
+        background: none (transparent)
+    </div>
+
+    <br>
+
+    <!-- Test 7: Compare shorthand vs longhand -->
+    <div style="display: flex;">
+        <div style="width: 150px; height: 80px; background-color: purple; color: white; padding: 10px; margin-right: 10px;">
+            Longhand: background-color: purple
+        </div>
+        <div style="width: 150px; height: 80px; background: purple; color: white; padding: 10px;">
+            Shorthand: background: purple
+        </div>
+    </div>
+    <p>Both boxes above should look identical (purple background)</p>
+
+    <hr>
+
     <h2>Min-Width Test</h2>
    <!-- The width says 50px, but min-width says 200px. -->
    <!-- If successful, this red box will be 200px wide. -->

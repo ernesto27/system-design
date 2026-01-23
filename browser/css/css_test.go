@@ -474,3 +474,108 @@ func TestParseLineHeight(t *testing.T) {
 		})
 	}
 }
+
+func TestSplitBackgroundValue(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    string
+		expected []string
+	}{
+		{"single color", "red", []string{"red"}},
+		{"single url", "url(img.png)", []string{"url(img.png)"}},
+		{"color and url", "red url(img.png)", []string{"red", "url(img.png)"}},
+		{"url with spaces", "url(my image.png)", []string{"url(my image.png)"}},
+		{"color and url with spaces", "blue url(path/to image.png)", []string{"blue", "url(path/to image.png)"}},
+		{"hex color", "#ff0000 url(x.png)", []string{"#ff0000", "url(x.png)"}},
+		{"url then color", "url(test.png) green", []string{"url(test.png)", "green"}},
+		{"multiple spaces between", "red   url(x.png)", []string{"red", "url(x.png)"}},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := splitBackgroundValue(tt.input)
+			assert.Equal(t, tt.expected, result)
+		})
+	}
+}
+
+func TestParseBackgroundShorthand(t *testing.T) {
+	tests := []struct {
+		name          string
+		input         string
+		expectedColor color.Color
+		expectedImage string
+	}{
+		{"color only", "red", color.RGBA{255, 0, 0, 255}, ""},
+		{"hex color only", "#00ff00", color.RGBA{0, 255, 0, 255}, ""},
+		{"url only", "url(cat.png)", nil, "cat.png"},
+		{"url with single quotes", "url('cat.png')", nil, "cat.png"},
+		{"url with double quotes", `url("cat.png")`, nil, "cat.png"},
+		{"color and url", "blue url(dog.png)", color.RGBA{0, 0, 255, 255}, "dog.png"},
+		{"url and color reversed", "url(dog.png) blue", color.RGBA{0, 0, 255, 255}, "dog.png"},
+		{"none keyword", "none", nil, ""},
+		{"named color lightblue", "lightblue", color.RGBA{173, 216, 230, 255}, ""},
+		{"url with path", "url(images/bg.png)", nil, "images/bg.png"},
+		{"color and url with path", "yellow url(path/to/img.jpg)", color.RGBA{255, 255, 0, 255}, "path/to/img.jpg"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			gotColor, gotImage := parseBackgroundShorthand(tt.input)
+			assert.True(t, colorsEqual(gotColor, tt.expectedColor),
+				"color mismatch for %q: expected %v, got %v", tt.input, tt.expectedColor, gotColor)
+			assert.Equal(t, tt.expectedImage, gotImage,
+				"image mismatch for %q", tt.input)
+		})
+	}
+}
+
+func TestBackgroundShorthandInlineStyle(t *testing.T) {
+	tests := []struct {
+		name          string
+		input         string
+		expectedColor color.Color
+		expectedImage string
+	}{
+		{
+			name:          "background color only",
+			input:         "background: red",
+			expectedColor: color.RGBA{255, 0, 0, 255},
+			expectedImage: "",
+		},
+		{
+			name:          "background hex color",
+			input:         "background: #0000ff",
+			expectedColor: color.RGBA{0, 0, 255, 255},
+			expectedImage: "",
+		},
+		{
+			name:          "background url only",
+			input:         "background: url(test.png)",
+			expectedColor: nil,
+			expectedImage: "test.png",
+		},
+		{
+			name:          "background color and url",
+			input:         "background: green url(bg.jpg)",
+			expectedColor: color.RGBA{0, 128, 0, 255},
+			expectedImage: "bg.jpg",
+		},
+		{
+			name:          "background url and color reversed",
+			input:         "background: url(bg.jpg) purple",
+			expectedColor: color.RGBA{128, 0, 128, 255},
+			expectedImage: "bg.jpg",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			style := ParseInlineStyle(tt.input)
+			assert.True(t, colorsEqual(style.BackgroundColor, tt.expectedColor),
+				"BackgroundColor mismatch: expected %v, got %v", tt.expectedColor, style.BackgroundColor)
+			assert.Equal(t, tt.expectedImage, style.BackgroundImage,
+				"BackgroundImage mismatch")
+		})
+	}
+}
