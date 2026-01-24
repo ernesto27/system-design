@@ -47,6 +47,14 @@
         <button id="removeHighlightBtn">Remove Highlight</button>
     </div>
 
+    <div class="box">
+        <h3>element.remove() Test</h3>
+        <div id="removeTarget" class="box highlight">
+            I will be removed when you click the button!
+        </div>
+        <button id="selfRemoveBtn">Remove Element (self.remove())</button>
+    </div>
+
     <script>
         console.log("=== JavaScript Test ===");
 
@@ -268,6 +276,21 @@
         removeHighlightBtn.addEventListener("click", function() {
             classListTarget.classList.remove("highlight");
             console.log("19d. Removed highlight, class is now:", classListTarget.getAttribute("class"));
+        });
+
+        // Test 21: element.remove()
+        console.log("=== Testing element.remove() ===");
+        var selfRemoveBtn = document.getElementById("selfRemoveBtn");
+        selfRemoveBtn.addEventListener("click", function() {
+            var target = document.getElementById("removeTarget");
+            if (target) {
+                target.remove();
+                console.log("21. Element removed itself!");
+                output.textContent = "Element removed itself using .remove()!";
+            } else {
+                console.log("21. Element already removed");
+                output.textContent = "Element was already removed!";
+            }
         });
 
         // Test 20: alert on page load

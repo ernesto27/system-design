@@ -26,7 +26,7 @@
 - [x] `element.removeChild(child)` - Remove a child
 - [ ] `element.insertBefore(new, ref)` - Insert before reference node
 - [ ] `element.replaceChild(new, old)` - Replace a child
-- [ ] `element.remove()` - Remove self from parent
+- [x] `element.remove()` - Remove self from parent
 
 ### Attribute Manipulation
 - [x] `element.classList.add(class)` - Add CSS class

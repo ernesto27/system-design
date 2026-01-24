@@ -289,6 +289,15 @@ func (rt *JSRuntime) wrapElement(node *dom.Node) goja.Value {
 		return call.Arguments[0]
 	})
 
+	obj.Set("remove", func(call goja.FunctionCall) goja.Value {
+		node.Remove()
+
+		if rt.onReflow != nil {
+			rt.onReflow()
+		}
+		return goja.Undefined()
+	})
+
 	classList := rt.vm.NewObject()
 	classList.Set("add", func(call goja.FunctionCall) goja.Value {
 		if len(call.Arguments) > 0 {

@@ -48,6 +48,12 @@ func (n *Node) RemoveChild(child *Node) {
 	}
 }
 
+func (n *Node) Remove() {
+	if n.Parent != nil {
+		n.Parent.RemoveChild(n)
+	}
+}
+
 func FindTitle(node *Node) string {
 	if node == nil {
 		return ""
