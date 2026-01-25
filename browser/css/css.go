@@ -784,8 +784,8 @@ func ParseInlineStyleWithContext(styleAttr string, parentFontSize float64) Style
 func applyUserAgentDefaults(style *Style, tagName string, fontSize float64) {
 	switch tagName {
 	case "p", "dl":
-		style.MarginTop = fontSize * 1.2    // 1.5em
-		style.MarginBottom = fontSize * 1.2 // 1.5em
+		style.MarginTop = fontSize
+		style.MarginBottom = fontSize
 	case "h1":
 		style.MarginTop = fontSize * 0.67
 		style.MarginBottom = fontSize * 0.67

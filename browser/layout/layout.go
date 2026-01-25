@@ -68,6 +68,19 @@ func BuildBox(node *dom.Node, parent *LayoutBox, stylesheet css.Stylesheet) *Lay
 
 		box.Style = css.ApplyStylesheetWithContext(stylesheet, node.TagName, id, classes, parentFontSize)
 
+		if align, ok := node.Attributes["align"]; ok {
+			switch strings.ToLower(align) {
+			case "left":
+				box.Style.TextAlign = "left"
+			case "right":
+				box.Style.TextAlign = "right"
+			case "center":
+				box.Style.TextAlign = "center"
+			case "justify":
+				box.Style.TextAlign = "justify"
+			}
+		}
+
 		// Then apply inline styles (override stylesheet)
 		if styleAttr, ok := node.Attributes["style"]; ok {
 			inlineStyle := css.ParseInlineStyleWithContext(styleAttr, parentFontSize)

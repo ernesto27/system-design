@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>P Tag Compliance Test</title>
+    <style>
+        .container { border: 2px solid #ccc; padding: 10px; margin-bottom: 20px; }
+        .marker { background: #ff0000; height: 16px; width: 100px; display: block; }
+    </style>
+</head>
+<body>
+    <h1>Paragraph Compliance Test (WHATWG 4.4.1)</h1>
+
+    <h2>1. Default Margins (Expected: 1em)</h2>
+    <p>The gap between the red boxes and this text should be exactly 16px (1em) if your browser font is 16px.</p>
+    <div class="marker"></div>
+    <p>This paragraph should have a 1em gap above it.</p>
+    <div class="marker"></div>
+
+    <h2>2. Tag Omission (Missing &lt;/p&gt;)</h2>
+    <div class="container">
+        <p>This paragraph has NO closing tag.
+        <p>This one starts immediately after. In a spec-compliant parser, they are siblings, not nested.
+        <div>A div also force-closes a paragraph.</div>
+    </div>
+
+    <h2>3. Presentational Hints (align attribute)</h2>
+    <div class="container">
+        <p align="left">Align Left (Default)</p>
+        <p align="center">Align Center (Classic Hint)</p>
+        <p align="right">Align Right (Classic Hint)</p>
+        <p align="justify">Align Justify: This is a longer paragraph intended to test the justify alignment hint. If implemented, the text will stretch to touch both the left and right edges of this container box.</p>
+    </div>
+
+    <h2>4. Nesting Restrictions</h2>
+    <div class="container">
+        <p>Paragraphs cannot contain lists.
+            <ul>
+                <li>If the parser follows WHATWG, this list will "break out" of the paragraph.</li>
+            </ul>
+            This text should technically be outside the original paragraph node.
+        </p>
+    </div>
+
+    <hr>
+    <p><a href="index.html">Back to Index</a></p>
+</body>
+</html>

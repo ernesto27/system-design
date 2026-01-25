@@ -45,6 +45,20 @@ func (rt *JSRuntime) setupGlobals() {
 	doc := newDocument(rt, rt.document)
 	docObj := rt.vm.NewObject()
 	docObj.Set("getElementById", doc.GetElementById)
+
+	// document.documentElement
+	docObj.DefineAccessorProperty("documentElement",
+		rt.vm.ToValue(func(call goja.FunctionCall) goja.Value {
+			for _, child := range rt.document.Children {
+				if child.Type == dom.Element {
+					return rt.wrapElement(child)
+				}
+			}
+			return goja.Null()
+		}),
+		nil,
+		goja.FLAG_FALSE, goja.FLAG_TRUE)
+
 	rt.vm.Set("document", docObj)
 
 	rt.vm.Set("alert", func(call goja.FunctionCall) goja.Value {

@@ -1,5 +1,18 @@
 # Browser TODO
 
+
+csswg-drafts
+
+tc39-ecma262 for JavaScript
+
+whatwg-dom
+
+whatwg-html
+https://html.spec.whatwg.org/
+
+
+
+
 ## Related TODO Files
 
 | File | Purpose |
@@ -15,6 +28,7 @@
 # BUGS 
 
 [] - Text overlapp with bold and normal text
+[] - allow select text
 
 ## In Progress
 - [ ] Word wrapping for long text that exceeds container width

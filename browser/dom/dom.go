@@ -11,6 +11,7 @@ const (
 type Node struct {
 	Type       NodeType
 	TagName    string
+	Namespace  string
 	Attributes map[string]string
 	Children   []*Node
 	Parent     *Node

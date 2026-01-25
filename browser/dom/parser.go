@@ -39,6 +39,7 @@ func convertNodeWithContext(n *html.Node, preserveWhitespace bool) *Node {
 			attrs[attr.Key] = attr.Val
 		}
 		node = NewElement(n.Data, attrs)
+		node.Namespace = "http://www.w3.org/1999/xhtml"
 	case html.TextNode:
 		var text string
 		if preserveWhitespace {
