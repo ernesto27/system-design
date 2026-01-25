@@ -58,6 +58,15 @@ type Browser struct {
 	invalidNodes     map[*dom.Node]bool
 
 	onJSClick func(node *dom.Node)
+
+	selectionStart *SelectionPoint
+	selectionEnd   *SelectionPoint
+	selectedText   string
+}
+
+type SelectionPoint struct {
+	X, Y float64
+	Box  *layout.LayoutBox
 }
 
 func NewBrowser(width, height float32) *Browser {
@@ -97,6 +106,13 @@ func NewBrowser(width, height float32) *Browser {
 			}
 		}
 	}
+
+	// Handle Ctrl+C for text copy using Fyne's built-in ShortcutCopy
+	w.Canvas().AddShortcut(&fyne.ShortcutCopy{}, func(_ fyne.Shortcut) {
+		if b.selectedText != "" {
+			b.Window.Clipboard().SetContent(b.selectedText)
+		}
+	})
 
 	// Create buttons
 	goBtn := widget.NewButton("Go", func() {
@@ -169,14 +185,8 @@ func (b *Browser) SetContent(layoutTree *layout.LayoutBox) {
 	}
 
 	objects := RenderToCanvas(commands, baseURL, false, b.triggerRepaint)
-	// content := container.NewWithoutLayout(objects...
-	// Create clickable container
-	clickable := NewClickableContainer(objects, func(x, y float32) {
-		b.handleClick(float64(x), float64(y))
-	}, b.layoutTree)
 
-	scroll := container.NewScroll(clickable)
-
+	scroll := b.createContentScroll(objects)
 	b.content.Objects = []fyne.CanvasObject{scroll}
 	b.content.Refresh()
 }
@@ -490,6 +500,111 @@ func (b *Browser) SetStylesheet(stylesheet css.Stylesheet) {
 	b.currentStyle = stylesheet
 }
 
+func (b *Browser) handleMouseDown(x, y float64) {
+	// Clear previous selection
+	hadSelection := b.selectedText != ""
+	b.selectedText = ""
+	b.selectionStart = nil
+	b.selectionEnd = nil
+
+	if b.layoutTree == nil {
+		if hadSelection {
+			b.repaint()
+		}
+		return
+	}
+
+	hit := b.layoutTree.HitTest(x, y)
+	if hit != nil {
+		b.selectionStart = &SelectionPoint{
+			X:   x,
+			Y:   y,
+			Box: hit,
+		}
+	}
+
+	// Repaint to clear previous selection highlight
+	if hadSelection {
+		b.repaint()
+	}
+}
+
+func (b *Browser) handleDrag(x, y float64) {
+	if b.selectionStart == nil || b.layoutTree == nil {
+		return
+	}
+
+	hit := b.layoutTree.HitTest(x, y)
+	b.selectionEnd = &SelectionPoint{
+		X:   x,
+		Y:   y,
+		Box: hit,
+	}
+
+	b.selectedText = b.collectSelectedText()
+	b.repaint()
+}
+
+func (b *Browser) collectSelectedText() string {
+	if b.selectionStart == nil || b.selectionEnd == nil {
+		return ""
+	}
+
+	var textParts []string
+	b.collectTextInRange(b.layoutTree, &textParts)
+	return strings.Join(textParts, " ")
+}
+
+func (b *Browser) collectTextInRange(box *layout.LayoutBox, parts *[]string) {
+	if box == nil {
+		return
+	}
+
+	// Check if this text box is within selection bounds
+	if box.Type == layout.TextBox && b.isBoxInSelection(box) {
+		*parts = append(*parts, box.Text)
+	}
+
+	for _, child := range box.Children {
+		b.collectTextInRange(child, parts)
+	}
+}
+
+func (b *Browser) isBoxInSelection(box *layout.LayoutBox) bool {
+	if b.selectionStart == nil || b.selectionEnd == nil {
+		return false
+	}
+
+	// Calculate selection bounds (handle reverse selection)
+	minY := min(b.selectionStart.Y, b.selectionEnd.Y)
+	maxY := max(b.selectionStart.Y, b.selectionEnd.Y)
+
+	boxTop := box.Rect.Y
+	boxBottom := box.Rect.Y + box.Rect.Height
+
+	// Box overlaps selection vertically
+	return boxBottom >= minY && boxTop <= maxY
+}
+
+// createContentScroll creates a scrollable container with all event handlers wired up.
+// This is the single source of truth for creating clickable content — always use this
+// instead of manually creating ClickableContainer to avoid missing handler bugs.
+func (b *Browser) createContentScroll(objects []fyne.CanvasObject) *container.Scroll {
+	clickable := NewClickableContainer(objects, func(x, y float32) {
+		b.handleClick(float64(x), float64(y))
+	}, b.layoutTree)
+
+	// Wire up handlers for text selection
+	clickable.onDrag = func(x, y float32) {
+		b.handleDrag(float64(x), float64(y))
+	}
+	clickable.onMouseDown = func(x, y float32) {
+		b.handleMouseDown(float64(x), float64(y))
+	}
+
+	return container.NewScroll(clickable)
+}
+
 // Reflow re-computes layout with new width and repaints
 func (b *Browser) Reflow(width float32) {
 	if b.document == nil {
@@ -533,11 +648,7 @@ func (b *Browser) Reflow(width float32) {
 			}
 		}
 
-		clickable := NewClickableContainer(objects, func(x, y float32) {
-			b.handleClick(float64(x), float64(y))
-		}, b.layoutTree)
-
-		scroll := container.NewScroll(clickable)
+		scroll := b.createContentScroll(objects)
 		scroll.Offset = scrollOffset // Restore scroll position
 
 		b.content.Objects = []fyne.CanvasObject{scroll}
@@ -703,6 +814,8 @@ func (b *Browser) repaint() {
 		CheckboxValues:  b.checkboxValue,
 		FileInputValues: b.fileInputValues,
 		InvalidNodes:    b.invalidNodes,
+		SelectionStart:  b.selectionStart,
+		SelectionEnd:    b.selectionEnd,
 	})
 
 	baseURL := ""
@@ -721,11 +834,7 @@ func (b *Browser) repaint() {
 			}
 		}
 
-		clickable := NewClickableContainer(objects, func(x, y float32) {
-			b.handleClick(float64(x), float64(y))
-		}, b.layoutTree)
-
-		scroll := container.NewScroll(clickable)
+		scroll := b.createContentScroll(objects)
 		scroll.Offset = scrollOffset // Restore scroll position
 		b.content.Objects = []fyne.CanvasObject{scroll}
 		b.content.Refresh()

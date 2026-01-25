@@ -15,6 +15,10 @@ type ClickableContainer struct {
 	onTapped      func(x, y float32)
 	layoutTree    *layout.LayoutBox
 	currentCursor desktop.Cursor
+
+	onMouseDown func(x, y float32)
+	onMouseUp   func(x, y float32)
+	onDrag      func(x, y float32)
 }
 
 // NewClickableContainer creates a clickable container
@@ -42,6 +46,18 @@ func (c *ClickableContainer) TappedSecondary(event *fyne.PointEvent) {}
 func (c *ClickableContainer) MouseIn(event *desktop.MouseEvent) {}
 
 func (c *ClickableContainer) MouseOut() {}
+
+func (c *ClickableContainer) MouseDown(event *desktop.MouseEvent) {
+	if c.onMouseDown != nil {
+		c.onMouseDown(event.Position.X, event.Position.Y)
+	}
+}
+
+func (c *ClickableContainer) MouseUp(event *desktop.MouseEvent) {
+	if c.onMouseUp != nil {
+		c.onMouseUp(event.Position.X, event.Position.Y)
+	}
+}
 
 func (c *ClickableContainer) MouseMoved(event *desktop.MouseEvent) {
 	if c.layoutTree == nil {
@@ -86,6 +102,17 @@ func (c *ClickableContainer) CreateRenderer() fyne.WidgetRenderer {
 		container: c,
 		objects:   c.objects,
 	}
+}
+
+func (c *ClickableContainer) Dragged(event *fyne.DragEvent) {
+	if c.onDrag != nil {
+		c.onDrag(event.Position.X, event.Position.Y)
+	}
+}
+
+// DragEnd is called when drag completes
+func (c *ClickableContainer) DragEnd() {
+	// Selection is finalized
 }
 
 // clickableRenderer handles drawing

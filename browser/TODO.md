@@ -11,6 +11,10 @@ whatwg-html
 https://html.spec.whatwg.org/
 
 
+# HTML SPECS
+
+[x] - <p> 
+[x] - <html>
 
 
 ## Related TODO Files
@@ -28,7 +32,9 @@ https://html.spec.whatwg.org/
 # BUGS 
 
 [] - Text overlapp with bold and normal text
-[] - allow select text
+[x] - allow select text
+[] - Partial text selection (select characters within a line, not entire text boxes)
+[] - show indication of CTRL-C copied text 
 
 ## In Progress
 - [ ] Word wrapping for long text that exceeds container width

@@ -94,6 +94,48 @@ type InputState struct {
 	CheckboxValues  map[*dom.Node]bool   // Checked state per check
 	FileInputValues map[*dom.Node]string // Selected filename per file input
 	InvalidNodes    map[*dom.Node]bool   // Nodes with invalid input
+
+	SelectionStart *SelectionPoint
+	SelectionEnd   *SelectionPoint
+}
+
+// isTextSelected checks if a text box is within the current selection range
+func isTextSelected(box *layout.LayoutBox, state InputState) bool {
+	if state.SelectionStart == nil || state.SelectionEnd == nil {
+		return false
+	}
+
+	// Calculate selection bounds (handle reverse selection - dragging up)
+	minY := state.SelectionStart.Y
+	maxY := state.SelectionEnd.Y
+	if minY > maxY {
+		minY, maxY = maxY, minY
+	}
+
+	minX := state.SelectionStart.X
+	maxX := state.SelectionEnd.X
+	if minX > maxX {
+		minX, maxX = maxX, minX
+	}
+
+	boxTop := box.Rect.Y
+	boxBottom := box.Rect.Y + box.Rect.Height
+	boxLeft := box.Rect.X
+	boxRight := box.Rect.X + box.Rect.Width
+
+	// Check if box overlaps selection area
+	verticalOverlap := boxBottom >= minY && boxTop <= maxY
+	horizontalOverlap := boxRight >= minX && boxLeft <= maxX
+
+	// For single-line selection, require both overlaps
+	// For multi-line, just vertical overlap is enough for middle lines
+	if maxY-minY < box.Rect.Height {
+		// Single line selection - need both overlaps
+		return verticalOverlap && horizontalOverlap
+	}
+
+	// Multi-line selection
+	return verticalOverlap
 }
 
 // DefaultStyle returns the default text style
@@ -360,6 +402,14 @@ func paintLayoutBoxWithInputs(box *layout.LayoutBox, commands *[]DisplayCommand,
 
 	// Draw text
 	if box.Type == layout.TextBox && box.Text != "" && !isHidden {
+		if isTextSelected(box, state) {
+			*commands = append(*commands, DrawRect{
+				Rect:  box.Rect,
+				Color: color.RGBA{0, 120, 215, 128}, // Selection blue
+			})
+
+		}
+
 		text := css.ApplyTextTransform(box.Text, currentStyle.TextTransform)
 
 		if isListItem, isOrdered, index := getListInfo(box); isListItem {
