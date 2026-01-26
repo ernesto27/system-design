@@ -1,0 +1,62 @@
+{
+  "name": "express5-enterprise-app",
+  "version": "1.0.0",
+  "description": "Enterprise-grade Express 5 backend with TypeScript, MongoDB, Redis, and comprehensive tooling.",
+  "main": "dist/server.js",
+  "scripts": {
+    "start": "node index.js",
+    "dev": "nodemon index.js",
+    "build": "babel src -d dist",
+    "lint": "eslint 'src/**/*.{js}' --fix",
+    "format": "prettier --write 'src/**/*.{js,json,md}'",
+    "test": "jest --passWithNoTests",
+    "test:watch": "jest --watch"
+  },
+  "keywords": [
+    "nodejs",
+    "backend",
+    "api",
+    "rest",
+    "mongodb",
+    "redis"
+  ],
+  "author": "Your Name <you@example.com>",
+  "license": "MIT",
+  "dependencies": {
+    "express": "^5.0.1",
+    "body-parser": "2.2.0"
+  },
+  "devDependencies": {
+    "@babel/cli": "^7.0.0",
+    "@babel/core": "^7.0.0",
+    "nodemon": "^2.0.0",
+    "prettier": "^2.0.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "jest": {
+    "testEnvironment": "node",
+    "roots": ["<rootDir>/tests"]
+  },
+  "eslintConfig": {
+    "env": {
+      "node": true,
+      "es2022": true
+    },
+    "extends": [
+      "eslint:recommended",
+      "plugin:prettier/recommended"
+    ],
+    "plugins": ["prettier"],
+    "rules": {
+      "prettier/prettier": "error"
+    }
+  },
+  "prettier": {
+    "semi": true,
+    "singleQuote": false,
+    "printWidth": 100,
+    "trailingComma": "all"
+  }
+}
