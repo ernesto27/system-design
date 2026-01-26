@@ -211,10 +211,10 @@ func (rt *JSRuntime) wrapElement(node *dom.Node) goja.Value {
 		}),
 		goja.FLAG_FALSE, goja.FLAG_TRUE)
 
-	// parentElement
+	// parentElement - only returns Element nodes, not Document
 	obj.DefineAccessorProperty("parentElement",
 		rt.vm.ToValue(func(call goja.FunctionCall) goja.Value {
-			if node.Parent == nil {
+			if node.Parent == nil || node.Parent.Type != dom.Element {
 				return goja.Null()
 			}
 			return rt.wrapElement(node.Parent)
