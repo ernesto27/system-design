@@ -129,3 +129,11 @@ func FindElementsByTagName(node *Node, tagName string) *Node {
 
 	return nil
 }
+
+func FindBaseHref(node *Node) string {
+	baseNode := FindElementsByTagName(node, TagBase)
+	if baseNode == nil {
+		return ""
+	}
+	return baseNode.Attributes["href"]
+}

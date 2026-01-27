@@ -102,6 +102,17 @@ func (rt *JSRuntime) setupGlobals() {
 		nil,
 		goja.FLAG_FALSE, goja.FLAG_TRUE)
 
+	docObj.DefineAccessorProperty("baseURI",
+		rt.vm.ToValue(func(call goja.FunctionCall) goja.Value {
+			baseHref := dom.FindBaseHref(rt.document)
+			if baseHref != "" {
+				return rt.vm.ToValue(baseHref)
+			}
+			return rt.vm.ToValue(rt.currentURL)
+		}),
+		nil,
+		goja.FLAG_FALSE, goja.FLAG_TRUE)
+
 	rt.vm.Set("document", docObj)
 
 	rt.vm.Set("alert", func(call goja.FunctionCall) goja.Value {

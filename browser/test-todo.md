@@ -104,6 +104,11 @@ Current test coverage analysis for the browser project.
   - Nil node returns nil
   - Find first of multiple matching elements
   - Find root element itself
+- [x] `TestFindBaseHref` - Find base element href (4 test cases)
+  - Base with href
+  - No base element
+  - Base without href
+  - Nil node
 
 ---
 
@@ -125,6 +130,7 @@ Current test coverage analysis for the browser project.
 | `testpage/html_compliance.html` | Root element (WHATWG 4.1.1) |
 | `testpage/head_compliance.html` | Head element (WHATWG 4.2.1) |
 | `testpage/title_compliance.html` | Title element (WHATWG 4.2.2) |
+| `testpage/base_compliance.html` | Base element (WHATWG 4.2.3) |
 
 ---
 

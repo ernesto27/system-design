@@ -6,6 +6,7 @@ const (
 	TagHead  = "head"
 	TagTitle = "title"
 	TagBody  = "body"
+	TagBase  = "base"
 
 	// Headings
 	TagH1 = "h1"

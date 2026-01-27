@@ -450,7 +450,24 @@ func (b *Browser) resolveURL(href string) string {
 		return href
 	}
 
-	// Resolve relative to current URL
+	// If href is already absolute, return as-is
+	if parsed.IsAbs() {
+		return href
+	}
+
+	// Check for <base> element first
+	if b.document != nil {
+		baseHref := dom.FindBaseHref(b.document)
+		if baseHref != "" {
+			baseURL, err := url.Parse(baseHref)
+			if err == nil && baseURL.IsAbs() {
+				resolved := baseURL.ResolveReference(parsed)
+				return resolved.String()
+			}
+		}
+	}
+
+	// Fall back to current URL
 	resolved := b.currentURL.ResolveReference(parsed)
 	return resolved.String()
 }

@@ -511,3 +511,65 @@ func TestFindElementsByTagName(t *testing.T) {
 		})
 	}
 }
+
+func TestFindBaseHref(t *testing.T) {
+	tests := []struct {
+		name     string
+		build    func() *Node
+		expected string
+	}{
+		{
+			name: "base with href",
+			build: func() *Node {
+				html := NewElement("html", nil)
+				head := NewElement("head", nil)
+				base := NewElement("base", map[string]string{
+					"href": "https://example.com/news/",
+				})
+				head.AppendChild(base)
+				html.AppendChild(head)
+				return html
+			},
+			expected: "https://example.com/news/",
+		},
+		{
+			name: "no base element",
+			build: func() *Node {
+				html := NewElement("html", nil)
+				head := NewElement("head", nil)
+				html.AppendChild(head)
+				return html
+			},
+			expected: "",
+		},
+		{
+			name: "base without href",
+			build: func() *Node {
+				html := NewElement("html", nil)
+				head := NewElement("head", nil)
+				base := NewElement("base", map[string]string{
+					"target": "_blank",
+				})
+				head.AppendChild(base)
+				html.AppendChild(head)
+				return html
+			},
+			expected: "",
+		},
+		{
+			name: "nil node",
+			build: func() *Node {
+				return nil
+			},
+			expected: "",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			node := tt.build()
+			result := FindBaseHref(node)
+			assert.Equal(t, tt.expected, result)
+		})
+	}
+}
