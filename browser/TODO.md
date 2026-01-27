@@ -16,6 +16,7 @@ https://html.spec.whatwg.org/
 [x] - <p>
 [x] - <html>
 [x] - <head> (WHATWG 4.2.1 compliance)
+[x] - <title> (WHATWG 4.2.2 compliance - document.title getter/setter)
 
 
 ## Related TODO Files

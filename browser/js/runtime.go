@@ -9,16 +9,17 @@ import (
 )
 
 type JSRuntime struct {
-	vm           *goja.Runtime
-	document     *dom.Node
-	onReflow     func()
-	onAlert      func(message string)
-	Events       *EventManager
-	onConfirm    func(string) bool
-	currentURL   string
-	onReload     func()
-	onPrompt     func(message, defaultValue string) *string
-	elementCache map[*dom.Node]*goja.Object
+	vm            *goja.Runtime
+	document      *dom.Node
+	onReflow      func()
+	onAlert       func(message string)
+	Events        *EventManager
+	onConfirm     func(string) bool
+	currentURL    string
+	onReload      func()
+	onPrompt      func(message, defaultValue string) *string
+	elementCache  map[*dom.Node]*goja.Object
+	onTitleChange func(string)
 }
 
 func NewJSRuntime(document *dom.Node, onReflow func()) *JSRuntime {
@@ -69,6 +70,26 @@ func (rt *JSRuntime) setupGlobals() {
 		return rt.wrapElement(headNode)
 	}),
 		nil,
+		goja.FLAG_FALSE, goja.FLAG_TRUE)
+
+	docObj.DefineAccessorProperty("title",
+		rt.vm.ToValue(func(call goja.FunctionCall) goja.Value {
+			return rt.vm.ToValue(dom.FindTitle(rt.document))
+		}),
+		rt.vm.ToValue(func(call goja.FunctionCall) goja.Value {
+			if len(call.Arguments) > 0 {
+				newTitle := call.Arguments[0].String()
+				titleNode := dom.FindElementsByTagName(rt.document, dom.TagTitle)
+				if titleNode != nil {
+					titleNode.Children = nil
+					titleNode.AppendChild(dom.NewText(newTitle))
+				}
+				if rt.onTitleChange != nil {
+					rt.onTitleChange(newTitle)
+				}
+			}
+			return goja.Undefined()
+		}),
 		goja.FLAG_FALSE, goja.FLAG_TRUE)
 
 	docObj.DefineAccessorProperty("body", rt.vm.ToValue(func(call goja.FunctionCall) goja.Value {
@@ -386,4 +407,8 @@ func (rt *JSRuntime) SetReloadHandler(handler func()) {
 
 func (rt *JSRuntime) SetPromptHandler(handler func(message, defaultValue string) *string) {
 	rt.onPrompt = handler
+}
+
+func (rt *JSRuntime) SetTitleChangeHandler(handler func(string)) {
+	rt.onTitleChange = handler
 }

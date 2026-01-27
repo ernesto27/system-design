@@ -161,6 +161,8 @@ func loadPage(browser *render.Browser, req render.NavigationRequest) {
 			browser.Refresh()
 		})
 
+		jsRuntime.SetTitleChangeHandler(browser.SetTitle)
+
 		// Rebuild layout tree AFTER JavaScript has modified the DOM
 		layoutTree = layout.BuildLayoutTree(document, stylesheet)
 		layout.ComputeLayout(layoutTree, float64(browser.Width))

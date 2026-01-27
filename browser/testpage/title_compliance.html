@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>Title Element Compliance Test (WHATWG 4.2.2)</title>
+    <meta charset="UTF-8">
+    <style>
+        .pass { color: green; font-weight: bold; }
+        .fail { color: red; font-weight: bold; }
+    </style>
+</head>
+<body>
+    <h1>Title Element Compliance Test (WHATWG 4.2.2)</h1>
+    <div id="results"></div>
+
+    <script>
+        const results = document.getElementById('results');
+
+        function assert(condition, message) {
+            const p = document.createElement('p');
+            if (condition) {
+                p.innerHTML = "PASS: " + message;
+                p.classList.add('pass');
+            } else {
+                p.innerHTML = "FAIL: " + message;
+                p.classList.add('fail');
+            }
+            results.appendChild(p);
+        }
+
+        // Test 1: document.title getter exists
+        assert(typeof document.title === 'string',
+            "document.title is a string (was: " + typeof document.title + ")");
+
+        // Test 2: document.title returns correct value
+        assert(document.title === "Title Element Compliance Test (WHATWG 4.2.2)",
+            "document.title returns page title (was: '" + document.title + "')");
+
+        // Test 3: document.title setter works
+        var originalTitle = document.title;
+        document.title = "New Test Title";
+        assert(document.title === "New Test Title",
+            "document.title setter updates title (was: '" + document.title + "')");
+        document.title = originalTitle; // restore
+
+        // Test 4: Find title element in head
+        var titleEl = null;
+        if (document.head) {
+            for (var i = 0; i < document.head.children.length; i++) {
+                if (document.head.children[i] && document.head.children[i].tagName === "TITLE") {
+                    titleEl = document.head.children[i];
+                    break;
+                }
+            }
+        }
+        assert(titleEl !== null,
+            "Title element found in document.head");
+
+        // Test 5: title.text getter (HTMLTitleElement interface)
+        if (titleEl) {
+            assert(typeof titleEl.text === 'string',
+                "title.text is a string (was: " + typeof titleEl.text + ")");
+        } else {
+            assert(false, "title.text is a string (title element not found)");
+        }
+
+        // Test 6: title.text returns content
+        if (titleEl) {
+            assert(titleEl.text === originalTitle,
+                "title.text returns title content (was: '" + titleEl.text + "')");
+        } else {
+            assert(false, "title.text returns title content (title element not found)");
+        }
+
+        // Test 7: title.text setter
+        if (titleEl) {
+            titleEl.text = "Modified via text";
+            assert(titleEl.text === "Modified via text",
+                "title.text setter works (was: '" + titleEl.text + "')");
+            titleEl.text = originalTitle; // restore
+        } else {
+            assert(false, "title.text setter works (title element not found)");
+        }
+    </script>
+
+    <hr>
+    <p><a href="index.html">Back to Index</a></p>
+</body>
+</html>

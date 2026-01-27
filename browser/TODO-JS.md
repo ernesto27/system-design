@@ -61,7 +61,7 @@
 - [x] `document.body` - Get body element
 - [x] `document.head` - Get head element
 - [x] `document.documentElement` - Get html element
-- [ ] `document.title` - Get/set page title
+- [x] `document.title` - Get/set page title (updates window title)
 - [ ] `document.URL` - Get current URL
 
 ---

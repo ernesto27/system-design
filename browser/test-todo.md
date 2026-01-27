@@ -113,6 +113,7 @@ Current test coverage analysis for the browser project.
 - [ ] `TestWrapElementCaching` - Same DOM node returns same JS object
 - [ ] `TestDocumentHead` - document.head returns head element
 - [ ] `TestDocumentBody` - document.body returns body element
+- [ ] `TestDocumentTitle` - document.title getter/setter
 - [ ] `TestParentElementNull` - Root element parentElement is null
 
 ---
@@ -123,6 +124,7 @@ Current test coverage analysis for the browser project.
 |------|-------|
 | `testpage/html_compliance.html` | Root element (WHATWG 4.1.1) |
 | `testpage/head_compliance.html` | Head element (WHATWG 4.2.1) |
+| `testpage/title_compliance.html` | Title element (WHATWG 4.2.2) |
 
 ---
 
