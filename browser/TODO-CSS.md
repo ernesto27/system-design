@@ -37,18 +37,18 @@
 - [x] `em` unit - relative to parent font size
 - [x] User-agent default styles (margins for p, h1-h6, ul, ol, blockquote, hr)
 - [x] `line-height` - line spacing (unitless, px, normal keyword)
+- [x] Word wrapping for long text - text wraps within container width
 
 ---
 
 ## In Progress
-- [ ] Word wrapping for long text
 
 ---
 
 ## Missing Properties
 
 ### Background
-- [ ] `background` - shorthand
+- [x] `background` - shorthand (color and url)
 - [ ] `background-position` - position
 - [ ] `background-size` - cover/contain/size
 - [ ] `background-repeat` - repeat/no-repeat

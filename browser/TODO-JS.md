@@ -58,8 +58,9 @@
 - [ ] `element.querySelectorAll(selector)` - Scoped query all
 
 ### Document Properties
-- [ ] `document.body` - Get body element
-- [ ] `document.head` - Get head element
+- [x] `document.body` - Get body element
+- [x] `document.head` - Get head element
+- [x] `document.documentElement` - Get html element
 - [ ] `document.title` - Get/set page title
 - [ ] `document.URL` - Get current URL
 
@@ -177,6 +178,7 @@ js/
 2. **Use DefineAccessorProperty** - For live bindings (textContent, innerHTML)
 3. **Store callbacks with *dom.Node key** - Unique identity for event matching
 4. **Trigger reflow on mutation** - Keep visual in sync with DOM
+5. **Element caching** - Same DOM node always returns same JS object (for `===` comparisons)
 
 ---
 

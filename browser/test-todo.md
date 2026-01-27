@@ -27,6 +27,10 @@ Current test coverage analysis for the browser project.
   - Estimation formula: `len(text) * fontSize * 0.5`
   - Custom TextMeasurer callback
 - [x] `TestMeasureTextFormula` - Formula verification (5 test cases)
+- [x] `TestWrapText` - Text wrapping (9 test cases)
+  - Empty text, fits in one line, word too long
+  - Wrapping to multiple lines
+  - Zero/negative maxWidth handling
 
 ### `layout.go` - DONE
 - [x] `TestBuildLayoutTreeBoxTypes` - Box type assignments (52 test cases)
@@ -90,11 +94,44 @@ Current test coverage analysis for the browser project.
 
 ---
 
+## DOM Package
+
+### `dom.go`
+- [x] `TestFindElementsByTagName` - Find element by tag name (7 test cases)
+  - Find head/body elements
+  - Find nested elements
+  - Element not found returns nil
+  - Nil node returns nil
+  - Find first of multiple matching elements
+  - Find root element itself
+
+---
+
+## JS Package
+
+### `runtime.go`
+- [ ] `TestWrapElementCaching` - Same DOM node returns same JS object
+- [ ] `TestDocumentHead` - document.head returns head element
+- [ ] `TestDocumentBody` - document.body returns body element
+- [ ] `TestParentElementNull` - Root element parentElement is null
+
+---
+
+## Compliance Test Pages
+
+| File | Tests |
+|------|-------|
+| `testpage/html_compliance.html` | Root element (WHATWG 4.1.1) |
+| `testpage/head_compliance.html` | Head element (WHATWG 4.2.1) |
+
+---
+
 ## Priority Order
 
 1. **Layout package** - Core rendering pipeline
 2. **CSS ApplyStylesheet** - Style application
 3. **Render package** - Display and interaction
+4. **JS package** - DOM bindings and compliance
 
 ---
 

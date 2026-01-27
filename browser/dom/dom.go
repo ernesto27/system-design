@@ -111,3 +111,21 @@ func FindStylesheetLinks(node *Node) []string {
 	}
 	return links
 }
+
+func FindElementsByTagName(node *Node, tagName string) *Node {
+	if node == nil {
+		return nil
+	}
+
+	if node.Type == Element && node.TagName == tagName {
+		return node
+	}
+
+	for _, child := range node.Children {
+		if found := FindElementsByTagName(child, tagName); found != nil {
+			return found
+		}
+	}
+
+	return nil
+}

@@ -9,23 +9,25 @@ import (
 )
 
 type JSRuntime struct {
-	vm         *goja.Runtime
-	document   *dom.Node
-	onReflow   func()
-	onAlert    func(message string)
-	Events     *EventManager
-	onConfirm  func(string) bool
-	currentURL string
-	onReload   func()
-	onPrompt   func(message, defaultValue string) *string
+	vm           *goja.Runtime
+	document     *dom.Node
+	onReflow     func()
+	onAlert      func(message string)
+	Events       *EventManager
+	onConfirm    func(string) bool
+	currentURL   string
+	onReload     func()
+	onPrompt     func(message, defaultValue string) *string
+	elementCache map[*dom.Node]*goja.Object
 }
 
 func NewJSRuntime(document *dom.Node, onReflow func()) *JSRuntime {
 	rt := &JSRuntime{
-		vm:       goja.New(),
-		document: document,
-		onReflow: onReflow,
-		Events:   NewEventManager(),
+		vm:           goja.New(),
+		document:     document,
+		onReflow:     onReflow,
+		Events:       NewEventManager(),
+		elementCache: make(map[*dom.Node]*goja.Object),
 	}
 	rt.setupGlobals()
 	return rt
@@ -56,6 +58,26 @@ func (rt *JSRuntime) setupGlobals() {
 			}
 			return goja.Null()
 		}),
+		nil,
+		goja.FLAG_FALSE, goja.FLAG_TRUE)
+
+	docObj.DefineAccessorProperty("head", rt.vm.ToValue(func(call goja.FunctionCall) goja.Value {
+		headNode := dom.FindElementsByTagName(rt.document, dom.TagHead)
+		if headNode == nil {
+			return goja.Null()
+		}
+		return rt.wrapElement(headNode)
+	}),
+		nil,
+		goja.FLAG_FALSE, goja.FLAG_TRUE)
+
+	docObj.DefineAccessorProperty("body", rt.vm.ToValue(func(call goja.FunctionCall) goja.Value {
+		bodyNode := dom.FindElementsByTagName(rt.document, dom.TagBody)
+		if bodyNode == nil {
+			return goja.Null()
+		}
+		return rt.wrapElement(bodyNode)
+	}),
 		nil,
 		goja.FLAG_FALSE, goja.FLAG_TRUE)
 
@@ -184,6 +206,11 @@ func findScriptsRecursive(node *dom.Node, scripts *[]string) {
 func (rt *JSRuntime) wrapElement(node *dom.Node) goja.Value {
 	if node == nil {
 		return goja.Null()
+	}
+
+	// Check cache first
+	if cached, ok := rt.elementCache[node]; ok {
+		return cached
 	}
 
 	elem := newElement(rt, node)
@@ -330,6 +357,9 @@ func (rt *JSRuntime) wrapElement(node *dom.Node) goja.Value {
 	obj.Set("classList", classList)
 
 	obj.Set("_elem", elem)
+
+	// Cache before returning
+	rt.elementCache[node] = obj
 
 	return obj
 }

@@ -13,8 +13,9 @@ https://html.spec.whatwg.org/
 
 # HTML SPECS
 
-[x] - <p> 
+[x] - <p>
 [x] - <html>
+[x] - <head> (WHATWG 4.2.1 compliance)
 
 
 ## Related TODO Files

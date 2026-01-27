@@ -397,3 +397,117 @@ func TestFindStylesheetLinks(t *testing.T) {
 		})
 	}
 }
+
+func TestFindElementsByTagName(t *testing.T) {
+	tests := []struct {
+		name        string
+		build       func() *Node
+		tagName     string
+		expectNil   bool
+		expectedTag string
+	}{
+		{
+			name: "find head element",
+			build: func() *Node {
+				html := NewElement("html", nil)
+				head := NewElement("head", nil)
+				body := NewElement("body", nil)
+				html.AppendChild(head)
+				html.AppendChild(body)
+				return html
+			},
+			tagName:     "head",
+			expectNil:   false,
+			expectedTag: "head",
+		},
+		{
+			name: "find body element",
+			build: func() *Node {
+				html := NewElement("html", nil)
+				head := NewElement("head", nil)
+				body := NewElement("body", nil)
+				html.AppendChild(head)
+				html.AppendChild(body)
+				return html
+			},
+			tagName:     "body",
+			expectNil:   false,
+			expectedTag: "body",
+		},
+		{
+			name: "find nested element",
+			build: func() *Node {
+				html := NewElement("html", nil)
+				body := NewElement("body", nil)
+				div := NewElement("div", nil)
+				p := NewElement("p", nil)
+				div.AppendChild(p)
+				body.AppendChild(div)
+				html.AppendChild(body)
+				return html
+			},
+			tagName:     "p",
+			expectNil:   false,
+			expectedTag: "p",
+		},
+		{
+			name: "element not found",
+			build: func() *Node {
+				html := NewElement("html", nil)
+				body := NewElement("body", nil)
+				html.AppendChild(body)
+				return html
+			},
+			tagName:   "head",
+			expectNil: true,
+		},
+		{
+			name: "nil node",
+			build: func() *Node {
+				return nil
+			},
+			tagName:   "body",
+			expectNil: true,
+		},
+		{
+			name: "find first of multiple",
+			build: func() *Node {
+				html := NewElement("html", nil)
+				body := NewElement("body", nil)
+				p1 := NewElement("p", map[string]string{"id": "first"})
+				p2 := NewElement("p", map[string]string{"id": "second"})
+				body.AppendChild(p1)
+				body.AppendChild(p2)
+				html.AppendChild(body)
+				return html
+			},
+			tagName:     "p",
+			expectNil:   false,
+			expectedTag: "p",
+		},
+		{
+			name: "find root element itself",
+			build: func() *Node {
+				html := NewElement("html", nil)
+				return html
+			},
+			tagName:     "html",
+			expectNil:   false,
+			expectedTag: "html",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			node := tt.build()
+			result := FindElementsByTagName(node, tt.tagName)
+
+			if tt.expectNil {
+				assert.Nil(t, result)
+			} else {
+				assert.NotNil(t, result)
+				assert.Equal(t, tt.expectedTag, result.TagName)
+			}
+		})
+	}
+}
