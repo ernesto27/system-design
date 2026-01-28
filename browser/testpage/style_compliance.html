@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Style Element Compliance Test (WHATWG 4.2.6)</title>
+
+    <!-- Style 1: Green theme -->
+    <style id="style-green">
+        body {
+            background-color: #90EE90;
+            font-family: Arial, sans-serif;
+            padding: 20px;
+        }
+        h1 {
+            color: #006400;
+        }
+        .box {
+            padding: 15px;
+            margin: 10px 0;
+            border: 2px solid #006400;
+            background-color: white;
+        }
+    </style>
+
+    <!-- Style 2: Pink theme (will be disabled via JS) -->
+    <style id="style-pink">
+        body {
+            background-color: #FFB6C1;
+        }
+        h1 {
+            color: #8B0000;
+        }
+        .box {
+            border: 2px solid #8B0000;
+        }
+    </style>
+
+    <!-- Disable the pink style immediately after DOM is ready -->
+    <script>
+        // This runs synchronously, disabling pink before first paint
+        document.getElementById('style-pink').disabled = true;
+    </script>
+</head>
+<body>
+    <h1>Style Element Compliance Test</h1>
+
+    <div class="box">
+        <p><strong>WHATWG 4.2.6 Key Points:</strong></p>
+        <ul>
+            <li><code>disabled</code> is a <strong>DOM property only</strong>, NOT an HTML attribute</li>
+            <li><code>&lt;style disabled&gt;</code> in HTML does nothing (attribute is ignored)</li>
+            <li>Must use JavaScript: <code>element.disabled = true</code></li>
+            <li>Only works AFTER the style element is connected to the DOM</li>
+        </ul>
+    </div>
+
+    <div class="box">
+        <p><strong>Expected behavior:</strong></p>
+        <ul>
+            <li>Background should be <span style="background-color: #90EE90; padding: 2px 5px;">light green</span> (pink style is disabled)</li>
+            <li>Heading should be <span style="color: #006400;">dark green</span></li>
+            <li>Box border should be <span style="color: #006400;">green</span></li>
+        </ul>
+    </div>
+
+    <div class="box">
+        <p><strong>Test buttons:</strong></p>
+        <button id="btn-toggle">Toggle Styles</button>
+        <button id="btn-check">Check Status</button>
+    </div>
+
+    <div class="box" id="status">
+        <p><strong>Current status:</strong></p>
+        <pre id="status-text">Click "Check Status" to see style states</pre>
+    </div>
+
+    <div class="box">
+        <p><strong>Spec behavior demo:</strong></p>
+        <button onclick="testSpecBehavior()">Run Spec Example</button>
+        <pre id="spec-result"></pre>
+    </div>
+
+    <script>
+        function toggleStyles() {
+            var green = document.getElementById('style-green');
+            var pink = document.getElementById('style-pink');
+
+            // Swap disabled states
+            var greenWasEnabled = !green.disabled;
+            green.disabled = greenWasEnabled;
+            pink.disabled = !greenWasEnabled;
+
+            checkStatus();
+        }
+
+        function checkStatus() {
+            var green = document.getElementById('style-green');
+            var pink = document.getElementById('style-pink');
+
+            var text = 'style-green.disabled = ' + green.disabled + '\n' +
+                       'style-pink.disabled  = ' + pink.disabled + '\n' +
+                       'style-green.sheet    = ' + (green.sheet ? 'CSSStyleSheet' : 'null') + '\n' +
+                       'style-pink.sheet     = ' + (pink.sheet ? 'CSSStyleSheet' : 'null');
+
+            document.getElementById('status-text').textContent = text;
+        }
+
+        // Set up event listeners (browser doesn't support inline onclick)
+        document.getElementById('btn-toggle').addEventListener('click', function() {
+            toggleStyles();
+        });
+        document.getElementById('btn-check').addEventListener('click', function() {
+            checkStatus();
+        });
+
+        // Run on page load
+        checkStatus();
+
+        // Demonstrate spec behavior from 4.2.6
+        function testSpecBehavior() {
+            var result = '';
+
+            // Create a new style element
+            var style = document.createElement('style');
+            result += '1. Created style element\n';
+            result += '   style.disabled = ' + style.disabled + ' (no sheet yet)\n';
+            result += '   style.sheet = ' + style.sheet + '\n\n';
+
+            // Try to set disabled before connecting
+            style.disabled = true;
+            result += '2. Set style.disabled = true (before connecting)\n';
+            result += '   style.disabled = ' + style.disabled + ' (still false!)\n\n';
+
+            // Add content
+            style.textContent = 'body { outline: 3px dashed blue; }';
+            result += '3. Added CSS content\n';
+            result += '   style.disabled = ' + style.disabled + '\n\n';
+
+            // Connect to DOM
+            document.head.appendChild(style);
+            result += '4. Appended to document.head\n';
+            result += '   style.disabled = ' + style.disabled + ' (NOW has sheet)\n';
+            result += '   style.sheet = ' + (style.sheet ? 'CSSStyleSheet' : 'null') + '\n\n';
+
+            // Now disable works
+            style.disabled = true;
+            result += '5. Set style.disabled = true (after connecting)\n';
+            result += '   style.disabled = ' + style.disabled + ' (NOW it works!)\n\n';
+
+            // Clean up
+            style.remove();
+            result += '6. Removed test style element\n';
+            result += '\nPer spec: disabled only works after element has associated stylesheet!';
+
+            document.getElementById('spec-result').textContent = result;
+        }
+    </script>
+</body>
+</html>

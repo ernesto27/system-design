@@ -121,18 +121,20 @@ func loadPage(browser *render.Browser, req render.NavigationRequest) {
 
 		wg.Wait()
 
-		// Combine CSS in order
-		var fullCSS strings.Builder
-		for _, css := range cssResults {
-			fullCSS.WriteString(css + "\n")
+		// Combine external CSS in order
+		var externalCSS strings.Builder
+		for _, cssContent := range cssResults {
+			externalCSS.WriteString(cssContent + "\n")
 		}
 
-		// 2. Add internal <style> content
-		fullCSS.WriteString(dom.FindStyleContent(document))
+		// Store external CSS for reflow (when styles are disabled/enabled)
+		browser.SetExternalCSS(externalCSS.String())
+
+		// Combine external + internal <style> content
+		fullCSS := externalCSS.String() + dom.FindActiveStyleContent(document)
 
 		fmt.Println("Building layout...")
-		stylesheet := css.Parse(fullCSS.String())
-		browser.SetStylesheet(stylesheet)
+		stylesheet := css.Parse(fullCSS)
 		browser.SetDocument(document)
 		layoutTree := layout.BuildLayoutTree(document, stylesheet)
 		layout.ComputeLayout(layoutTree, float64(browser.Width))
@@ -162,6 +164,10 @@ func loadPage(browser *render.Browser, req render.NavigationRequest) {
 		})
 
 		jsRuntime.SetTitleChangeHandler(browser.SetTitle)
+
+		// Re-parse CSS after JavaScript (respects disabled styles)
+		fullCSS = externalCSS.String() + dom.FindActiveStyleContent(document)
+		stylesheet = css.Parse(fullCSS)
 
 		// Rebuild layout tree AFTER JavaScript has modified the DOM
 		layoutTree = layout.BuildLayoutTree(document, stylesheet)

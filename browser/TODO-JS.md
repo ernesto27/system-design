@@ -35,6 +35,7 @@
 - [ ] `element.classList.contains(class)` - Check for class
 - [ ] `element.style.property` - Get/set inline styles
 
+
 ---
 
 ## Step 7: Reflow on DOM Changes
@@ -83,6 +84,12 @@
 - [ ] `submit`
 - [ ] `change`
 - [ ] `focus` / `blur`
+
+### Inline Event Handlers
+- [ ] `onclick` attribute - Execute JS on click
+- [ ] `onsubmit` attribute - Execute JS on form submit
+- [ ] `onchange` attribute - Execute JS on input change
+- [ ] `onload` attribute - Execute JS when element loads
 
 ### Event Features
 - [ ] `event.preventDefault()`

@@ -36,9 +36,9 @@ type Browser struct {
 	Window       fyne.Window
 	Width        float32
 	Height       float32
-	layoutTree   *layout.LayoutBox
-	currentURL   *url.URL
-	currentStyle css.Stylesheet
+	layoutTree  *layout.LayoutBox
+	currentURL  *url.URL
+	externalCSS string // CSS from <link> tags, stored for reflow
 	OnNavigate   func(req NavigationRequest)
 
 	urlEntry   *widget.Entry
@@ -513,8 +513,8 @@ func (b *Browser) SetDocument(doc *dom.Node) {
 	b.document = doc
 }
 
-func (b *Browser) SetStylesheet(stylesheet css.Stylesheet) {
-	b.currentStyle = stylesheet
+func (b *Browser) SetExternalCSS(cssContent string) {
+	b.externalCSS = cssContent
 }
 
 func (b *Browser) handleMouseDown(x, y float64) {
@@ -628,8 +628,12 @@ func (b *Browser) Reflow(width float32) {
 		return
 	}
 
-	// Re-build layout tree with new width
-	layoutTree := layout.BuildLayoutTree(b.document, b.currentStyle)
+	// Re-collect CSS: external + active internal styles (respects disabled)
+	fullCSS := b.externalCSS + "\n" + dom.FindActiveStyleContent(b.document)
+	stylesheet := css.Parse(fullCSS)
+
+	// Re-build layout tree with updated stylesheet
+	layoutTree := layout.BuildLayoutTree(b.document, stylesheet)
 	layout.ComputeLayout(layoutTree, float64(width))
 
 	// Update stored values

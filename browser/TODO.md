@@ -17,6 +17,23 @@ https://html.spec.whatwg.org/
 [x] - <html>
 [x] - <head> (WHATWG 4.2.1 compliance)
 [x] - <title> (WHATWG 4.2.2 compliance - document.title getter/setter)
+[x] - <style> (WHATWG 4.2.6 compliance - disabled property)
+### HTMLStyleElement (WHATWG 4.2.6)
+- [x] `styleElement.disabled` - Getter/setter to enable/disable stylesheet
+- [ ] `styleElement.sheet` - Get associated CSSStyleSheet object (LinkStyle interface)
+- [ ] `styleElement.media` - Get/set media query string
+- [ ] `styleElement.type` - Validate type attribute (only "text/css" or empty)
+- [ ] `styleElement.title` - Style sheet set name for alternate stylesheets
+- [ ] `load` event - Fire when style processing completes
+- [ ] `error` event - Fire when style loading fails
+
+### CSSStyleSheet (CSSOM)
+- [ ] `sheet.cssRules` - Get list of CSS rules
+- [ ] `sheet.insertRule(rule, index)` - Add a CSS rule
+- [ ] `sheet.deleteRule(index)` - Remove a CSS rule
+- [ ] `sheet.disabled` - Enable/disable the stylesheet
+
+
 
 
 ## Related TODO Files

@@ -16,6 +16,7 @@ type Node struct {
 	Children   []*Node
 	Parent     *Node
 	Text       string
+	Disabled   bool
 }
 
 func NewElement(tagName string, tags map[string]string) *Node {
@@ -136,4 +137,26 @@ func FindBaseHref(node *Node) string {
 		return ""
 	}
 	return baseNode.Attributes["href"]
+}
+
+func FindActiveStyleContent(node *Node) string {
+	if node == nil {
+		return ""
+	}
+
+	var css string
+
+	if node.TagName == "style" && !node.Disabled {
+		for _, child := range node.Children {
+			if child.Type == Text {
+				css += child.Text + "\n"
+			}
+		}
+	}
+
+	for _, child := range node.Children {
+		css += FindActiveStyleContent(child)
+	}
+
+	return css
 }

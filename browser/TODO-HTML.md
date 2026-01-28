@@ -8,7 +8,7 @@
 - [x] `<body>` - document body
 - [x] `<title>` - page title
 - [x] `<link>` - external resources (stylesheets)
-- [x] `<style>` - embedded CSS
+- [x] `<style>` - embedded CSS (WHATWG 4.2.6: disabled property support)
 - [x] `<script>` - JavaScript
 
 ### Text Content
@@ -121,7 +121,7 @@
 - [ ] `<hgroup>` - heading group
 
 ### Document Metadata
-- [ ] `<base>` - base URL for relative links
+- [x] `<base>` - base URL for relative links
 - [ ] `<meta>` - document metadata (viewport, charset, etc.)
 - [ ] `<noscript>` - fallback for no JavaScript
 

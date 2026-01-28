@@ -390,6 +390,24 @@ func (rt *JSRuntime) wrapElement(node *dom.Node) goja.Value {
 
 	obj.Set("_elem", elem)
 
+	// HTMLStyleElement.disabled property (spec 4.2.6)
+	if node.TagName == "style" {
+		obj.DefineAccessorProperty("disabled",
+			rt.vm.ToValue(func(call goja.FunctionCall) goja.Value {
+				return rt.vm.ToValue(node.Disabled)
+			}),
+			rt.vm.ToValue(func(call goja.FunctionCall) goja.Value {
+				if len(call.Arguments) > 0 {
+					node.Disabled = call.Arguments[0].ToBoolean()
+					if rt.onReflow != nil {
+						rt.onReflow()
+					}
+				}
+				return goja.Undefined()
+			}),
+			goja.FLAG_FALSE, goja.FLAG_TRUE)
+	}
+
 	// Cache before returning
 	rt.elementCache[node] = obj
 
