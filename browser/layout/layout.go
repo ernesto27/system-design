@@ -192,11 +192,13 @@ func mergeStyles(base *css.Style, inline *css.Style) {
 	if inline.MarginBottom > 0 {
 		base.MarginBottom = inline.MarginBottom
 	}
-	if inline.MarginLeft > 0 {
+	if inline.MarginLeft > 0 || inline.MarginLeftAuto {
 		base.MarginLeft = inline.MarginLeft
+		base.MarginLeftAuto = inline.MarginLeftAuto
 	}
-	if inline.MarginRight > 0 {
+	if inline.MarginRight > 0 || inline.MarginRightAuto {
 		base.MarginRight = inline.MarginRight
+		base.MarginRightAuto = inline.MarginRightAuto
 	}
 	if inline.PaddingTop > 0 {
 		base.PaddingTop = inline.PaddingTop

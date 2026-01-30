@@ -168,12 +168,26 @@ func computeBlockLayout(box *LayoutBox, containerWidth float64, startX, startY f
 	if box.Style.MarginBottom > 0 {
 		box.Margin.Bottom = box.Style.MarginBottom
 	}
-	if box.Style.MarginLeft > 0 {
-		innerX += box.Style.MarginLeft
-		innerWidth -= box.Style.MarginLeft
-	}
-	if box.Style.MarginRight > 0 {
-		innerWidth -= box.Style.MarginRight
+
+	// Handle auto margins for horizontal centering
+	if box.Style.MarginLeftAuto && box.Style.MarginRightAuto && box.Style.Width > 0 {
+		// Both auto = center horizontally
+		leftover := containerWidth - box.Rect.Width
+		if leftover > 0 {
+			autoMargin := leftover / 2
+			box.Rect.X = startX + autoMargin
+			innerX = box.Rect.X
+			box.Margin.Left = autoMargin
+			box.Margin.Right = autoMargin
+		}
+	} else {
+		if box.Style.MarginLeft > 0 {
+			innerX += box.Style.MarginLeft
+			innerWidth -= box.Style.MarginLeft
+		}
+		if box.Style.MarginRight > 0 {
+			innerWidth -= box.Style.MarginRight
+		}
 	}
 
 	// Apply CSS padding from inline style

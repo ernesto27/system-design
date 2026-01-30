@@ -38,10 +38,8 @@
 - [x] User-agent default styles (margins for p, h1-h6, ul, ol, blockquote, hr)
 - [x] `line-height` - line spacing (unitless, px, normal keyword)
 - [x] Word wrapping for long text - text wraps within container width
-
----
-
-## In Progress
+- [x] `margin: auto` - horizontal centering
+- [x] `margin` multi-value shorthand - `margin: 10px 20px` (2/3/4 values)
 
 ---
 
@@ -127,8 +125,8 @@
 - [x] `em` - relative to font size
 - [ ] `rem` - relative to root font size
 - [ ] `%` - percentage
-- [ ] `vw` - viewport width
-- [ ] `vh` - viewport height
+- [x] `vw` - viewport width
+- [x] `vh` - viewport height
 - [ ] `calc()` - calculations
 - [ ] `rgb()` / `rgba()` - color functions
 - [ ] `hsl()` / `hsla()` - color functions
@@ -146,8 +144,16 @@
 - [x] `!important` - override rules
 - [ ] Inheritance - properties inheriting from parent elements
 
+### At-Rules (needed for WHATWG 4.2.6 style element compliance)
+- [ ] `@media` - media queries (screen, print, width conditions)
+- [ ] `@import` - import external stylesheets
+- [ ] `@charset` - character encoding declaration
+- [ ] `@font-face` - custom font definitions
+- [ ] `@keyframes` - animation keyframes
+- [ ] `@supports` - feature queries
+
 ### Shorthand Expansion
-- [ ] `margin` multi-value - `margin: 10px 20px`, `margin: 10px 20px 30px 40px`
+- [x] `margin` multi-value - `margin: 10px 20px`, `margin: 10px 20px 30px 40px`
 - [ ] `padding` multi-value - `padding: 10px 20px`
 - [ ] `border-radius` multi-value - per-corner values
 

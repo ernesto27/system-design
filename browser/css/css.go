@@ -24,6 +24,8 @@ type Style struct {
 	MarginBottom    float64
 	MarginLeft      float64
 	MarginRight     float64
+	MarginLeftAuto  bool
+	MarginRightAuto bool
 	PaddingTop      float64
 	PaddingBottom   float64
 	PaddingLeft     float64
@@ -604,6 +606,14 @@ func ParseFontFamily(value string) []string {
 	return fonts
 }
 
+// parseMarginValue returns the size and whether it's "auto"
+func parseMarginValue(value string, fontSize, vw, vh float64) (float64, bool) {
+	if strings.ToLower(value) == "auto" {
+		return 0, true
+	}
+	return ParseSizeWithContext(value, fontSize, vw, vh), false
+}
+
 func applyDeclarationWithContext(style *Style, property, value string, baseFontSize, viewportWidth, viewportHeight float64) {
 	switch property {
 	case "font-size":
@@ -612,19 +622,56 @@ func applyDeclarationWithContext(style *Style, property, value string, baseFontS
 			style.FontSize = size
 		}
 	case "margin":
-		m := ParseSizeWithContext(value, style.FontSize, viewportWidth, viewportHeight)
-		style.MarginTop = m
-		style.MarginBottom = m
-		style.MarginLeft = m
-		style.MarginRight = m
+		parts := strings.Fields(value)
+		var top, right, bottom, left float64
+		var rightAuto, leftAuto bool
+
+		switch len(parts) {
+		case 1:
+			m, isAuto := parseMarginValue(parts[0], style.FontSize, viewportWidth, viewportHeight)
+			top, right, bottom, left = m, m, m, m
+			rightAuto, leftAuto = isAuto, isAuto
+		case 2:
+			top, _ = parseMarginValue(parts[0], style.FontSize, viewportWidth, viewportHeight)
+			bottom = top
+			right, rightAuto = parseMarginValue(parts[1], style.FontSize, viewportWidth, viewportHeight)
+			left, leftAuto = right, rightAuto
+		case 3:
+			top, _ = parseMarginValue(parts[0], style.FontSize, viewportWidth, viewportHeight)
+			right, rightAuto = parseMarginValue(parts[1], style.FontSize, viewportWidth, viewportHeight)
+			bottom, _ = parseMarginValue(parts[2], style.FontSize, viewportWidth, viewportHeight)
+			left, leftAuto = right, rightAuto
+		case 4:
+			top, _ = parseMarginValue(parts[0], style.FontSize, viewportWidth, viewportHeight)
+			right, rightAuto = parseMarginValue(parts[1], style.FontSize, viewportWidth, viewportHeight)
+			bottom, _ = parseMarginValue(parts[2], style.FontSize, viewportWidth, viewportHeight)
+			left, leftAuto = parseMarginValue(parts[3], style.FontSize, viewportWidth, viewportHeight)
+		}
+
+		style.MarginTop = top
+		style.MarginRight = right
+		style.MarginBottom = bottom
+		style.MarginLeft = left
+		style.MarginRightAuto = rightAuto
+		style.MarginLeftAuto = leftAuto
 	case "margin-top":
 		style.MarginTop = ParseSizeWithContext(value, style.FontSize, viewportWidth, viewportHeight)
 	case "margin-bottom":
 		style.MarginBottom = ParseSizeWithContext(value, style.FontSize, viewportWidth, viewportHeight)
 	case "margin-left":
-		style.MarginLeft = ParseSizeWithContext(value, style.FontSize, viewportWidth, viewportHeight)
+		if strings.ToLower(value) == "auto" {
+			style.MarginLeftAuto = true
+		} else {
+			style.MarginLeft = ParseSizeWithContext(value, style.FontSize, viewportWidth, viewportHeight)
+			style.MarginLeftAuto = false
+		}
 	case "margin-right":
-		style.MarginRight = ParseSizeWithContext(value, style.FontSize, viewportWidth, viewportHeight)
+		if strings.ToLower(value) == "auto" {
+			style.MarginRightAuto = true
+		} else {
+			style.MarginRight = ParseSizeWithContext(value, style.FontSize, viewportWidth, viewportHeight)
+			style.MarginRightAuto = false
+		}
 	case "padding":
 		p := ParseSizeWithContext(value, style.FontSize, viewportWidth, viewportHeight)
 		style.PaddingTop = p
