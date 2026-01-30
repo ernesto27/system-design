@@ -652,6 +652,9 @@ func computeTableLayout(table *LayoutBox, containerWidth float64, startX, startY
 	table.Rect.Y = startY
 	table.Rect.Width = containerWidth
 
+	// Track tbody/thead/tfoot wrappers to set their dimensions later
+	var wrappers []*LayoutBox
+
 	// Collect all rows (may be direct children or inside tbody/thead/tfoot)
 	var rows []*LayoutBox
 	for _, child := range table.Children {
@@ -660,6 +663,7 @@ func computeTableLayout(table *LayoutBox, containerWidth float64, startX, startY
 			rows = append(rows, child)
 		case TableBox:
 			// This is tbody/thead/tfoot - get rows from inside
+			wrappers = append(wrappers, child)
 			for _, grandchild := range child.Children {
 				if grandchild.Type == TableRowBox {
 					rows = append(rows, grandchild)
@@ -759,25 +763,92 @@ func computeTableLayout(table *LayoutBox, containerWidth float64, startX, startY
 	}
 
 	table.Rect.Height = yOffset - startY
+
+	// Set dimensions on tbody/thead/tfoot wrappers so hit testing works
+	for _, wrapper := range wrappers {
+		wrapper.Rect.X = startX
+		wrapper.Rect.Y = startY
+		wrapper.Rect.Width = containerWidth
+		wrapper.Rect.Height = table.Rect.Height
+	}
 }
 
 // computeCellContent layouts the content inside a table cell
 func computeCellContent(cell *LayoutBox, width float64, startX, startY float64) float64 {
-	yOffset := startY
+	currentX := startX
+	currentY := startY
+	lineHeight := 24.0
+	maxY := startY
 
-	for _, child := range cell.Children {
-		if child.Type == TextBox {
+	var layoutInline func(box *LayoutBox)
+	layoutInline = func(box *LayoutBox) {
+		switch box.Type {
+		case TextBox:
 			fontSize := 16.0
-			textWidth := MeasureText(child.Text, fontSize)
-			child.Rect.X = startX
-			child.Rect.Y = yOffset
-			child.Rect.Width = textWidth
-			child.Rect.Height = 24.0
-			yOffset += 24.0
+			textWidth := MeasureText(box.Text, fontSize)
+			box.Rect.X = currentX
+			box.Rect.Y = currentY
+			box.Rect.Width = textWidth
+			box.Rect.Height = lineHeight
+			currentX += textWidth
+			if currentY+lineHeight > maxY {
+				maxY = currentY + lineHeight
+			}
+
+		case InlineBox:
+			box.Rect.X = currentX
+			box.Rect.Y = currentY
+			childStartX := currentX
+			for _, child := range box.Children {
+				layoutInline(child)
+			}
+			box.Rect.Width = currentX - childStartX
+			box.Rect.Height = lineHeight
+			if currentY+lineHeight > maxY {
+				maxY = currentY + lineHeight
+			}
+
+		case BlockBox:
+			if currentX > startX {
+				currentY += lineHeight
+				currentX = startX
+			}
+			box.Rect.X = startX
+			box.Rect.Y = currentY
+			for _, child := range box.Children {
+				layoutInline(child)
+			}
+			currentY += lineHeight
+			currentX = startX
+			if currentY > maxY {
+				maxY = currentY
+			}
+
+		case TableBox:
+			// Nested table inside cell - layout it recursively
+			if currentX > startX {
+				currentY += lineHeight
+				currentX = startX
+			}
+			computeTableLayout(box, width, startX, currentY)
+			currentY += box.Rect.Height
+			currentX = startX
+			if currentY > maxY {
+				maxY = currentY
+			}
+
+		default:
+			for _, child := range box.Children {
+				layoutInline(child)
+			}
 		}
 	}
 
-	return yOffset - startY
+	for _, child := range cell.Children {
+		layoutInline(child)
+	}
+
+	return maxY - startY
 }
 
 // getImageSize reads width/height attributes or returns defaults

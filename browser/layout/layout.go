@@ -35,6 +35,7 @@ var blockElements = map[string]bool{
 	"dt":         true,
 	"dd":         true,
 	"fieldset":   true,
+	"center":     true,
 }
 
 var skipElements = map[string]bool{

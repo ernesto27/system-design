@@ -69,6 +69,7 @@
 - [x] `<nav>` - navigation
 - [x] `<section>` - section
 - [x] `<article>` - article
+- [x] `<center>` - centered content (deprecated but still used)
 
 ---
 
@@ -100,8 +101,12 @@
 
 ### Tables
 - [x] `<caption>` - table caption (centered text)
+- [x] Nested tables inside cells
+- [x] Inline elements (links, spans, formatting) inside cells
 - [ ] `<colgroup>` - column group
 - [ ] `<col>` - column properties
+- [ ] `colspan` / `rowspan` attributes
+- [ ] Content-based column width calculation
 
 ### Forms
 - [ ] `<datalist>` - input suggestions
