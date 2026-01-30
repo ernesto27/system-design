@@ -32,14 +32,14 @@ type NavigationRequest struct {
 }
 
 type Browser struct {
-	App          fyne.App
-	Window       fyne.Window
-	Width        float32
-	Height       float32
+	App         fyne.App
+	Window      fyne.Window
+	Width       float32
+	Height      float32
 	layoutTree  *layout.LayoutBox
 	currentURL  *url.URL
 	externalCSS string // CSS from <link> tags, stored for reflow
-	OnNavigate   func(req NavigationRequest)
+	OnNavigate  func(req NavigationRequest)
 
 	urlEntry   *widget.Entry
 	content    *fyne.Container
@@ -633,7 +633,10 @@ func (b *Browser) Reflow(width float32) {
 	stylesheet := css.Parse(fullCSS)
 
 	// Re-build layout tree with updated stylesheet
-	layoutTree := layout.BuildLayoutTree(b.document, stylesheet)
+	layoutTree := layout.BuildLayoutTree(b.document, stylesheet, layout.Viewport{
+		Width:  float64(width),
+		Height: float64(b.Window.Canvas().Size().Height),
+	})
 	layout.ComputeLayout(layoutTree, float64(width))
 
 	// Update stored values

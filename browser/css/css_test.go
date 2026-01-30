@@ -394,7 +394,7 @@ func TestImportantWithContext(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			sheet := Parse(tt.css)
-			style := ApplyStylesheetWithContext(sheet, "p", "", nil, 16)
+			style := ApplyStylesheetWithContext(sheet, "p", "", nil, 16, DefaultViewportWidth, DefaultViewportHeight)
 			assert.Equal(t, tt.expectedFontSize, style.FontSize)
 		})
 	}

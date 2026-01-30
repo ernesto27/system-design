@@ -6,6 +6,11 @@ import (
 	"strings"
 )
 
+type Viewport struct {
+	Width  float64
+	Height float64
+}
+
 var blockElements = map[string]bool{
 	"html":       true,
 	"body":       true,
@@ -41,11 +46,11 @@ var imageElements = map[string]bool{
 	"img": true,
 }
 
-func BuildLayoutTree(root *dom.Node, stylesheet css.Stylesheet) *LayoutBox {
-	return BuildBox(root, nil, stylesheet)
+func BuildLayoutTree(root *dom.Node, stylesheet css.Stylesheet, viewport Viewport) *LayoutBox {
+	return BuildBox(root, nil, stylesheet, viewport)
 }
 
-func BuildBox(node *dom.Node, parent *LayoutBox, stylesheet css.Stylesheet) *LayoutBox {
+func BuildBox(node *dom.Node, parent *LayoutBox, stylesheet css.Stylesheet, viewport Viewport) *LayoutBox {
 	if node.Type == dom.Element && skipElements[node.TagName] {
 		return nil
 	}
@@ -66,7 +71,7 @@ func BuildBox(node *dom.Node, parent *LayoutBox, stylesheet css.Stylesheet) *Lay
 			parentFontSize = parent.Style.FontSize
 		}
 
-		box.Style = css.ApplyStylesheetWithContext(stylesheet, node.TagName, id, classes, parentFontSize)
+		box.Style = css.ApplyStylesheetWithContext(stylesheet, node.TagName, id, classes, parentFontSize, viewport.Width, viewport.Height)
 
 		if align, ok := node.Attributes["align"]; ok {
 			switch strings.ToLower(align) {
@@ -83,7 +88,7 @@ func BuildBox(node *dom.Node, parent *LayoutBox, stylesheet css.Stylesheet) *Lay
 
 		// Then apply inline styles (override stylesheet)
 		if styleAttr, ok := node.Attributes["style"]; ok {
-			inlineStyle := css.ParseInlineStyleWithContext(styleAttr, parentFontSize)
+			inlineStyle := css.ParseInlineStyleWithContext(styleAttr, parentFontSize, viewport.Width, viewport.Height)
 			mergeStyles(&box.Style, &inlineStyle)
 		}
 
@@ -152,7 +157,7 @@ func BuildBox(node *dom.Node, parent *LayoutBox, stylesheet css.Stylesheet) *Lay
 	}
 
 	for _, child := range node.Children {
-		childBox := BuildBox(child, box, stylesheet)
+		childBox := BuildBox(child, box, stylesheet, viewport)
 		if childBox != nil {
 			box.Children = append(box.Children, childBox)
 		}

@@ -6,6 +6,12 @@ import (
 	"strings"
 )
 
+const (
+	DefaultFontSize       = 16.0
+	DefaultViewportWidth  = 0.0
+	DefaultViewportHeight = 0.0
+)
+
 type Style struct {
 	Color           color.Color
 	BackgroundColor color.Color
@@ -61,7 +67,7 @@ type Style struct {
 
 func DefaultStyle() Style {
 	return Style{
-		FontSize: 16,
+		FontSize: DefaultFontSize,
 		Bold:     false,
 		Italic:   false,
 		Opacity:  1.0,
@@ -133,11 +139,27 @@ func parseBorderShorthand(value string) (float64, string, color.Color) {
 }
 
 func ParseSize(value string) float64 {
-	return ParseSizeWithContext(value, 16.0)
+	return ParseSizeWithContext(value, DefaultFontSize, DefaultViewportWidth, DefaultViewportHeight)
 }
 
-func ParseSizeWithContext(value string, baseFontSize float64) float64 {
+func ParseSizeWithContext(value string, baseFontSize float64, viewportWidth, viewportHeight float64) float64 {
 	value = strings.TrimSpace(strings.ToLower(value))
+
+	if strings.HasSuffix(value, "vh") {
+		num := strings.TrimSuffix(value, "vh")
+		if percent, err := strconv.ParseFloat(num, 64); err == nil {
+			return (percent / 100.0) * viewportHeight
+		}
+		return 0
+	}
+
+	if strings.HasSuffix(value, "vw") {
+		num := strings.TrimSuffix(value, "vw")
+		if percent, err := strconv.ParseFloat(num, 64); err == nil {
+			return (percent / 100.0) * viewportWidth
+		}
+		return 0
+	}
 
 	// Handle em units
 	if strings.HasSuffix(value, "em") {
@@ -582,41 +604,49 @@ func ParseFontFamily(value string) []string {
 	return fonts
 }
 
-func applyDeclarationWithContext(style *Style, property, value string, baseFontSize float64) {
+func applyDeclarationWithContext(style *Style, property, value string, baseFontSize, viewportWidth, viewportHeight float64) {
 	switch property {
 	case "font-size":
 		// font-size em is relative to PARENT's font-size
-		if size := ParseSizeWithContext(value, baseFontSize); size > 0 {
+		if size := ParseSizeWithContext(value, baseFontSize, viewportWidth, viewportHeight); size > 0 {
 			style.FontSize = size
 		}
 	case "margin":
-		m := ParseSizeWithContext(value, style.FontSize)
+		m := ParseSizeWithContext(value, style.FontSize, viewportWidth, viewportHeight)
 		style.MarginTop = m
 		style.MarginBottom = m
 		style.MarginLeft = m
 		style.MarginRight = m
 	case "margin-top":
-		style.MarginTop = ParseSizeWithContext(value, style.FontSize)
+		style.MarginTop = ParseSizeWithContext(value, style.FontSize, viewportWidth, viewportHeight)
 	case "margin-bottom":
-		style.MarginBottom = ParseSizeWithContext(value, style.FontSize)
+		style.MarginBottom = ParseSizeWithContext(value, style.FontSize, viewportWidth, viewportHeight)
 	case "margin-left":
-		style.MarginLeft = ParseSizeWithContext(value, style.FontSize)
+		style.MarginLeft = ParseSizeWithContext(value, style.FontSize, viewportWidth, viewportHeight)
 	case "margin-right":
-		style.MarginRight = ParseSizeWithContext(value, style.FontSize)
+		style.MarginRight = ParseSizeWithContext(value, style.FontSize, viewportWidth, viewportHeight)
 	case "padding":
-		p := ParseSizeWithContext(value, style.FontSize)
+		p := ParseSizeWithContext(value, style.FontSize, viewportWidth, viewportHeight)
 		style.PaddingTop = p
 		style.PaddingBottom = p
 		style.PaddingLeft = p
 		style.PaddingRight = p
 	case "padding-top":
-		style.PaddingTop = ParseSizeWithContext(value, style.FontSize)
+		style.PaddingTop = ParseSizeWithContext(value, style.FontSize, viewportWidth, viewportHeight)
 	case "padding-bottom":
-		style.PaddingBottom = ParseSizeWithContext(value, style.FontSize)
+		style.PaddingBottom = ParseSizeWithContext(value, style.FontSize, viewportWidth, viewportHeight)
 	case "padding-left":
-		style.PaddingLeft = ParseSizeWithContext(value, style.FontSize)
+		style.PaddingLeft = ParseSizeWithContext(value, style.FontSize, viewportWidth, viewportHeight)
 	case "padding-right":
-		style.PaddingRight = ParseSizeWithContext(value, style.FontSize)
+		style.PaddingRight = ParseSizeWithContext(value, style.FontSize, viewportWidth, viewportHeight)
+	case "width":
+		if w := ParseSizeWithContext(value, style.FontSize, viewportWidth, viewportHeight); w > 0 {
+			style.Width = w
+		}
+	case "height":
+		if h := ParseSizeWithContext(value, style.FontSize, viewportWidth, viewportHeight); h > 0 {
+			style.Height = h
+		}
 	case "line-height":
 		style.LineHeight = parseLineHeight(value, style.FontSize)
 	default:
@@ -626,7 +656,7 @@ func applyDeclarationWithContext(style *Style, property, value string, baseFontS
 }
 
 // ApplyStylesheetWithContext applies matching rules with parent font-size for em units
-func ApplyStylesheetWithContext(sheet Stylesheet, tagName string, id string, classes []string, parentFontSize float64) Style {
+func ApplyStylesheetWithContext(sheet Stylesheet, tagName string, id string, classes []string, parentFontSize, viewportWidth, viewportHeight float64) Style {
 	style := DefaultStyle()
 	importantProps := make(map[string]bool)
 
@@ -652,7 +682,7 @@ func ApplyStylesheetWithContext(sheet Stylesheet, tagName string, id string, cla
 					continue
 				}
 
-				if size := ParseSizeWithContext(decl.Value, parentFontSize); size > 0 {
+				if size := ParseSizeWithContext(decl.Value, parentFontSize, viewportWidth, viewportHeight); size > 0 {
 					style.FontSize = size
 				}
 
@@ -687,7 +717,7 @@ func ApplyStylesheetWithContext(sheet Stylesheet, tagName string, id string, cla
 					continue
 				}
 
-				applyDeclarationWithContext(&style, decl.Property, decl.Value, style.FontSize)
+				applyDeclarationWithContext(&style, decl.Property, decl.Value, style.FontSize, viewportWidth, viewportHeight)
 
 				if decl.Important {
 					importantProps[decl.Property] = true
@@ -700,7 +730,7 @@ func ApplyStylesheetWithContext(sheet Stylesheet, tagName string, id string, cla
 }
 
 // ParseInlineStyleWithContext parses inline style with font-size context for em units
-func ParseInlineStyleWithContext(styleAttr string, parentFontSize float64) Style {
+func ParseInlineStyleWithContext(styleAttr string, parentFontSize, viewportWidth, viewportHeight float64) Style {
 	style := DefaultStyle()
 	importantProps := make(map[string]bool) // Track !important properties
 
@@ -730,7 +760,7 @@ func ParseInlineStyleWithContext(styleAttr string, parentFontSize float64) Style
 				continue
 			}
 
-			if size := ParseSizeWithContext(value, parentFontSize); size > 0 {
+			if size := ParseSizeWithContext(value, parentFontSize, viewportWidth, viewportHeight); size > 0 {
 				style.FontSize = size
 			}
 
@@ -769,7 +799,7 @@ func ParseInlineStyleWithContext(styleAttr string, parentFontSize float64) Style
 				continue
 			}
 
-			applyDeclarationWithContext(&style, property, value, style.FontSize)
+			applyDeclarationWithContext(&style, property, value, style.FontSize, viewportWidth, viewportHeight)
 
 			if important {
 				importantProps[property] = true

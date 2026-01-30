@@ -136,7 +136,10 @@ func loadPage(browser *render.Browser, req render.NavigationRequest) {
 		fmt.Println("Building layout...")
 		stylesheet := css.Parse(fullCSS)
 		browser.SetDocument(document)
-		layoutTree := layout.BuildLayoutTree(document, stylesheet)
+		layoutTree := layout.BuildLayoutTree(document, stylesheet, layout.Viewport{
+			Width:  float64(browser.Width),
+			Height: float64(browser.Height),
+		})
 		layout.ComputeLayout(layoutTree, float64(browser.Width))
 
 		// Execute JavaScript
@@ -170,7 +173,10 @@ func loadPage(browser *render.Browser, req render.NavigationRequest) {
 		stylesheet = css.Parse(fullCSS)
 
 		// Rebuild layout tree AFTER JavaScript has modified the DOM
-		layoutTree = layout.BuildLayoutTree(document, stylesheet)
+		layoutTree = layout.BuildLayoutTree(document, stylesheet, layout.Viewport{
+			Width:  float64(browser.Width),
+			Height: float64(browser.Height),
+		})
 		layout.ComputeLayout(layoutTree, float64(browser.Width))
 		browser.SetContent(layoutTree)
 		browser.AddToHistory(pageURL)
