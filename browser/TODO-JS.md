@@ -90,6 +90,7 @@
 - [ ] `onsubmit` attribute - Execute JS on form submit
 - [ ] `onchange` attribute - Execute JS on input change
 - [ ] `onload` attribute - Execute JS when element loads
+- [x] `onbeforeunload` attribute - Warn before leaving page (body element)
 
 ### Event Features
 - [ ] `event.preventDefault()`
@@ -118,6 +119,7 @@
 - [ ] `window.location.href` setter - Navigate to URL
 - [ ] `window.history.back()` - Go back
 - [ ] `window.history.forward()` - Go forward
+- [x] `window.onbeforeunload` - Warn before leaving page (getter/setter)
 
 ### Window Properties
 - [ ] `window.innerWidth` / `innerHeight`

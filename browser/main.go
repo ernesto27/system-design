@@ -152,6 +152,7 @@ func loadPage(browser *render.Browser, req render.NavigationRequest) {
 		jsRuntime.SetConfirmHandler(browser.ShowConfirm)
 		jsRuntime.SetPromptHandler(browser.ShowPrompt)
 		browser.SetJSClickHandler(jsRuntime.DispatchClick)
+		browser.SetBeforeNavigateHandler(jsRuntime.CheckBeforeUnload)
 
 		jsRuntime.SetCurrentURL(pageURL)
 
@@ -179,6 +180,15 @@ func loadPage(browser *render.Browser, req render.NavigationRequest) {
 		})
 		layout.ComputeLayout(layoutTree, float64(browser.Width))
 		browser.SetContent(layoutTree)
+
+		bodyNode := dom.FindElementsByTagName(document, dom.TagBody)
+		if bodyNode != nil {
+			if onload, ok := bodyNode.Attributes["onload"]; ok {
+				fmt.Println("Executing body onload...")
+				jsRuntime.Execute(onload)
+			}
+		}
+
 		browser.AddToHistory(pageURL)
 
 		fmt.Println("Page loaded!")

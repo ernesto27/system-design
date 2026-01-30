@@ -9,17 +9,18 @@ import (
 )
 
 type JSRuntime struct {
-	vm            *goja.Runtime
-	document      *dom.Node
-	onReflow      func()
-	onAlert       func(message string)
-	Events        *EventManager
-	onConfirm     func(string) bool
-	currentURL    string
-	onReload      func()
-	onPrompt      func(message, defaultValue string) *string
-	elementCache  map[*dom.Node]*goja.Object
-	onTitleChange func(string)
+	vm                  *goja.Runtime
+	document            *dom.Node
+	onReflow            func()
+	onAlert             func(message string)
+	Events              *EventManager
+	onConfirm           func(string) bool
+	currentURL          string
+	onReload            func()
+	onPrompt            func(message, defaultValue string) *string
+	elementCache        map[*dom.Node]*goja.Object
+	onTitleChange       func(string)
+	beforeUnloadHandler goja.Callable
 }
 
 func NewJSRuntime(document *dom.Node, onReflow func()) *JSRuntime {
@@ -197,6 +198,26 @@ func (rt *JSRuntime) setupGlobals() {
 	})
 
 	window.Set("location", location)
+
+	window.DefineAccessorProperty("onbeforeunload",
+		rt.vm.ToValue(func(call goja.FunctionCall) goja.Value {
+			if rt.beforeUnloadHandler == nil {
+				return goja.Null()
+			}
+			return rt.vm.ToValue(rt.beforeUnloadHandler)
+		}),
+		rt.vm.ToValue(func(call goja.FunctionCall) goja.Value {
+			if len(call.Arguments) > 0 {
+				if callback, ok := goja.AssertFunction(call.Arguments[0]); ok {
+					rt.beforeUnloadHandler = callback
+				} else {
+					rt.beforeUnloadHandler = nil
+				}
+			}
+			return goja.Undefined()
+		}),
+		goja.FLAG_FALSE, goja.FLAG_TRUE)
+
 	rt.vm.Set("window", window)
 
 }
@@ -465,5 +486,45 @@ func (rt *JSRuntime) ExecuteInlineEvent(node *dom.Node, eventType string) bool {
 		return false
 	}
 
+	return true
+}
+
+func (rt *JSRuntime) CheckBeforeUnload() bool {
+	fmt.Println("CheckBeforeUnload called")
+
+	// Check window.onbeforeunload (set via JavaScript)
+	if rt.beforeUnloadHandler != nil {
+		result, err := rt.beforeUnloadHandler(goja.Undefined())
+		if err != nil {
+			return true
+		}
+		if result != nil && !goja.IsUndefined(result) && !goja.IsNull(result) {
+			if rt.onConfirm != nil {
+				return rt.onConfirm("Changes you made may not be saved. Leave anyway?")
+			}
+		}
+	}
+
+	// Check <body onbeforeunload="..."> attribute
+	fmt.Println("  Checking body onbeforeunload attribute")
+	bodyNode := dom.FindElementsByTagName(rt.document, dom.TagBody)
+	if bodyNode != nil {
+		code, ok := bodyNode.Attributes["onbeforeunload"]
+		if ok && code != "" {
+			// Wrap in function since inline handlers are implicitly functions
+			wrappedCode := "(function() { " + code + " })()"
+			result, err := rt.vm.RunString(wrappedCode)
+			if err != nil {
+				return true
+			}
+			if result != nil && !goja.IsUndefined(result) && !goja.IsNull(result) {
+				if rt.onConfirm != nil {
+					return rt.onConfirm("Changes you made may not be saved. Leave anyway?")
+				}
+			}
+		}
+	}
+
+	fmt.Println("  No beforeunload handler, allowing navigation")
 	return true
 }

@@ -18,6 +18,18 @@ https://html.spec.whatwg.org/
 [x] - <head> (WHATWG 4.2.1 compliance)
 [x] - <title> (WHATWG 4.2.2 compliance - document.title getter/setter)
 [x] - <style> (WHATWG 4.2.6 compliance - disabled property)
+[x] - <body onbeforeunload> - Navigation warning event
+
+### HTMLBodyElement (WHATWG 4.3.1)
+- [ ] `document.body` setter - Allow setting body element
+- [ ] `onload` event - Window load event on body (High priority)
+- [ ] `ononline` / `onoffline` - Network status events
+- [ ] `onhashchange` - URL hash navigation
+- [ ] `onpopstate` - History API
+- [ ] `onmessage` - postMessage API
+- [ ] `onstorage` - localStorage events
+- [ ] `onpagehide` / `onpageshow` - Page visibility events
+- [ ] `HTMLBodyElement` interface - Proper DOM interface
 ### HTMLStyleElement (WHATWG 4.2.6)
 - [x] `styleElement.disabled` - Getter/setter to enable/disable stylesheet
 - [ ] `styleElement.sheet` - Get associated CSSStyleSheet object (LinkStyle interface)

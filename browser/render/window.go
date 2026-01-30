@@ -57,7 +57,8 @@ type Browser struct {
 	fileInputValues  map[*dom.Node]string
 	invalidNodes     map[*dom.Node]bool
 
-	onJSClick func(node *dom.Node)
+	onJSClick        func(node *dom.Node)
+	onBeforeNavigate func() bool // Returns true if navigation should proceed
 
 	selectionStart *SelectionPoint
 	selectionEnd   *SelectionPoint
@@ -102,7 +103,12 @@ func NewBrowser(width, height float32) *Browser {
 	b.urlEntry.OnSubmitted = func(text string) {
 		if text != "" {
 			if b.OnNavigate != nil {
-				b.OnNavigate(NavigationRequest{URL: text, Method: "GET"})
+				go func() {
+					if b.onBeforeNavigate != nil && !b.onBeforeNavigate() {
+						return
+					}
+					b.OnNavigate(NavigationRequest{URL: text, Method: "GET"})
+				}()
 			}
 		}
 	}
@@ -119,7 +125,12 @@ func NewBrowser(width, height float32) *Browser {
 		url := b.urlEntry.Text
 		if url != "" {
 			if b.OnNavigate != nil {
-				b.OnNavigate(NavigationRequest{URL: url, Method: "GET"})
+				go func() {
+					if b.onBeforeNavigate != nil && !b.onBeforeNavigate() {
+						return
+					}
+					b.OnNavigate(NavigationRequest{URL: url, Method: "GET"})
+				}()
 			}
 		}
 	})
@@ -202,13 +213,18 @@ func (b *Browser) AddToHistory(url string) {
 
 func (b *Browser) GoBack() {
 	if b.historyPos > 0 {
-		b.historyPos--
-		prevURL := b.history[b.historyPos]
-		b.urlEntry.SetText(prevURL)
+		go func() {
+			if b.onBeforeNavigate != nil && !b.onBeforeNavigate() {
+				return
+			}
+			b.historyPos--
+			prevURL := b.history[b.historyPos]
+			b.urlEntry.SetText(prevURL)
 
-		if b.OnNavigate != nil {
-			b.OnNavigate(NavigationRequest{URL: prevURL, Method: "GET"})
-		}
+			if b.OnNavigate != nil {
+				b.OnNavigate(NavigationRequest{URL: prevURL, Method: "GET"})
+			}
+		}()
 	}
 }
 
@@ -419,7 +435,12 @@ func (b *Browser) handleClick(x, y float64) {
 
 	// Call navigation callback
 	if b.OnNavigate != nil {
-		b.OnNavigate(NavigationRequest{URL: fullURL, Method: "GET"})
+		go func() {
+			if b.onBeforeNavigate != nil && !b.onBeforeNavigate() {
+				return
+			}
+			b.OnNavigate(NavigationRequest{URL: fullURL, Method: "GET"})
+		}()
 	}
 }
 
@@ -939,6 +960,7 @@ func (b *Browser) ShowConfirm(message string) bool {
 	return <-result
 }
 
+
 func (b *Browser) ShowPrompt(message, defaultValue string) *string {
 	result := make(chan *string)
 
@@ -1069,7 +1091,12 @@ func (b *Browser) submitForm(formNode *dom.Node) {
 
 		// Navigate to the URL
 		if b.OnNavigate != nil {
-			b.OnNavigate(NavigationRequest{URL: targetURL, Method: "GET"})
+			go func() {
+				if b.onBeforeNavigate != nil && !b.onBeforeNavigate() {
+					return
+				}
+				b.OnNavigate(NavigationRequest{URL: targetURL, Method: "GET"})
+			}()
 		}
 	case "POST":
 		if enctype == "multipart/form-data" {
@@ -1079,21 +1106,31 @@ func (b *Browser) submitForm(formNode *dom.Node) {
 				return
 			}
 			if b.OnNavigate != nil {
-				b.OnNavigate(NavigationRequest{
-					URL:         targetURL,
-					Method:      "POST",
-					Body:        body,
-					ContentType: contentType,
-				})
+				go func() {
+					if b.onBeforeNavigate != nil && !b.onBeforeNavigate() {
+						return
+					}
+					b.OnNavigate(NavigationRequest{
+						URL:         targetURL,
+						Method:      "POST",
+						Body:        body,
+						ContentType: contentType,
+					})
+				}()
 			}
 		} else {
 			data := b.collectFormData(formNode)
 			if b.OnNavigate != nil {
-				b.OnNavigate(NavigationRequest{
-					URL:    targetURL,
-					Method: "POST",
-					Data:   data,
-				})
+				go func() {
+					if b.onBeforeNavigate != nil && !b.onBeforeNavigate() {
+						return
+					}
+					b.OnNavigate(NavigationRequest{
+						URL:    targetURL,
+						Method: "POST",
+						Data:   data,
+					})
+				}()
 			}
 		}
 	}
@@ -1312,4 +1349,8 @@ func (b *Browser) SetJSClickHandler(handler func(node *dom.Node)) {
 
 func (b *Browser) triggerRepaint() {
 	b.repaint()
+}
+
+func (b *Browser) SetBeforeNavigateHandler(handler func() bool) {
+	b.onBeforeNavigate = handler
 }
