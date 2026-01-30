@@ -7,6 +7,9 @@ const pool = new Pool({
   database: "postgres",
   user: "postgres",
   password: process.env.DB_PASSWORD,
+  ssl: {
+    rejectUnauthorized: false,
+  },
 });
 
 serve({
