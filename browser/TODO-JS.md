@@ -86,7 +86,7 @@
 - [ ] `focus` / `blur`
 
 ### Inline Event Handlers
-- [ ] `onclick` attribute - Execute JS on click
+- [x] `onclick` attribute - Execute JS on click
 - [ ] `onsubmit` attribute - Execute JS on form submit
 - [ ] `onchange` attribute - Execute JS on input change
 - [ ] `onload` attribute - Execute JS when element loads
