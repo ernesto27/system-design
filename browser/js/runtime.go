@@ -415,6 +415,11 @@ func (rt *JSRuntime) wrapElement(node *dom.Node) goja.Value {
 }
 
 func (rt *JSRuntime) DispatchClick(node *dom.Node) {
+	inlineExecuted := rt.ExecuteInlineEvent(node, "click")
+	if inlineExecuted {
+		fmt.Println("inline executed")
+	}
+
 	rt.Events.Dispatch(rt, node, "click")
 }
 
@@ -440,4 +445,25 @@ func (rt *JSRuntime) SetPromptHandler(handler func(message, defaultValue string)
 
 func (rt *JSRuntime) SetTitleChangeHandler(handler func(string)) {
 	rt.onTitleChange = handler
+}
+
+func (rt *JSRuntime) ExecuteInlineEvent(node *dom.Node, eventType string) bool {
+	if node == nil || node.Type != dom.Element {
+		return false
+	}
+
+	attrName := "on" + eventType
+
+	code, exists := node.Attributes[attrName]
+	if !exists || code == "" {
+		return false
+	}
+
+	err := rt.Execute(code)
+	if err != nil {
+		fmt.Printf("Error executing inline %s: %v\n", eventType, err)
+		return false
+	}
+
+	return true
 }

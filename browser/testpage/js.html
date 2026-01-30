@@ -55,6 +55,23 @@
         <button id="selfRemoveBtn">Remove Element (self.remove())</button>
     </div>
 
+    <div class="box">
+        <h3>Inline Event Handler (onclick) Tests</h3>
+        <button onclick="alert('Inline onclick works!')">Basic onclick Alert</button>
+        <button onclick="console.log('Button clicked via inline handler')">onclick Console Log</button>
+        <div onclick="this.style.backgroundColor = 'lightblue'; this.textContent = 'Clicked!';" 
+             style="padding: 10px; margin: 10px 0; border: 2px solid #333; cursor: pointer;">
+            Click me to change color and text (inline onclick)
+        </div>
+        <button onclick="document.getElementById('inlineOutput').textContent = 'Changed at ' + new Date().toLocaleTimeString();">
+            Update Timestamp
+        </button>
+        <div id="inlineOutput" class="box">Click above button to see timestamp</div>
+        <div id="clickCounter" class="box" onclick="incrementCounter(this)">
+            Click me! Count: 0
+        </div>
+    </div>
+
     <script>
         console.log("=== JavaScript Test ===");
 
@@ -295,6 +312,15 @@
 
         // Test 20: alert on page load
         alert("Page loaded! JS is working.");
+
+        // Test 22: Support function for inline onclick handler
+        var counter = 0;
+        function incrementCounter(element) {
+            counter = counter + 1;
+            element.textContent = "Click me! Count: " + counter;
+            console.log("22. Inline onclick counter:", counter);
+        }
+        console.log("Inline onclick handler function defined - click the counter box to test!");
     </script>
 </body>
 </html>
