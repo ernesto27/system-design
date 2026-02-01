@@ -18,7 +18,7 @@ serve({
     const url = new URL(req.url);
 
     if (url.pathname === "/health") {
-      return new Response("OK");
+      return new Response("v3", { status: 200 });
     }
 
     if (url.pathname === "/db") {

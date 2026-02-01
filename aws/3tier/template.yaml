@@ -28,6 +28,10 @@ Parameters:
     Type: AWS::EC2::KeyPair::KeyName
     Description: SSH key pair for EC2 instances
 
+  ContainerImage:
+    Type: String
+    Description: Full ECR image URI (e.g., 123456789.dkr.ecr.us-east-1.amazonaws.com/myapp:latest)
+
 Resources:
   # IAM Role for EC2 to pull from ECR
   EC2Role:
@@ -170,17 +174,18 @@ Resources:
             unzip -q /tmp/awscliv2.zip -d /tmp
             /tmp/aws/install
 
-            # Login to ECR
-            /usr/local/bin/aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin 383660184915.dkr.ecr.us-east-1.amazonaws.com
+            # Login to ECR (extract registry URL from image URI)
+            ECR_REGISTRY=$(echo "${ContainerImage}" | cut -d'/' -f1)
+            /usr/local/bin/aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin $ECR_REGISTRY
 
             # Pull and run container
-            docker pull 383660184915.dkr.ecr.us-east-1.amazonaws.com/bunjs:latest
+            docker pull ${ContainerImage}
             docker run -d --restart always \
               -p 80:80 \
               -e DB_HOST=${Database.Endpoint.Address} \
               -e DB_PASSWORD=${DBPassword} \
               -e HOSTNAME=$(hostname) \
-              383660184915.dkr.ecr.us-east-1.amazonaws.com/bunjs:latest
+              ${ContainerImage}
 
   WebAutoScalingGroup:
     Type: AWS::AutoScaling::AutoScalingGroup
