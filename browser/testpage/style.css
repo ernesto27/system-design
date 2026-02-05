@@ -1,0 +1,88 @@
+body {
+    background-color: #f0f0f0;
+}
+
+h1 {
+    color: #2c3e50;
+    text-align: center;
+    border-bottom: 2px solid #3498db;
+}
+
+.external-test {
+    color: white;
+    background-color: #27ae60;
+    padding: 15px;
+    border-radius: 5px;
+    font-size: 18px;
+    text-align: center;
+}
+
+#external-id {
+    color: #e74c3c;
+    font-weight: bold;
+    border: 2px dashed #c0392b;
+    padding: 10px;
+}
+
+.min-height-test {
+    background-color: #9b59b6;
+    color: white;
+    padding: 10px;
+    min-height: 80px;
+}
+
+.max-height-test {
+    background-color: #e67e22;
+    color: white;
+    padding: 10px;
+    max-height: 50px;
+    overflow: hidden;
+}
+
+.z-index-1 {
+    position: absolute;
+    left: 20px;
+    top: 30px;
+    width: 120px;
+    height: 60px;
+    background-color: #e74c3c;
+    color: white;
+    z-index: 1;
+}
+
+.z-index-2 {
+    position: absolute;
+    left: 60px;
+    top: 50px;
+    width: 120px;
+    height: 60px;
+    background-color: #27ae60;
+    color: white;
+    z-index: 2;
+}
+
+.z-index-3 {
+    position: absolute;
+    left: 100px;
+    top: 70px;
+    width: 120px;
+    height: 60px;
+    background-color: #3498db;
+    color: white;
+    z-index: 3;
+}
+
+.mono {
+    font-family: "Courier New", Consolas, monospace;
+}
+
+.code-block {
+    font-family: Monaco, Menlo, monospace;
+    background-color: #282c34;
+    color: #abb2bf;
+    padding: 10px;
+}
+
+.sans {
+    font-family: "Helvetica Neue", Arial, sans-serif;
+}

@@ -1,0 +1,141 @@
+PACKAGES 
+
+DOWNLOAD MANIFEST
+DOWNLOAD TARBALL 
+DECOMPRESS TARBALL 
+COPY PACKAGE  IN NODE MODULES 
+
+
+TODO 
+
+[X] - fix lib version,  add struct , test
+[X] - Use .config folder 
+[X] - use package json
+[X] - Cache tarball,  do  not download if file exits
+[X] - if dependecies in package.json update 
+[X] - add tests
+[X] - read package-lock.json
+[X] - Create package-go-lock.json 
+[X] - when udate package.json and lock exists , update that too and install new package
+[X] - when add package install a package that existist but with a diff version,  nested in node_modules
+[x] - Prevent delete all node_modules when install or update packages
+[X] - Manage this kind of packages  .config/go-npm/packages/@types/triple-beam@1.3.5/package.json:
+[x] - Manage dev dependecies
+[X] - Remove tarball file after decompress
+[x] - Manage conflig differe lib version of packages
+[x] - when run npm i check if lib is remove from package json and remove from node_modules
+[x] - npm uninstall -g typescript
+[x] - install packages globally
+[x] Fix tests 
+[] - manifest download if new version exists   
+[] - Replace ETag when change 
+{} - fix remove bin globally , there are some orphan bin that not are removed
+[] - update add command -install
+[] - Add flag to skip devDependencies in production mode (--production)
+[] - npm update https://chatgpt.com/c/6907d956-a35c-8330-bc95-d21d5a7d5205
+[] - init command
+[] - prune command
+[] - update command
+[] - Creat tutorial
+
+
+DELETE GLOBAL PACKAGE
+on install -g save packge in lock global , if not exists create or update 
+on uninstall -g remove bin and node_modules,  alos update package .lock
+
+
+
+DO NOT DELETE NODE_MODULES WITH INSTALL OR update
+check from lock path if folder exists in path, if not add to packages to create  
+validate checksum,  for invalid libs in node_modules  
+resolve libs ,  remove or add 
+
+
+
+
+REMOVE PACKAGE 
+Check if package exists in packge.json 
+if exists check dependencies from lock file 
+resolve which packages are safe to delete - first check without resolved
+remove from node_modules 
+update package.json and lock file
+
+
+check in lock file 
+dependicies for packakge 
+check if other package depend on same parent nodule,  if true do not remove
+check if parent package.json depend on that lib
+
+
+
+
+
+
+
+	pm.Etag.setPackages(pm.processedPackages)
+	if err := pm.Etag.save(); err != nil {
+		return fmt.Errorf("failed to save etag data: %v", err)
+	}
+
+// if no package-lock exits
+// read package json .
+// Read manifest and get dependencies
+// Create packgejsonlock struct and file package-lock.json
+
+
+
+curl -H "If-None-Match: b8dd7dcd28522e9c7b03891e5602b80f" -I https://registry.npmjs.org/express
+
+guardar etag en archivo.
+enviar en peticion para manifest 
+
+{
+    "express": {
+        "version": "4.17.1",
+        "dependencies": [
+            {
+                "name": "body-parser",
+                "version": "1.19.0"
+                "nested": false,
+            },
+            {
+                "name": "cookie-parser",
+                "version": "1.4.4"
+                "nested": false,
+            }
+        ]
+    },
+    "lodash": {
+        "version": "4.17.21",
+        "dependencies": [
+            {
+                "name": "lodash",
+                "version": "4.17.21"
+                "nested": false,
+            },
+            {
+                "name": "cookie-parser",
+                "version": "2.0.0"
+                "nested": true,
+            }
+        ]
+    }
+
+}
+
+
+
+
+guardar etag relacionado a paquete,  
+
+
+    {
+        "express": {
+            "etag": "b8dd7dcd28522e9c7b03891e5602b80f"
+        },
+
+        "lodash": {
+            "etag": "b8dd7dcd28522e9c7b03891e5602b80f"
+        }
+    }
+

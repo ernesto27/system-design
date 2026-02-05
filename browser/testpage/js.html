@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>JavaScript Test Page</title>
+    <style>
+        body { font-family: sans-serif; margin: 20px; }
+        .box { padding: 20px; margin: 10px 0; background: #e0e0e0; }
+        #output { background: #d4edda; }
+        button { padding: 10px 20px; font-size: 16px; cursor: pointer; }
+        .highlight { background-color: #ffeb3b; }
+        .border-red { border: 3px solid red; }
+    </style>
+</head>
+<body>
+    <h1>JavaScript Test Page</h1>
+
+    <div id="greeting" class="box">Hello from HTML dd!</div>
+
+    <div id="output" class="box">Output will appear here</div>
+
+    <button id="btn">Click Me</button>
+    <button id="alertBtn">Show Alert</button>
+    <button id="confirmBtn">Show Confirm</button>
+    <button id="promptBtn">Show Prompt</button>
+    <button id="reloadBtn">Reload Page</button>
+
+    <div class="box">
+        <h3>Link Tests</h3>
+        <a href="https://example.com">Same window link</a>
+        <br><br>
+        <a href="https://example.com" target="_blank">New window link (target="_blank")</a>
+    </div>
+
+    <div id="confirmResult" class="box">Confirm result will appear here</div>
+    <div id="promptResult" class="box">Prompt result will appear here</div>
+
+    <div class="box">
+        <h3>JSON.parse Tests</h3>
+        <div id="jsonResult">Running JSON tests...</div>
+    </div>
+
+    <div class="box">
+        <h3>classList.add Test</h3>
+        <div id="classListTarget" class="box">Click button to add highlight class</div>
+        <button id="addHighlightBtn">Add Highlight</button>
+        <button id="addBorderBtn">Add Red Border</button>
+        <button id="removeHighlightBtn">Remove Highlight</button>
+    </div>
+
+    <div class="box">
+        <h3>element.remove() Test</h3>
+        <div id="removeTarget" class="box highlight">
+            I will be removed when you click the button!
+        </div>
+        <button id="selfRemoveBtn">Remove Element (self.remove())</button>
+    </div>
+
+    <div class="box">
+        <h3>Inline Event Handler (onclick) Tests</h3>
+        <button onclick="alert('Inline onclick works!')">Basic onclick Alert</button>
+        <button onclick="console.log('Button clicked via inline handler')">onclick Console Log</button>
+        <div onclick="this.style.backgroundColor = 'lightblue'; this.textContent = 'Clicked!';" 
+             style="padding: 10px; margin: 10px 0; border: 2px solid #333; cursor: pointer;">
+            Click me to change color and text (inline onclick)
+        </div>
+        <button onclick="document.getElementById('inlineOutput').textContent = 'Changed at ' + new Date().toLocaleTimeString();">
+            Update Timestamp
+        </button>
+        <div id="inlineOutput" class="box">Click above button to see timestamp</div>
+        <div id="clickCounter" class="box" onclick="incrementCounter(this)">
+            Click me! Count: 0
+        </div>
+    </div>
+
+    <script>
+        console.log("=== JavaScript Test ===");
+
+        // Test 1: getElementById
+        var greeting = document.getElementById("greeting");
+        console.log("1. getElementById:", greeting.tagName, greeting.id);
+
+        // Test 2: textContent getter
+        console.log("2. textContent:", greeting.textContent);
+
+        // Test 3: getAttribute
+        console.log("3. getAttribute class:", greeting.getAttribute("class"));
+
+        // Test 4: setAttribute
+        greeting.setAttribute("data-test", "hello");
+        console.log("4. setAttribute then get:", greeting.getAttribute("data-test"));
+
+        // Test 5: textContent setter (this modifies the DOM!)
+        var output = document.getElementById("output");
+        console.log("5. Before:", output.textContent);
+        output.textContent = "Changed by JavaScript!";
+        console.log("   After:", output.textContent);
+
+        // Test 5b: innerText getter
+        console.log("5b. innerText getter:", greeting.innerText);
+
+        // Test 5c: innerText setter
+        output.innerText = "Set via innerText!";
+        console.log("5c. innerText setter:", output.innerText);
+
+        // Test 6: parentElement
+        var btn = document.getElementById("btn");
+        console.log("6. parentElement:", btn.parentElement.tagName);
+
+        // Test 7: innerHTML getter
+        console.log("7. innerHTML getter:", greeting.innerHTML);
+
+        // Test 8: innerHTML setter
+        output.innerHTML = "<strong>Set via innerHTML!</strong>";
+        console.log("8. innerHTML setter:", output.innerHTML);
+
+        console.log("=== All Tests Passed ===");
+
+        // Test 9: addEventListener
+        var clickCount = 0;
+        btn.addEventListener("click", function(event) {
+            clickCount = clickCount + 1;
+            console.log("9. Button clicked!", clickCount, "times");
+            output.textContent = "Clicked " + clickCount + " times!";
+        });
+
+        console.log("Click the button to test events!");
+
+        // Test 10: alert on button click
+        var alertBtn = document.getElementById("alertBtn");
+        alertBtn.addEventListener("click", function() {
+            alert("Hello from JavaScript!");
+        });
+
+        // Test 11: confirm dialog
+        var confirmBtn = document.getElementById("confirmBtn");
+        var confirmResult = document.getElementById("confirmResult");
+        confirmBtn.addEventListener("click", function() {
+            var answer = confirm("Do you like this browser?");
+            if (answer) {
+                confirmResult.textContent = "You clicked OK!";
+            } else {
+                confirmResult.textContent = "You clicked Cancel!";
+            }
+        });
+
+        // Test 15: prompt dialog
+        var promptBtn = document.getElementById("promptBtn");
+        var promptResult = document.getElementById("promptResult");
+        promptBtn.addEventListener("click", function() {
+            var name = prompt("What is your name?", "Anonymous");
+            if (name === null) {
+                promptResult.textContent = "You cancelled the prompt!";
+            } else {
+                promptResult.textContent = "Hello, " + name + "!";
+            }
+        });
+
+        // Test 12: createElement and appendChild
+        console.log("=== Testing createElement/appendChild ===");
+
+        var newDiv = document.createElement("div");
+        newDiv.textContent = "I was created by JavaScript!";
+        newDiv.setAttribute("class", "box");
+
+        var body = document.getElementById("greeting").parentElement;
+        body.appendChild(newDiv);
+        console.log("12. Created and appended new div");
+
+        // Test 13: appendChild with nested elements
+        var container = document.createElement("div");
+        container.setAttribute("class", "box");
+
+        var strong = document.createElement("strong");
+        strong.textContent = "Bold text";
+        container.appendChild(strong);
+
+        var text = document.createTextNode(" and normal text");
+        container.appendChild(text);
+
+        body.appendChild(container);
+        console.log("13. Created nested elements with createTextNode");
+
+        // Test 14: removeChild
+        console.log("=== Testing removeChild ===");
+        
+        var removeBtn = document.createElement("button");
+        removeBtn.textContent = "Remove Greeting";
+        removeBtn.setAttribute("id", "removeBtn");
+        body.appendChild(removeBtn);
+        
+        removeBtn.addEventListener("click", function() {
+            var greetingEl = document.getElementById("greeting");
+            if (greetingEl) {
+                greetingEl.parentElement.removeChild(greetingEl);
+                console.log("14. Removed greeting element");
+                output.textContent = "Greeting was removed!";
+            }
+        });
+
+        // Test 16: window.location.reload
+        console.log("=== Testing window.location ===");
+        var reloadBtn = document.getElementById("reloadBtn");
+        reloadBtn.addEventListener("click", function() {
+            console.log("16. Calling window.location.reload()");
+            window.location.reload();
+        });
+        console.log("Current URL:", window.location.href);
+
+        // Test 17: JSON.parse
+        console.log("=== Testing JSON.parse ===");
+        var jsonResult = document.getElementById("jsonResult");
+        var jsonTests = [];
+
+        // Test 17a: Basic object parsing
+        var obj = JSON.parse('{"name": "Alice", "age": 30}');
+        var test1 = "name=" + obj.name + ", age=" + obj.age;
+        jsonTests.push("17a. Object: " + test1);
+        console.log("17a. JSON.parse object:", test1);
+
+        // Test 17b: Array parsing
+        var arr = JSON.parse('[1, 2, 3, "four"]');
+        var test2 = "length=" + arr.length + ", last=" + arr[3];
+        jsonTests.push("17b. Array: " + test2);
+        console.log("17b. JSON.parse array:", test2);
+
+        // Test 17c: Nested structure
+        var nested = JSON.parse('{"user": {"name": "Bob"}, "scores": [10, 20]}');
+        var test3 = "user.name=" + nested.user.name + ", scores[1]=" + nested.scores[1];
+        jsonTests.push("17c. Nested: " + test3);
+        console.log("17c. JSON.parse nested:", test3);
+
+        // Test 17d: Reviver function (doubles all numbers)
+        var revived = JSON.parse('{"a": 1, "b": 2}', function(key, value) {
+            if (typeof value === "number") {
+                return value * 2;
+            }
+            return value;
+        });
+        var test4 = "a=" + revived.a + ", b=" + revived.b;
+        jsonTests.push("17d. Reviver: " + test4);
+        console.log("17d. JSON.parse with reviver:", test4);
+
+        // Display results
+        jsonResult.innerHTML = jsonTests.join("<br>");
+        console.log("=== JSON.parse Tests Complete ===");
+
+        // Test 18: classList.add
+        console.log("=== Testing classList.add ===");
+        var testDiv = document.createElement("div");
+        testDiv.setAttribute("class", "original");
+        console.log("18a. Before:", testDiv.getAttribute("class"));
+
+        testDiv.classList.add("newclass");
+        console.log("18b. After add:", testDiv.getAttribute("class"));
+
+        testDiv.classList.add("another");
+        console.log("18c. After second add:", testDiv.getAttribute("class"));
+
+        testDiv.classList.add("newclass"); // duplicate - should not add
+        console.log("18d. After duplicate:", testDiv.getAttribute("class"));
+        console.log("=== classList.add Tests Complete ===");
+
+        // Test 18e: Visual classList.add test
+        var classListTarget = document.getElementById("classListTarget");
+        var addHighlightBtn = document.getElementById("addHighlightBtn");
+        var addBorderBtn = document.getElementById("addBorderBtn");
+
+        addHighlightBtn.addEventListener("click", function() {
+            classListTarget.classList.add("highlight");
+            console.log("18e. Added highlight, class is now:", classListTarget.getAttribute("class"));
+        });
+
+        addBorderBtn.addEventListener("click", function() {
+            classListTarget.classList.add("border-red");
+            console.log("18f. Added border-red, class is now:", classListTarget.getAttribute("class"));
+        });
+
+        // Test 19: classList.remove
+        console.log("=== Testing classList.remove ===");
+        var removeTestDiv = document.createElement("div");
+        removeTestDiv.setAttribute("class", "one two three");
+        console.log("19a. Before:", removeTestDiv.getAttribute("class"));
+
+        removeTestDiv.classList.remove("two");
+        console.log("19b. After remove:", removeTestDiv.getAttribute("class"));
+
+        removeTestDiv.classList.remove("nonexistent");
+        console.log("19c. Remove non-existent:", removeTestDiv.getAttribute("class"));
+        console.log("=== classList.remove Tests Complete ===");
+
+        // Visual classList.remove test
+        var removeHighlightBtn = document.getElementById("removeHighlightBtn");
+        removeHighlightBtn.addEventListener("click", function() {
+            classListTarget.classList.remove("highlight");
+            console.log("19d. Removed highlight, class is now:", classListTarget.getAttribute("class"));
+        });
+
+        // Test 21: element.remove()
+        console.log("=== Testing element.remove() ===");
+        var selfRemoveBtn = document.getElementById("selfRemoveBtn");
+        selfRemoveBtn.addEventListener("click", function() {
+            var target = document.getElementById("removeTarget");
+            if (target) {
+                target.remove();
+                console.log("21. Element removed itself!");
+                output.textContent = "Element removed itself using .remove()!";
+            } else {
+                console.log("21. Element already removed");
+                output.textContent = "Element was already removed!";
+            }
+        });
+
+        // Test 20: alert on page load
+        alert("Page loaded! JS is working.");
+
+        // Test 22: Support function for inline onclick handler
+        var counter = 0;
+        function incrementCounter(element) {
+            counter = counter + 1;
+            element.textContent = "Click me! Count: " + counter;
+            console.log("22. Inline onclick counter:", counter);
+        }
+        console.log("Inline onclick handler function defined - click the counter box to test!");
+    </script>
+</body>
+</html>

@@ -1,0 +1,3 @@
+echo "POST http://localhost:8080/webhook" | vegeta attack -duration=60s | tee results.bin | vegeta report
+
+vegeta attack -rate=58 -duration=60s  -targets=targets.txt |  vegeta report

@@ -1,0 +1,28 @@
+nginx 
+docker run -d -p 8080:80 --name myapp nginx
+
+TODO 
+
+- Create a node backend api wiht CPU high load endopint, and api version
+- Upload to ECR registry
+- Create aws cloudformation to create load balancer and autoscaling 
+
+- Decrease cpu load 
+- test new version update
+
+
+# Build the Docker image
+  docker build -t cpu-pressure-api .
+
+  # Run the container
+  docker run --rm -p 3000:3000 cpu-pressure-api
+  # Or run in detached mode
+  docker run -d -p 8080:3000 --name cpu-pressure-app cpu-pressure-api
+  docker run -d -p 8080:3000 --name cpu-pressure-app 383660184915.dkr.ecr.us-east-1.amazonaws.com/node-cpu:latest
+
+  # Test the endpoints
+  curl http://localhost:3000/version
+  curl http://localhost:3000/cpu-pressure
+  curl http://localhost:3000/health
+
+echo "GET http://test-213764319.us-east-1.elb.amazonaws.com/cpu-pressure" | vegeta attack -duration=60s | tee results.bin | vegeta report

@@ -1,0 +1,657 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>CSS Test Page</title>
+    <link rel="stylesheet" href="style.css">
+    <style>
+        .red { color: red; }
+        .blue { color: blue; }
+        .bold { font-weight: bold; }
+        .big { font-size: 24px; }
+        .highlight { background-color: yellow; padding: 10px; }
+        #special { color: purple; font-size: 20px; font-style: italic; }
+        p.styled { background-color: lightgray; padding: 5px; }
+    </style>
+</head>
+<body>
+    <h1>CSS Test Page</h1>
+    <p>This page tests CSS styling features.</p>
+
+    <hr>
+
+    <h2>Viewport Units Test (vh/vw)</h2>
+    <p>Testing viewport-relative units. These scale with browser window size.</p>
+
+    <div style="height: 15vh; background-color: coral; color: white; padding: 10px;">
+        height: 15vh (15% of viewport height)
+    </div>
+
+    <br>
+
+    <div style="width: 50vw; background-color: teal; color: white; padding: 10px;">
+        width: 50vw (50% of viewport width)
+    </div>
+
+    <br>
+
+    <div style="width: 300px; margin: 5vh auto; background-color: purple; color: white; padding: 20px; text-align: center;">
+        margin: 5vh auto (vertical spacing + centered)
+    </div>
+
+    <div style="height: 10vh; width: 10vw; background-color: gold; color: black; padding: 10px;">
+        10vh × 10vw box
+    </div>
+
+    <hr>
+
+    <h2>!important Override Test</h2>
+    <p>Testing CSS !important flag - should override normal cascade rules.</p>
+
+    <style>
+        /* Test 1: !important beats later rules */
+        .important-test-1 { color: blue !important; }
+        .important-test-1 { color: red; }
+
+        /* Test 2: !important beats higher specificity */
+        p.important-test-2 { color: green; }
+        .important-test-2 { color: purple !important; }
+
+        /* Test 3: Later !important beats earlier !important */
+        .important-test-3 { color: orange !important; }
+        .important-test-3 { color: pink !important; }
+
+        /* Test 4: Non-important cannot override important */
+        #important-id { color: brown; }
+        .important-test-4 { color: cyan !important; }
+    </style>
+
+    <p class="important-test-1">
+        <strong>Test 1:</strong> Should be BLUE (blue !important beats later red)
+    </p>
+
+    <p class="important-test-2">
+        <strong>Test 2:</strong> Should be PURPLE (purple !important beats p.class green)
+    </p>
+
+    <p class="important-test-3">
+        <strong>Test 3:</strong> Should be PINK (later !important wins over earlier !important)
+    </p>
+
+    <p id="important-id" class="important-test-4">
+        <strong>Test 4:</strong> Should be CYAN (!important class beats non-important ID)
+    </p>
+
+    <p style="color: red !important;">
+        <strong>Test 5:</strong> Should be RED (inline !important)
+    </p>
+
+    <p style="color: green !important; color: blue;">
+        <strong>Test 6:</strong> Should be GREEN (!important in inline beats later non-important in same inline)
+    </p>
+
+    <hr>
+
+    <h2>Background Image Test</h2>
+    <p>Testing background-image property with url().</p>
+
+    <div style="width: 300px; height: 150px; background-image: url(https://picsum.photos/300/150);">
+    </div>
+    <p>Box above should show a random image as background.</p>
+
+    <br>
+
+    <div style="width: 200px; height: 100px; background-color: yellow; background-image: url(https://picsum.photos/200/100);">
+    </div>
+    <p>Box above: yellow background-color, then image on top.</p>
+
+    <br>
+
+    <div style="width: 250px; height: 120px; background-image: url(https://picsum.photos/250/120); border: 3px solid red;">
+    </div>
+    <p>Box above: image with red border.</p>
+
+    <hr>
+
+    <h2>Local Background Image Test</h2>
+    <p>Testing background-image with local files.</p>
+
+    <div style="width: 300px; height: 100px; background-image: url(sample-bg.png); border: 2px solid orange;">
+    </div>
+    <p>Box above: relative path (works in HTTP server AND your browser)</p>
+
+    <br>
+
+    <div style="width: 300px; height: 100px; background-image: url(file:///home/eponce/code/system-design/browser/testpage/sample-bg.png); border: 2px solid green;">
+    </div>
+    <p>Box above: file:// protocol (only works in YOUR browser, not Chrome via HTTP)</p>
+
+    <br>
+
+    <div style="width: 300px; height: 100px; background-image: url(/home/eponce/code/system-design/browser/testpage/sample-bg.png); border: 2px solid blue;">
+    </div>
+    <p>Box above: absolute path (only works in YOUR browser, not Chrome)</p>
+
+    <hr>
+
+    <h2>Background Shorthand Test</h2>
+    <p>Testing the background shorthand property (combines color and image).</p>
+
+    <!-- Test 1: Color only -->
+    <div style="width: 200px; height: 60px; background: red; color: white; padding: 10px;">
+        background: red (color only)
+    </div>
+
+    <br>
+
+    <!-- Test 2: Hex color only -->
+    <div style="width: 200px; height: 60px; background: #00ff00; color: black; padding: 10px;">
+        background: #00ff00 (hex color)
+    </div>
+
+    <br>
+
+    <!-- Test 3: URL only -->
+    <div style="width: 250px; height: 100px; background: url(https://picsum.photos/250/100); border: 2px solid black;">
+    </div>
+    <p>Box above: background: url(...) only</p>
+
+    <br>
+
+    <!-- Test 4: Color + URL -->
+    <div style="width: 250px; height: 100px; background: lightblue url(https://picsum.photos/250/100); border: 2px solid blue;">
+    </div>
+    <p>Box above: background: lightblue url(...) - blue shows while loading</p>
+
+    <br>
+
+    <!-- Test 5: URL + Color (reversed order) -->
+    <div style="width: 250px; height: 100px; background: url(https://picsum.photos/250/100) orange; border: 2px solid orange;">
+    </div>
+    <p>Box above: background: url(...) orange - order reversed, should still work</p>
+
+    <br>
+
+    <!-- Test 6: None keyword -->
+    <div style="width: 200px; height: 60px; background: none; border: 2px dashed gray; padding: 10px;">
+        background: none (transparent)
+    </div>
+
+    <br>
+
+    <!-- Test 7: Compare shorthand vs longhand -->
+    <div style="display: flex;">
+        <div style="width: 150px; height: 80px; background-color: purple; color: white; padding: 10px; margin-right: 10px;">
+            Longhand: background-color: purple
+        </div>
+        <div style="width: 150px; height: 80px; background: purple; color: white; padding: 10px;">
+            Shorthand: background: purple
+        </div>
+    </div>
+    <p>Both boxes above should look identical (purple background)</p>
+
+    <hr>
+
+    <h2>Min-Width Test</h2>
+   <!-- The width says 50px, but min-width says 200px. -->
+   <!-- If successful, this red box will be 200px wide. -->
+    <div style="width: 50px; min-width: 200px; background-color: red; color: white; padding: 10px;">
+        Min-Width Check (Should be 200px)
+    </div>
+
+    <h2>Max-Width Test</h2>
+    <!-- The container is wide, but max-width caps it at 300px. -->
+    <!-- If successful, this blue box will be 300px wide (not full width). -->
+    <div style="max-width: 300px; background-color: blue; color: white; padding: 10px;">
+        Max-Width Check (Should be 300px, not full width)
+    </div>
+    <!-- Width says 500px, but max-width says 200px. Max wins. -->
+    <div style="width: 500px; max-width: 200px; background-color: darkblue; color: white; padding: 10px;">
+        Width vs Max-Width (Should be 200px, not 500px)
+    </div>
+
+    <h2>Min-Height Test</h2>
+    <!-- The content is short, but min-height says 100px. -->
+    <!-- If successful, this green box will be 100px tall. -->
+    <div style="min-height: 100px; background-color: green; color: white; padding: 10px;">
+        Min-Height Check (Should be 100px tall)
+    </div>
+    <!-- Height says 30px, but min-height says 80px. Min wins. -->
+    <div style="height: 30px; min-height: 80px; background-color: darkgreen; color: white; padding: 10px;">
+        Height vs Min-Height (Should be 80px tall, not 30px)
+    </div>
+
+    <h2>Max-Height Test</h2>
+    <!-- The content would be tall, but max-height caps it at 60px. -->
+    <!-- If successful, this orange box will be 60px tall. -->
+    <div style="max-height: 60px; background-color: orange; color: white; padding: 10px;">
+        Max-Height Check - This is a long piece of content that should be capped at 60px tall even though it wants to be taller. (Should be 60px max)
+    </div>
+    <!-- Height says 200px, but max-height says 80px. Max wins. -->
+    <div style="height: 200px; max-height: 80px; background-color: darkorange; color: white; padding: 10px;">
+        Height vs Max-Height (Should be 80px tall, not 200px)
+    </div>
+
+    <h2>Right/Bottom Positioning Test</h2>
+    <p>Testing position offsets: right and bottom.</p>
+
+    <!-- Test 1: right positioning -->
+    <div style="position: relative; width: 300px; height: 100px; background-color: lightgray; border: 2px solid black;">
+        <div style="position: absolute; right: 10px; top: 10px; width: 80px; height: 40px; background-color: blue; color: white;">
+            right: 10px
+        </div>
+    </div>
+
+    <!-- Test 2: bottom positioning -->
+    <div style="position: relative; width: 300px; height: 100px; background-color: lightgray; border: 2px solid black;">
+        <div style="position: absolute; left: 10px; bottom: 10px; width: 80px; height: 40px; background-color: green; color: white;">
+            bottom: 10px
+        </div>
+    </div>
+
+    <!-- Test 3: right + bottom (corner positioning) -->
+    <div style="position: relative; width: 300px; height: 100px; background-color: lightgray; border: 2px solid black;">
+        <div style="position: absolute; right: 10px; bottom: 10px; width: 100px; height: 40px; background-color: purple; color: white;">
+            right + bottom
+        </div>
+    </div>
+
+    <!-- Test 4: All four corners -->
+    <div style="position: relative; width: 300px; height: 120px; background-color: lightgray; border: 2px solid black;">
+        <div style="position: absolute; left: 5px; top: 5px; width: 60px; height: 30px; background-color: red; color: white;">
+            top-left
+        </div>
+        <div style="position: absolute; right: 5px; top: 5px; width: 60px; height: 30px; background-color: blue; color: white;">
+            top-right
+        </div>
+        <div style="position: absolute; left: 5px; bottom: 5px; width: 60px; height: 30px; background-color: green; color: white;">
+            btm-left
+        </div>
+        <div style="position: absolute; right: 5px; bottom: 5px; width: 60px; height: 30px; background-color: orange; color: white;">
+            btm-right
+        </div>
+    </div>
+
+    <h2>Float Test</h2>
+    <p>Testing CSS float property.</p>
+
+    <!-- Test 1: Single float left -->
+    <div style="width: 400px; background-color: lightgray; border: 2px solid black; padding: 10px;">
+        <div style="float: left; width: 100px; height: 60px; background-color: blue; color: white;">
+            float: left
+        </div>
+        <p>Normal content after the float.</p>
+    </div>
+
+    <br>
+
+    <!-- Test 2: Single float right -->
+    <div style="width: 400px; background-color: lightgray; border: 2px solid black; padding: 10px;">
+        <div style="float: right; width: 100px; height: 60px; background-color: green; color: white;">
+            float: right
+        </div>
+        <p>Normal content after the float.</p>
+    </div>
+
+    <br>
+
+    <!-- Test 3: Multiple floats stacking -->
+    <div style="width: 400px; background-color: lightgray; border: 2px solid black; padding: 10px;">
+        <div style="float: left; width: 80px; height: 50px; background-color: red; color: white;">
+            Left 1
+        </div>
+        <div style="float: left; width: 80px; height: 50px; background-color: orange; color: white;">
+            Left 2
+        </div>
+        <div style="float: right; width: 80px; height: 50px; background-color: purple; color: white;">
+            Right 1
+        </div>
+        <p>Content between floats.</p>
+    </div>
+
+    <h2>Z-Index Test</h2>
+    <p>Three overlapping boxes. Red should be behind, green in middle, blue in front.</p>
+    <div style="position: relative; width: 300px; height: 150px; background-color: lightgray; border: 2px solid black;">
+        <!-- Red box - z-index 1 (behind) -->
+        <div style="position: absolute; left: 20px; top: 30px; width: 150px; height: 80px; background-color: red; color: white; z-index: 1;">
+            Red Box (z-index: 1)
+        </div>
+        <!-- Green box - z-index 2 (middle) -->
+        <div style="position: absolute; left: 80px; top: 50px; width: 150px; height: 80px; background-color: green; color: white; z-index: 2;">
+            Green Box (z-index: 2)
+        </div>
+        <!-- Blue box - z-index 3 (front) -->
+        <div style="position: absolute; left: 140px; top: 70px; width: 150px; height: 80px; background-color: blue; color: white; z-index: 3;">
+            Blue Box (z-index: 3)
+        </div>
+    </div>
+
+    <h2>External Stylesheet Test</h2>
+    <div class="external-test">
+        This box is styled via external CSS (style.css)!
+        <br>
+        (Green background, white text, centered)
+    </div>
+    <div class="min-height-test">
+        This box tests min-height from external CSS!
+        <br>
+        (Purple background, should be at least 80px tall)
+    </div>
+    <div class="max-height-test">
+        This box tests max-height from external CSS!
+        <br>
+        (Orange background, should be max 50px tall with overflow hidden)
+    </div>
+
+    <h2>Z-Index External CSS Test</h2>
+    <div style="position: relative; width: 300px; height: 150px; background-color: lightgray; border: 2px solid black;">
+        <div class="z-index-1">Red (z-index: 1)</div>
+        <div class="z-index-2">Green (z-index: 2)</div>
+        <div class="z-index-3">Blue (z-index: 3)</div>
+    </div>
+
+    <p id="external-id">This paragraph is styled via ID from external CSS (Red, dashed border)</p>
+
+    <hr>
+
+    <h2>Style Tag CSS (Classes and IDs)</h2>
+    <p>These elements are styled using &lt;style&gt; tag CSS:</p>
+    <p class="red">This text should be RED (class="red")</p>
+    <p class="blue">This text should be BLUE (class="blue")</p>
+    <p class="bold">This text should be BOLD (class="bold")</p>
+    <p class="big">This text should be BIG 24px (class="big")</p>
+    <p class="highlight">This has YELLOW background (class="highlight")</p>
+    <p class="red bold">This is RED and BOLD (multiple classes)</p>
+    <p id="special">This is PURPLE, ITALIC, 20px (id="special")</p>
+    <p class="styled">This paragraph has gray background (p.styled selector)</p>
+    <p class="blue" style="color: green;">This should be GREEN - inline overrides stylesheet</p>
+
+    <hr>
+
+    <h2>Inline Styles - Colors</h2>
+    <p style="color: red;">This text is red.</p>
+    <p style="color: blue; font-size: 24px;">Blue and larger text.</p>
+    <p style="background-color: yellow;">Yellow background.</p>
+    <p style="color: green; font-weight: bold;">Green and bold.</p>
+    <p style="font-style: italic; color: purple;">Purple italic text.</p>
+
+    <hr>
+
+    <div style="width: 200px; height: 100px; background-color: lightblue;">
+    Fixed size box
+  </div>
+  <div style="width: 50%; background-color: lightgreen;">
+    Percentage width (won't work yet - only px supported)
+  </div>
+
+    <h2>Padding and Margins</h2>
+    <p style="padding: 20px; background-color: lightgray;">This has 20px padding all around.</p>
+    <p style="padding-left: 40px; background-color: cyan;">This has 40px left padding.</p>
+    <p style="margin-left: 50px; background-color: lightgreen;">This has 50px left margin.</p>
+
+    <hr>
+
+    <h2>Text Alignment</h2>
+    <p style="text-align: left;">This text is left-aligned (default).</p>
+    <p style="text-align: center;">This text is centered.</p>
+    <p style="text-align: right;">This text is right-aligned.</p>
+    <p style="text-align: center; background-color: lightblue;">Centered with background to see the effect clearly.</p>
+
+    <hr>
+
+    <h2>Text Decoration</h2>
+    <p style="text-decoration: underline;">This text has an underline.</p>
+    <p style="text-decoration: line-through;">This text has a strikethrough.</p>
+    <p>Normal text with <span style="text-decoration: underline;">underlined part</span> inside.</p>
+    <p><a href="#">Links are underlined by default</a></p>
+    <p><a href="#" style="text-decoration: none;">This link has no underline (text-decoration: none)</a></p>
+    <p style="text-decoration: underline; color: red;">Red underlined text.</p>
+
+    <hr>
+
+    <h2>Text Transform</h2>
+    <p style="text-transform: uppercase;">this text should be all uppercase</p>
+    <p style="text-transform: lowercase;">THIS TEXT SHOULD BE ALL LOWERCASE</p>
+    <p style="text-transform: capitalize;">this text should have each word capitalized</p>
+    <p>Normal text with <span style="text-transform: uppercase;">uppercase span</span> inside.</p>
+    <p style="text-transform: uppercase; color: blue;">Blue uppercase text.</p>
+    <p style="text-transform: none;">This text has text-transform: none (no change).</p>
+
+    <hr>
+
+    <h2>Line Height Test</h2>
+    <p>Testing CSS line-height property for controlling vertical spacing between lines.</p>
+
+    <p style="line-height: 1; background-color: #ffe0e0;">
+        Line-height: 1 (tight spacing)<br>
+        Second line of text<br>
+        Third line of text<br>
+        Fourth line of text
+    </p>
+
+    <p style="line-height: 1.5; background-color: #e0ffe0;">
+        Line-height: 1.5 (normal spacing)<br>
+        Second line of text<br>
+        Third line of text<br>
+        Fourth line of text
+    </p>
+
+    <p style="line-height: 2; background-color: #e0e0ff;">
+        Line-height: 2 (double spacing)<br>
+        Second line of text<br>
+        Third line of text<br>
+        Fourth line of text
+    </p>
+
+    <p style="line-height: 24px; background-color: #fff0e0;">
+        Line-height: 24px (fixed pixel value)<br>
+        Second line of text<br>
+        Third line of text<br>
+        Fourth line of text
+    </p>
+
+    <p style="line-height: 40px; background-color: #f0e0ff;">
+        Line-height: 40px (large fixed value)<br>
+        Second line of text<br>
+        Third line of text<br>
+        Fourth line of text
+    </p>
+
+    <div style="font-size: 20px; background-color: #f5f5f5; padding: 10px;">
+        <p style="line-height: 1.5;">
+            Font-size: 20px with line-height: 1.5<br>
+            Computed line-height is 30px (20 × 1.5)<br>
+            Third line of text
+        </p>
+    </div>
+
+    <p style="line-height: 1.5; font-size: 12px; background-color: #e0ffff;">
+        Small text (12px) with line-height: 1.5<br>
+        Effective spacing = 18px<br>
+        Third line of text
+    </p>
+
+    <p style="line-height: 1.5; font-size: 24px; background-color: #ffe0ff;">
+        Large text (24px) with line-height: 1.5<br>
+        Effective spacing = 36px<br>
+        Third line of text
+    </p>
+
+    <hr>
+
+    <h2>Borders</h2>
+    <p style="border: 2px solid black; padding: 10px;">2px solid black border</p>
+    <p style="border: 3px solid red; padding: 10px;">3px solid red border</p>
+    <p style="border: 1px solid blue; background-color: lightyellow; padding: 10px;">Blue border with yellow background</p>
+    <p style="border-top: 3px solid green; border-bottom: 3px solid purple; padding: 10px;">Green top, purple bottom</p>
+    <p style="border-left: 5px solid orange; padding: 10px;">5px orange left border only</p>
+
+    <hr>
+
+    <h2>Opacity</h2>
+    <p style="opacity: 1.0;">Full opacity (1.0) - fully visible</p>
+    <p style="opacity: 0.7;">70% opacity (0.7)</p>
+    <p style="opacity: 0.5;">50% opacity (0.5) - half transparent</p>
+    <p style="opacity: 0.3;">30% opacity (0.3)</p>
+    <p style="opacity: 0.1;">10% opacity (0.1) - barely visible</p>
+    <p style="background-color: red; opacity: 0.5;">Red background at 50% opacity</p>
+    <p style="color: blue; opacity: 0.5;">Blue text at 50% opacity</p>
+
+    <hr>
+
+    <h2>Visibility vs Display</h2>
+    <p>Compare visibility:hidden vs display:none:</p>
+    <p style="background-color: lightgreen;">Visible paragraph 1</p>
+    <p style="visibility: hidden; background-color: red;">HIDDEN with visibility:hidden (takes space)</p>
+    <p style="background-color: lightgreen;">Visible paragraph 2</p>
+    <p>Notice the gap above? That's the hidden element still taking space!</p>
+    <p style="background-color: lightblue;">Now compare with display:none below:</p>
+    <p style="display: none; background-color: red;">HIDDEN with display:none (no space)</p>
+    <p style="background-color: lightblue;">No gap here - display:none removes the element entirely.</p>
+    <div style="display: none;">
+        <p>Hidden div content</p>
+        <p>More hidden content</p>
+    </div>
+    <p>If you only see two green and two blue paragraphs above, both are working!</p>
+
+    <hr>
+
+    <h2>Cursor Styles</h2>
+    <p>Hover over these elements to see cursor changes:</p>
+    <p style="cursor: pointer; background-color: lightyellow; padding: 10px;">Pointer cursor (like a link)</p>
+    <p style="cursor: text; background-color: lightcyan; padding: 10px;">Text cursor (I-beam)</p>
+    <p style="cursor: crosshair; background-color: lightpink; padding: 10px;">Crosshair cursor</p>
+    <p><a href="#">Links automatically get pointer cursor</a></p>
+
+    <hr>
+
+    <h2>Font Family</h2>
+    <p>Testing CSS font-family property with font stacks.</p>
+
+    <p>This is normal text (default font).</p>
+
+    <p style="font-family: 'Courier New', Consolas, monospace;">
+        Monospace text via inline style (Courier New, Consolas, monospace).
+    </p>
+
+    <p style="font-family: Monaco, Menlo, monospace;">
+        Another monospace stack (Monaco, Menlo, monospace).
+    </p>
+
+    <p style="font-family: 'Helvetica Neue', Arial, sans-serif;">
+        Sans-serif font stack (Helvetica Neue, Arial, sans-serif).
+    </p>
+
+    <p style="font-family: Georgia, 'Times New Roman', serif;">
+        Serif font stack (Georgia, Times New Roman, serif).
+    </p>
+
+    <p>
+        Mixed: Normal text then
+        <span style="font-family: monospace;">monospace span</span>
+        then back to normal.
+    </p>
+
+    <p style="font-family: monospace; background-color: #f0f0f0; padding: 8px;">
+        Code-style block with monospace font and gray background.
+    </p>
+
+    <h3>External CSS Classes</h3>
+    <p class="mono">Monospace via external CSS class (.mono)</p>
+    <p class="code-block">Code block style from external CSS (.code-block)</p>
+    <p class="sans">Sans-serif via external CSS class (.sans)</p>
+
+    <hr>
+
+    <h2>Box-Sizing Test</h2>
+    <p>Testing box-sizing: content-box (default) vs border-box.</p>
+
+    <p><strong>content-box (default):</strong> width/height = content only. Padding and border are added outside.</p>
+    <div style="width: 200px; height: 50px; padding: 20px; border: 5px solid red; background-color: lightcoral; box-sizing: content-box;">
+        200px + 40px padding + 10px border = 250px total
+    </div>
+
+    <br>
+
+    <p><strong>border-box:</strong> width/height = content + padding + border. Total size stays 200px.</p>
+    <div style="width: 200px; height: 50px; padding: 20px; border: 5px solid blue; background-color: lightblue; box-sizing: border-box;">
+        200px total (content shrinks to fit)
+    </div>
+
+    <br>
+
+    <p>Side-by-side comparison (both have width: 200px):</p>
+    <div style="background-color: #eee; padding: 10px;">
+        <div style="width: 200px; padding: 20px; border: 5px solid green; background-color: lightgreen; box-sizing: content-box;">
+            content-box: wider than 200px
+        </div>
+        <br>
+        <div style="width: 200px; padding: 20px; border: 5px solid purple; background-color: plum; box-sizing: border-box;">
+            border-box: exactly 200px
+        </div>
+    </div>
+
+    <hr>
+
+    <h2>EM Unit Test</h2>
+    <p>Testing the em relative unit.</p>
+
+    <div style="font-size: 20px; background-color: #f0f0f0; padding: 10px; margin-bottom: 20px;">
+        <p>Parent: font-size: 20px</p>
+        <p style="font-size: 1.5em; background-color: lightblue;">Child: font-size: 1.5em = 30px (1.5 × 20)</p>
+        <p style="font-size: 2em; background-color: lightgreen;">Child: font-size: 2em = 40px (2 × 20)</p>
+        <p style="font-size: 0.5em; background-color: lightyellow;">Child: font-size: 0.5em = 10px (0.5 × 20)</p>
+    </div>
+
+    <div style="font-size: 16px; background-color: #e0e0e0; padding: 10px; margin-bottom: 20px;">
+        <p>Parent: font-size: 16px (browser default)</p>
+        <p style="margin: 1em; background-color: lightcoral;">margin: 1em = 16px margin all around</p>
+        <p style="padding: 2em; background-color: lightpink;">padding: 2em = 32px padding all around</p>
+    </div>
+
+    <div style="font-size: 24px; background-color: #d0d0d0; padding: 10px;">
+        <p>Parent: font-size: 24px</p>
+        <div style="font-size: 0.75em; background-color: lavender; padding: 1em;">
+            <p>Nested: font-size: 0.75em = 18px</p>
+            <p>padding: 1em = 18px (uses THIS element's computed font-size)</p>
+        </div>
+    </div>
+
+    <hr>
+
+    <h2>Border Radius Test</h2>
+    <p>Testing rounded corners with border-radius.</p>
+
+    <div style="width: 200px; height: 100px; background-color: blue; color: white; border-radius: 10px; padding: 10px;">
+        border-radius: 10px
+    </div>
+
+    <br>
+
+    <div style="width: 200px; height: 100px; background-color: green; color: white; border-radius: 20px; padding: 10px;">
+        border-radius: 20px
+    </div>
+
+    <br>
+
+    <div style="width: 100px; height: 100px; background-color: red; color: white; border-radius: 50px; padding: 10px;">
+        Circle (50px on 100px box)
+    </div>
+
+    <br>
+
+    <div style="width: 200px; height: 60px; background-color: purple; color: white; border-radius: 30px; padding: 10px;">
+        Pill shape (radius > half height)
+    </div>
+
+    <hr>
+
+    <h2>Navigation</h2>
+    <p><a href="tags.html">Go to HTML Tags Test Page</a></p>
+    <p><a href="index.html">Go to Full Test Page</a></p>
+
+    <hr>
+
+    <h2>End of Test</h2>
+    <p>If all styles above render correctly, CSS implementation is working!</p>
+</body>
+</html>

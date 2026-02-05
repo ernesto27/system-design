@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>Base Element Compliance Test (WHATWG 4.2.3)</title>
+    <base href="https://example.com/news/">
+    <meta charset="UTF-8">
+    <style>
+        .pass { color: green; font-weight: bold; }
+        .fail { color: red; font-weight: bold; }
+        .info { color: blue; }
+        code { background-color: #f0f0f0; padding: 2px 6px; }
+    </style>
+</head>
+<body>
+    <h1>Base Element Compliance Test (WHATWG 4.2.3)</h1>
+
+    <div id="results"></div>
+
+    <h2>Test Links</h2>
+    <p>These links should resolve relative to <code>https://example.com/news/</code>:</p>
+    <ul>
+        <li><a href="article.html" id="link1">article.html</a> - should be https://example.com/news/article.html</li>
+        <li><a href="../about.html" id="link2">../about.html</a> - should be https://example.com/about.html</li>
+        <li><a href="/contact.html" id="link3">/contact.html</a> - should be https://example.com/contact.html</li>
+        <li><a href="https://other.com/page.html" id="link4">https://other.com/page.html</a> - absolute, unchanged</li>
+    </ul>
+
+    <script>
+        const results = document.getElementById('results');
+
+        function assert(condition, message) {
+            const p = document.createElement('p');
+            if (condition) {
+                p.innerHTML = "PASS: " + message;
+                p.classList.add('pass');
+            } else {
+                p.innerHTML = "FAIL: " + message;
+                p.classList.add('fail');
+            }
+            results.appendChild(p);
+        }
+
+        function info(message) {
+            const p = document.createElement('p');
+            p.innerHTML = "INFO: " + message;
+            p.classList.add('info');
+            results.appendChild(p);
+        }
+
+        // Test 1: document.baseURI exists
+        assert(typeof document.baseURI === 'string',
+            "document.baseURI is a string (was: " + typeof document.baseURI + ")");
+
+        // Test 2: document.baseURI returns base href
+        var expectedBase = "https://example.com/news/";
+        assert(document.baseURI === expectedBase,
+            "document.baseURI is '" + expectedBase + "' (was: '" + document.baseURI + "')");
+
+        // Test 3: Find base element
+        var baseEl = null;
+        if (document.head) {
+            var children = document.head.children;
+            if (children) {
+                for (var i = 0; i < children.length; i++) {
+                    if (children[i] && children[i].tagName === "BASE") {
+                        baseEl = children[i];
+                        break;
+                    }
+                }
+            }
+        }
+        assert(baseEl !== null,
+            "Base element found in document.head");
+
+        // Test 4: base.href getter
+        if (baseEl) {
+            assert(baseEl.href === expectedBase,
+                "base.href returns '" + expectedBase + "' (was: '" + baseEl.href + "')");
+        } else {
+            assert(false, "base.href returns correct value (base element not found)");
+        }
+
+        // Test 5: base.target getter (not set in this test)
+        if (baseEl) {
+            assert(baseEl.target === "" || baseEl.target === undefined,
+                "base.target is empty when not set (was: '" + baseEl.target + "')");
+        } else {
+            assert(false, "base.target is empty when not set (base element not found)");
+        }
+
+        // Info about link resolution
+        info("Link resolution tests require clicking links and checking resolved URLs");
+
+        // Test 6: Check if links have resolved href (in browsers that support it)
+        var link1 = document.getElementById('link1');
+        if (link1 && link1.href) {
+            var resolved = link1.href;
+            assert(resolved === "https://example.com/news/article.html",
+                "Relative link resolves correctly (was: '" + resolved + "')");
+        } else {
+            assert(false, "Relative link resolves correctly (link.href not available)");
+        }
+    </script>
+
+    <hr>
+    <p><a href="index.html">Back to Index</a></p>
+</body>
+</html>

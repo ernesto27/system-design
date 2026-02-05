@@ -1,0 +1,16 @@
+{
+  "name": "cpu-pressure-api",
+  "version": "1.0.0",
+  "description": "Node.js API with version endpoint and CPU pressure testing",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2"
+  },
+  "engines": {
+    "node": ">=14.0.0"
+  }
+}

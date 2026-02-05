@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>Head Element Compliance Test (WHATWG 4.2.1)</title>
+    <meta charset="UTF-8">
+    <style>
+        .pass { color: green; font-weight: bold; }
+        .fail { color: red; font-weight: bold; }
+    </style>
+</head>
+<body>
+    <h1>Head Element Compliance Test (WHATWG 4.2.1)</h1>
+    <div id="results"></div>
+
+    <script>
+        const results = document.getElementById('results');
+
+        function assert(condition, message) {
+            const p = document.createElement('p');
+            if (condition) {
+                p.innerHTML = "PASS: " + message;
+                p.classList.add('pass');
+            } else {
+                p.innerHTML = "FAIL: " + message;
+                p.classList.add('fail');
+            }
+            results.appendChild(p);
+        }
+
+        // Test 1: document.head exists
+        assert(document.head !== null, "document.head exists");
+
+        // Test 2: document.head tagName
+        assert(document.head && document.head.tagName === "HEAD",
+            "document.head.tagName is 'HEAD' (was: " + (document.head ? document.head.tagName : "null") + ")");
+
+        // Test 3: document.body exists
+        assert(document.body !== null, "document.body exists");
+
+        // Test 4: document.body tagName
+        assert(document.body && document.body.tagName === "BODY",
+            "document.body.tagName is 'BODY' (was: " + (document.body ? document.body.tagName : "null") + ")");
+
+        // Test 5: head is child of documentElement
+        assert(document.head && document.head.parentElement === document.documentElement,
+            "document.head.parentElement === document.documentElement");
+
+        // Test 6: body is child of documentElement
+        assert(document.body && document.body.parentElement === document.documentElement,
+            "document.body.parentElement === document.documentElement");
+    </script>
+
+    <hr>
+    <p><a href="index.html">Back to Index</a></p>
+</body>
+</html>

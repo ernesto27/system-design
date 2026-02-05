@@ -1,0 +1,9 @@
+{
+    "id": "evt_123",
+    "source": "shopify",
+    "type": "order.created",
+    "data": {
+        "order_id": "12345",
+        "customer": "john@example.com"
+    }
+}

@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Scroll Test Page</title>
+    <link rel="stylesheet" href="style.css">
+    <style>
+        .red { color: red; }
+        .blue { color: blue; }
+        .bold { font-weight: bold; }
+        .big { font-size: 24px; }
+        .highlight { background-color: yellow; padding: 10px; }
+        #special { color: purple; font-size: 20px; font-style: italic; }
+        p.styled { background-color: lightgray; padding: 5px; }
+    </style>
+</head>
+<body>
+    <h1>Scroll Test Page</h1>
+
+    <h2>Test Page Navigation</h2>
+    <p>Focused test pages:</p>
+    <ul>
+        <li><a href="tags.html">HTML Tags Test</a> - Tests HTML element rendering</li>
+        <li><a href="html_compliance.html">HTML Tag Compliance</a> - Tests WHATWG 4.1.1 compliance</li>
+        <li><a href="head_compliance.html">Head Element Compliance</a> - Tests WHATWG 4.2.1 compliance</li>
+        <li><a href="title_compliance.html">Title Element Compliance</a> - Tests WHATWG 4.2.2 compliance</li>
+        <li><a href="base_compliance.html">Base Element Compliance</a> - Tests WHATWG 4.2.3 compliance</li>
+        <li><a href="style_compliance.html">Style Element Compliance</a> - Tests WHATWG 4.2.6 compliance</li>
+        <li><a href="p_compliance.html">Paragraph Compliance</a> - Tests WHATWG 4.4.1 compliance</li>
+        <li><a href="css.html">CSS Test</a> - Tests CSS styling features</li>
+        <li><a href="js.html">JavaScript Test</a> - Tests JavaScript execution</li>
+        <li><a href="body_compliance.html">Body</a> - Tests beforeunload event</li>
+    </ul>
+
+    <hr>
+
+    <div class="external-test">
+        This box is styled via external CSS (style.css)!
+        <br>
+        (Green background, white text, centered)
+    </div>
+
+    <p id="external-id">This paragraph is styled via ID from external CSS (Red, dashed border)</p>
+
+    <p>This page is designed to test scrolling functionality.</p>
+
+    <h2>Section 0: Style Tag Test</h2>
+    <p>These elements are styled using &lt;style&gt; tag CSS:</p>
+    <p class="red">This text should be RED (class="red")</p>
+    <p class="blue">This text should be BLUE (class="blue")</p>
+    <p class="bold">This text should be BOLD (class="bold")</p>
+    <p class="big">This text should be BIG 24px (class="big")</p>
+    <p class="highlight">This has YELLOW background (class="highlight")</p>
+    <p class="red bold">This is RED and BOLD (multiple classes)</p>
+    <p id="special">This is PURPLE, ITALIC, 20px (id="special")</p>
+    <p class="styled">This paragraph has gray background (p.styled selector)</p>
+    <p class="blue" style="color: green;">This should be GREEN - inline overrides stylesheet</p>
+
+    <h2>Section 1: Border Test</h2>
+    <p style="border: 2px solid black; padding: 10px;">2px solid black border</p>
+    <p style="border: 3px solid red; padding: 10px;">3px solid red border</p>
+    <p style="border: 1px solid blue; background-color: lightyellow; padding: 10px;">Blue border with yellow background</p>
+    <p style="border-top: 3px solid green; border-bottom: 3px solid purple; padding: 10px;">Green top, purple bottom</p>
+    <p style="border-left: 5px solid orange; padding: 10px;">5px orange left border only</p>
+
+    <h2>Section 2: Cursor Test</h2>
+    <p>Hover over these elements to see cursor changes:</p>
+    <p style="cursor: pointer; background-color: lightyellow; padding: 10px;">Pointer cursor (like a link)</p>
+    <p style="cursor: text; background-color: lightcyan; padding: 10px;">Text cursor (I-beam)</p>
+    <p style="cursor: crosshair; background-color: lightpink; padding: 10px;">Crosshair cursor</p>
+    <p><a href="#">Links automatically get pointer cursor</a></p>
+
+    <h2>Section 1: Visibility Test</h2>
+    <p>Compare visibility:hidden vs display:none:</p>
+    <p style="background-color: lightgreen;">Visible paragraph 1</p>
+    <p style="visibility: hidden; background-color: red;">HIDDEN with visibility:hidden (takes space)</p>
+    <p style="background-color: lightgreen;">Visible paragraph 2</p>
+    <p>Notice the gap above? That's the hidden element still taking space!</p>
+    <p style="background-color: lightblue;">Now compare with display:none below:</p>
+    <p style="display: none; background-color: red;">HIDDEN with display:none (no space)</p>
+    <p style="background-color: lightblue;">No gap here - display:none removes the element entirely.</p>
+
+    <h2>Section 1: Features</h2>
+    <p>Our browser now supports:</p>
+    <ul>
+        <li>HTML parsing and rendering</li>
+        <li>Images (PNG, JPG, GIF)</li>
+        <li>Clickable links</li>
+        <li>URL bar navigation</li>
+        <li>Back and refresh buttons</li>
+        <li>Loading indicator</li>
+        <li>Scrolling</li>
+        <li>Window resize (reflow)</li>
+        <li>Error pages</li>
+    </ul>
+
+    <h3>Nested List Example</h3>
+    <ul>
+        <li>Fruits
+            <ul>
+                <li>Apple</li>
+                <li>Banana</li>
+                <li>Orange</li>
+            </ul>
+        </li>
+        <li>Vegetables
+            <ul>
+                <li>Carrot</li>
+                <li>Broccoli</li>
+            </ul>
+        </li>
+    </ul>
+
+    <h3>Ordered List Example</h3>
+    <ol>
+        <li>First item</li>
+        <li>Second item</li>
+        <li>Third item</li>
+        <li>Fourth item</li>
+        <li>Fifth item</li>
+    </ol>
+
+    <h3>Steps to Build a Browser</h3>
+    <ol>
+        <li>Fetch HTML from URL</li>
+        <li>Parse HTML into DOM tree</li>
+        <li>Build layout tree</li>
+        <li>Compute positions and sizes</li>
+        <li>Paint to screen</li>
+    </ol>
+
+    <h3>Line Break Example</h3>
+    <p>This is line one.<br>This is line two.<br>This is line three.</p>
+
+    <h3>Text Formatting</h3>
+    <p>This is <strong>bold text</strong> using strong tag.</p>
+    <p>This is <b>also bold</b> using b tag.</p>
+    <p>This is <em>italic text</em> using em tag.</p>
+    <p>This is <i>also italic</i> using i tag.</p>
+    <p>You can combine <strong><em>bold and italic</em></strong> together!</p>
+    <p>This is normal text with <small>smaller text</small> inside the same line.</p>
+    <p>Here is <strong>bold</strong> and <em>italic</em> and <small>small</small> all inline!</p>
+    <p><small>This entire paragraph is small text for fine print or disclaimers.</small></p>
+
+    <hr>
+
+    <h2>Section 2: Images</h2>
+    <p>Google logo:</p>
+    <img src="https://www.google.com/images/branding/googlelogo/2x/googlelogo_color_272x92dp.png" width="272" height="92">
+
+    <p>Random photo:</p>
+    <img src="https://picsum.photos/300/200" width="300" height="200">
+
+    <hr>
+
+    <h2>Section 3: More Content</h2>
+    <p>Lorem ipsum dolor sit amet, consectetur adipiscing elit.</p>
+    <p>Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.</p>
+    <p>Ut enim ad minim veniam, quis nostrud exercitation.</p>
+    <p>Duis aute irure dolor in reprehenderit in voluptate.</p>
+    <p>Excepteur sint occaecat cupidatat non proident.</p>
+
+    <h2>Section 4: Even More</h2>
+    <p>This section adds even more content to ensure scrolling works.</p>
+    <p>Keep scrolling down...</p>
+    <p>Almost there...</p>
+    <p>A bit more...</p>
+
+    <h2>Section 5: Another Image</h2>
+    <img src="https://picsum.photos/400/300" width="400" height="300">
+
+    <h2>Section 6: Links</h2>
+    <p><a href="https://example.com">Go to Example.com</a></p>
+    <p><a href="https://go.dev">Go to Go.dev</a></p>
+    <p><a href="https://golang.org">Go to Golang.org</a></p>
+
+    <h2>Section 7: The End</h2>
+    <p>Congratulations! You scrolled to the bottom!</p>
+    <p>If you can see this, scrolling is working!</p>
+
+    <h2>Section 8: Blockquote</h2>
+    <p>Here is a famous quote:</p>
+    <blockquote>
+        <p>The only way to do great work is to love what you do.</p>
+        <p>- Steve Jobs</p>
+    </blockquote>
+    <p>And another one:</p>
+    <blockquote>
+        <p>Talk is cheap. Show me the code.</p>
+        <p>- Linus Torvalds</p>
+    </blockquote>
+
+    <h2>Section 9: Tables</h2>
+    <table>
+        <tr>
+            <th>Name</th>
+            <th>Age</th>
+            <th>City</th>
+        </tr>
+        <tr>
+            <td>Alice</td>
+            <td>30</td>
+            <td>New York</td>
+        </tr>
+        <tr>
+            <td>Bob</td>
+            <td>25</td>
+            <td>Los Angeles</td>
+        </tr>
+        <tr>
+            <td>Charlie</td>
+            <td>35</td>
+            <td>Chicago</td>
+        </tr>
+    </table>
+
+    <h2>Section 10: Inline Styles</h2>
+    <p style="color: red;">This text is red.</p>
+    <p style="color: blue; font-size: 24px;">Blue and larger text.</p>
+    <p style="background-color: yellow;">Yellow background.</p>
+    <p style="color: green; font-weight: bold;">Green and bold.</p>
+    <p style="font-style: italic; color: purple;">Purple italic text.</p>
+    <p style="padding: 20px; background-color: lightgray;">This has 20px padding all around.</p>
+    <p style="padding-left: 40px; background-color: cyan;">This has 40px left padding.</p>
+
+    <h2>Section 11: Text Alignment</h2>
+    <p style="text-align: left;">This text is left-aligned (default).</p>
+    <p style="text-align: center;">This text is centered.</p>
+    <p style="text-align: right;">This text is right-aligned.</p>
+    <p style="text-align: center; background-color: lightblue;">Centered with background to see the effect clearly.</p>
+    <h3 style="text-align: center;">Centered Heading</h3>
+
+    <h2>Section 12: Display None</h2>
+    <p>You should see text before and after, but not the hidden paragraph.</p>
+    <p style="background-color: lightgreen;">This paragraph is visible.</p>
+    <p style="display: none; background-color: red;">THIS SHOULD BE HIDDEN - if you see this, display:none is broken!</p>
+    <p style="background-color: lightgreen;">This paragraph is also visible.</p>
+    <div style="display: none;">
+        <p>Hidden div content</p>
+        <p>More hidden content</p>
+    </div>
+    <p>If you only see two green paragraphs above, display:none is working!</p>
+
+    <h2>Section 13: Text Decoration</h2>
+    <p style="text-decoration: underline;">This text has an underline.</p>
+    <p style="text-decoration: line-through;">This text has a strikethrough.</p>
+    <p>Normal text with <span style="text-decoration: underline;">underlined part</span> inside.</p>
+    <p><a href="#">Links are underlined by default</a></p>
+    <p><a href="#" style="text-decoration: none;">This link has no underline (text-decoration: none)</a></p>
+    <p style="text-decoration: underline; color: red;">Red underlined text.</p>
+
+    <h2>Section 14: Opacity</h2>
+    <p style="opacity: 1.0;">Full opacity (1.0) - fully visible</p>
+    <p style="opacity: 0.7;">70% opacity (0.7)</p>
+    <p style="opacity: 0.5;">50% opacity (0.5) - half transparent</p>
+    <p style="opacity: 0.3;">30% opacity (0.3)</p>
+    <p style="opacity: 0.1;">10% opacity (0.1) - barely visible</p>
+    <p style="background-color: red; opacity: 0.5;">Red background at 50% opacity</p>
+    <p style="color: blue; opacity: 0.5;">Blue text at 50% opacity</p>
+
+    <h2>Section 15: All Heading Levels</h2>
+    <h1>Heading 1</h1>
+    <h2>Heading 2</h2>
+    <h3>Heading 3</h3>
+    <h4>Heading 4</h4>
+    <h5>Heading 5</h5>
+    <h6>Heading 6</h6>
+    <p>Normal paragraph text for comparison.</p>
+</body>
+</html>
